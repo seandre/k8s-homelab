@@ -1,9 +1,5 @@
 # Proxmox VM Layout
-## Temporary 256 GB Dry Run
-| VM | vCPU | RAM | Disk | IP |
-|---|---:|---:|---:|---:|
-| `k3s-test-01` | 4 | 16 GB | 80 GB | `192.168.10.21` |
-## Final 2 TB Layout
+## Active 2 TB NVMe Layout
 | VM | vCPU | RAM | Disk | IP |
 |---|---:|---:|---:|---:|
 | `k8s-control-01` | 2 | 8 GB | 80 GB | `192.168.10.21` |
@@ -12,3 +8,7 @@
 | `utility-01` | 2 | 4-8 GB | 80-120 GB | `192.168.10.24` |
 ## Host Reserve
 Reserve 4-8 GB RAM for Proxmox and filesystem cache.
+## Historical 256 GB Dry Run
+| VM | vCPU | RAM | Disk | IP |
+|---|---:|---:|---:|---:|
+| `k3s-test-01` | 4 | 16 GB | 80 GB | `192.168.10.21` |

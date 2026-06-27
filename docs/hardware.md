@@ -6,9 +6,9 @@
 | CPU | Intel Core i5-10500T |
 | CPU layout | 6 cores / 12 threads |
 | RAM | 64 GB DDR4 SO-DIMM |
-| Current SSD | 256 GB |
-| Final SSD | 2 TB NVMe |
+| Installed SSD | 2 TB NVMe |
+| Previous SSD | 256 GB |
 | Target OS | Proxmox VE |
 | Role | Primary virtualization host |
 ## Notes
-The 256 GB SSD is temporary. The final build should happen after the 2 TB NVMe arrives.
+The 2 TB NVMe is installed and should be used for the final Proxmox VE build. The previous 256 GB SSD is no longer part of the active build plan.

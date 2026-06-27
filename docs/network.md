@@ -10,7 +10,6 @@
 | Host | IP | Role |
 |---|---:|---|
 | `pve-01` | `192.168.10.20` | Proxmox host |
-| `k3s-test-01` | `192.168.10.21` | Temporary single-node k3s VM |
 | `k8s-control-01` | `192.168.10.21` | Final Kubernetes control-plane VM |
 | `k8s-worker-01` | `192.168.10.22` | Final Kubernetes worker VM |
 | `k8s-worker-02` | `192.168.10.23` | Final Kubernetes worker VM |

@@ -7,7 +7,7 @@ This lab should be reproducible. Anything important should live in Git or be doc
 - Keep secrets out of Git.
 - Prefer rebuilding over debugging mystery state when early in the lab.
 ## Rebuild Order
-1. Install Proxmox
+1. Install Proxmox on the 2 TB NVMe
 2. Configure host networking
 3. Upload Ubuntu Server ISO
 4. Create Ubuntu template
