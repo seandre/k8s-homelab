@@ -8,7 +8,7 @@ This lab should be reproducible. Anything important should live in Git or be doc
 - Prefer rebuilding over debugging mystery state when early in the lab.
 ## Rebuild Order
 1. Install Proxmox on the 2 TB NVMe
-2. Configure host networking
+2. Configure host networking on the UniFi `Servers` network
 3. Upload Ubuntu Server ISO
 4. Create Ubuntu template
 5. Clone VMs

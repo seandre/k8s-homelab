@@ -5,8 +5,9 @@
 - [ ] Disable Secure Boot if needed
 - [ ] Install Proxmox on 2 TB NVMe
 - [ ] Set Proxmox hostname to `pve-01.lab.home.arpa`
-- [ ] Set Proxmox IP to `192.168.10.20`
-- [ ] Open Proxmox UI at `https://192.168.10.20:8006`
+- [ ] Attach Proxmox to the UniFi `Servers` network
+- [ ] Set Proxmox IP to `192.168.40.20`
+- [ ] Open Proxmox UI at `https://192.168.40.20:8006`
 - [ ] Upload Ubuntu Server ISO
 - [ ] Create Ubuntu Server VM template
 - [ ] Clone Kubernetes VMs

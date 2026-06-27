@@ -21,5 +21,6 @@ Initial stack:
 ## Current Status
 - 64 GB RAM installed
 - 2 TB NVMe installed
+- UniFi `Servers` network selected for homelab infrastructure
 - Ready for final Proxmox VE installation
 - 256 GB SSD retired from the active build plan

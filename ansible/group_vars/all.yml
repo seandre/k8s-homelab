@@ -1,5 +1,6 @@
 ---
 timezone: America/Los_Angeles
 lab_domain: lab.home.arpa
-gateway: 192.168.10.1
-dns_server: 192.168.10.1
+network_name: Servers
+gateway: 192.168.40.1
+dns_server: 192.168.40.1
