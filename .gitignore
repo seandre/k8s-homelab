@@ -1,0 +1,34 @@
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# Local planning context
+docs/chatgpt-context.md
+
+# Secrets
+*.key
+*.pem
+*.crt
+*.p12
+*.kubeconfig
+kubeconfig*
+.env
+.env.*
+secrets/
+*.age
+# Terraform/OpenTofu future use
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+# Ansible
+*.retry
+ansible/vault-password.txt
+# Generated files
+dist/
+build/
+tmp/
+.cache/

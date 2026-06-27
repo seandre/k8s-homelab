@@ -1,0 +1,9 @@
+{
+  "recommendations": [
+    "redhat.vscode-yaml",
+    "redhat.ansible",
+    "ms-vscode-remote.remote-ssh",
+    "timonwong.shellcheck",
+    "ms-kubernetes-tools.vscode-kubernetes-tools"
+  ]
+}
