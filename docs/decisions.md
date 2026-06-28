@@ -8,3 +8,4 @@
 | TBD | Use installed 2 TB NVMe for final build | Enough room for VMs, metrics, logs, snapshots, and experiments |
 | TBD | Use UniFi Servers network | Keep homelab infrastructure grouped on the dedicated server network |
 | TBD | Use Argo CD later | GitOps practice for platform engineering |
+| TBD | Resize Ubuntu VM disks with LVM after Proxmox disk expansion | Ubuntu Server template disks use LVM, so expanded VM disks need `growpart`, `pvresize`, and `lvextend` inside the guest |
