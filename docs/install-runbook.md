@@ -32,7 +32,7 @@
 - [x] Temporarily enable passwordless sudo for node prep
 - [x] Run Kubernetes node prep on all nodes
 - [x] Remove temporary passwordless sudo and return to password-required sudo
-- [ ] Install k3s control plane
+- [x] Install k3s control plane
 - [ ] Join k3s workers
 - [ ] Add Argo CD
 - [ ] Add ingress
@@ -87,6 +87,34 @@ sudo rm /etc/sudoers.d/99-sean-homelab-bootstrap
 ```
 
 Current status: node prep completed on `k8s-control-01`, `k8s-worker-01`, and `k8s-worker-02`. The temporary sudoers file was removed and `sudo` requires a password again.
+
+## k3s Control Plane
+
+The k3s server was installed on `k8s-control-01` (`192.168.40.21`) only. Workers have not been joined yet.
+
+Install command used:
+
+```bash
+curl -sfL https://get.k3s.io | sh -s - server \
+  --node-ip 192.168.40.21 \
+  --advertise-address 192.168.40.21 \
+  --tls-san 192.168.40.21 \
+  --disable traefik \
+  --disable servicelb
+```
+
+Installed version: `v1.36.2+k3s1`.
+
+Validation completed on the control node:
+
+- `systemctl is-active k3s` returned `active`
+- `k8s-control-01` reported `Ready`
+- `coredns`, `local-path-provisioner`, and `metrics-server` reported `Running`
+- bundled Traefik and ServiceLB were disabled
+
+The workstation kubeconfig was fetched to `~/.kube/k8s-homelab.yaml` and rewritten to use `https://192.168.40.21:6443`.
+
+Temporary passwordless sudo was removed from `k8s-control-01` after installation, and `sudo -n true` again requires interactive authentication.
 
 ## Network Troubleshooting Note
 

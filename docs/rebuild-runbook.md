@@ -24,19 +24,18 @@ This lab should be reproducible. Anything important should live in Git or be doc
 10. Temporarily enable passwordless sudo for node prep
 11. Prepare Kubernetes nodes
 12. Remove temporary passwordless sudo and return to password-required sudo
-13. Install k3s
-14. Apply Kubernetes bootstrap manifests
-15. Deploy infrastructure services
-16. Deploy apps
-17. Validate ingress and monitoring
+13. Install the k3s control plane on `k8s-control-01`
+14. Join k3s workers
+15. Apply Kubernetes bootstrap manifests
+16. Deploy infrastructure services
+17. Deploy apps
+18. Validate ingress and monitoring
 
 ## Current Next Steps
 
-1. Install k3s control plane
-2. Join k3s workers
-3. Configure local kubeconfig
-4. Verify all Kubernetes nodes are Ready
-5. Commit the working milestone
+1. Join k3s workers
+2. Verify all Kubernetes nodes are Ready
+3. Commit the working milestone
 
 ## Ubuntu Template Notes
 
@@ -92,3 +91,28 @@ sudo -v
 ```
 
 Current build status: Kubernetes node prep has been completed on the three Kubernetes nodes, the prep playbook was idempotent with `changed=0`, and the temporary sudoers file was removed.
+
+## k3s Control Plane Install
+
+Install the k3s server on `k8s-control-01` only:
+
+```bash
+curl -sfL https://get.k3s.io | sh -s - server \
+  --node-ip 192.168.40.21 \
+  --advertise-address 192.168.40.21 \
+  --tls-san 192.168.40.21 \
+  --disable traefik \
+  --disable servicelb
+```
+
+Fetch the workstation kubeconfig and point it at the control-plane IP:
+
+```bash
+mkdir -p ~/.kube
+ssh -i ~/.ssh/id_ed25519_github sean@192.168.40.21 \
+  "sudo cat /etc/rancher/k3s/k3s.yaml" > ~/.kube/k8s-homelab.yaml
+sed -i '' 's#https://127\.0\.0\.1:6443#https://192.168.40.21:6443#' ~/.kube/k8s-homelab.yaml
+chmod 600 ~/.kube/k8s-homelab.yaml
+```
+
+Current build status: k3s server `v1.36.2+k3s1` is installed on `k8s-control-01`, the node reports `Ready`, core system pods are running, bundled Traefik and ServiceLB are disabled, and temporary passwordless sudo has been removed from the control node. Worker join is the next milestone.
