@@ -19,7 +19,11 @@
 
 ## Notes
 
-Store real VM disks on the 2 TB NVMe storage pool. Keep the 256 GB boot disk mostly for Proxmox itself, ISOs, and small temporary items.
+Proxmox is installed and running on the 256 GB NVMe and is reachable at `192.168.40.20`.
+
+Store real VM disks on the 2 TB NVMe LVM-thin storage pool named `vmdata`. Keep the 256 GB boot disk mostly for Proxmox itself, ISOs, and small temporary items.
+
+The Ubuntu Server template was built with Ubuntu Server 26.04 normal install. The minimized install was not used, no featured server snaps were installed, OpenSSH was enabled, and `qemu-guest-agent` was installed. The qemu guest agent `systemctl enable` warning was treated as non-fatal.
 
 ## VM Disk Resize Procedure
 

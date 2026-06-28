@@ -4,6 +4,7 @@
 |---|---|
 | UniFi network | `Servers` |
 | Subnet | `192.168.40.0/24` |
+| VLAN ID | `40` |
 | Gateway | `192.168.40.1` |
 | DNS | `192.168.40.1` |
 | Domain | `lab.home.arpa` |
@@ -18,3 +19,5 @@
 | `ingress-vip` | `192.168.40.30` | Future ingress or load balancer IP |
 ## Notes
 Use the UniFi `Servers` network for homelab infrastructure. Keep DHCP reservations or static leases aligned with this table.
+
+Next network checkpoint: create or verify the UDM Pro Homelab network for VLAN ID `40`, confirm the gateway is reachable at `192.168.40.1`, then proceed with cloning `k8s-control-01`, setting its hostname/static IP, and verifying SSH.

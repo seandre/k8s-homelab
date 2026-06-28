@@ -19,8 +19,10 @@
 | Disk        | Purpose                               |
 | ----------- | ------------------------------------- |
 | 256 GB NVMe | Proxmox boot/system disk              |
-| 2 TB NVMe   | VM disks and Kubernetes lab workloads |
+| 2 TB NVMe   | Proxmox LVM-thin storage `vmdata` for VM disks and Kubernetes lab workloads |
 
 ## Notes
 
-Proxmox is installed on the 256 GB NVMe. The 2 TB NVMe should be added to Proxmox as dedicated VM storage.
+Proxmox is installed and running on the 256 GB NVMe. The 2 TB NVMe is installed separately and has been added in Proxmox as LVM-thin storage named `vmdata`.
+
+Proxmox is reachable at `192.168.40.20`.
