@@ -1,0 +1,165 @@
+---
+- name: Prepare Kubernetes nodes for k3s
+  hosts: k3s_cluster
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Install base packages used by k3s and diagnostics
+      ansible.builtin.apt:
+        name:
+          - ca-certificates
+          - curl
+          - open-iscsi
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Disable swap for Kubernetes
+      ansible.builtin.command: swapoff -a
+      changed_when: false
+      when: ansible_swaptotal_mb | int > 0
+
+    - name: Remove active swap entries from fstab
+      ansible.builtin.replace:
+        path: /etc/fstab
+        regexp: '^([^#]\S+\s+\S+\s+swap\s+.*)$'
+        replace: '# \1'
+
+    - name: Load required kernel modules now
+      ansible.builtin.command: "modprobe {{ item }}"
+      changed_when: false
+      loop:
+        - overlay
+        - br_netfilter
+
+    - name: Persist required kernel modules
+      ansible.builtin.copy:
+        dest: /etc/modules-load.d/k3s.conf
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          overlay
+          br_netfilter
+
+    - name: Configure Kubernetes networking sysctls
+      ansible.builtin.copy:
+        dest: /etc/sysctl.d/99-kubernetes.conf
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          net.bridge.bridge-nf-call-iptables = 1
+          net.bridge.bridge-nf-call-ip6tables = 1
+          net.ipv4.ip_forward = 1
+
+    - name: Apply Kubernetes networking sysctls
+      ansible.builtin.command: sysctl --system
+      changed_when: false
+
+    - name: Download k3s install script
+      ansible.builtin.get_url:
+        url: https://get.k3s.io
+        dest: /tmp/install-k3s.sh
+        owner: root
+        group: root
+        mode: "0755"
+
+- name: Install k3s control plane
+  hosts: k3s_control
+  become: true
+  gather_facts: false
+  vars:
+    k3s_disabled_args: "{{ k3s_disable_components | map('regex_replace', '^(.*)$', '--disable \\1') | join(' ') }}"
+  tasks:
+    - name: Check for existing k3s server service
+      ansible.builtin.stat:
+        path: /etc/systemd/system/k3s.service
+      register: k3s_server_service
+
+    - name: Install k3s server
+      ansible.builtin.command: /tmp/install-k3s.sh
+      environment:
+        INSTALL_K3S_EXEC: "server --node-ip {{ ansible_host }} --advertise-address {{ ansible_host }} --write-kubeconfig-mode 0644 {{ k3s_disabled_args }}"
+      when: not k3s_server_service.stat.exists
+
+    - name: Wait for Kubernetes API on control plane
+      ansible.builtin.command: k3s kubectl get --raw=/readyz
+      register: k3s_readyz
+      retries: 30
+      delay: 5
+      until: k3s_readyz.rc == 0 and 'ok' in k3s_readyz.stdout
+      changed_when: false
+
+    - name: Read k3s node token
+      ansible.builtin.slurp:
+        src: /var/lib/rancher/k3s/server/node-token
+      register: k3s_node_token_raw
+      no_log: true
+
+    - name: Store k3s node token for worker join
+      ansible.builtin.set_fact:
+        k3s_node_token: "{{ k3s_node_token_raw.content | b64decode | trim }}"
+      no_log: true
+
+- name: Join k3s workers
+  hosts: k3s_workers
+  become: true
+  gather_facts: false
+  vars:
+    k3s_control_host: "{{ groups['k3s_control'][0] }}"
+    k3s_control_url: "https://{{ hostvars[k3s_control_host].ansible_host }}:6443"
+  tasks:
+    - name: Check for existing k3s agent service
+      ansible.builtin.stat:
+        path: /etc/systemd/system/k3s-agent.service
+      register: k3s_agent_service
+
+    - name: Install k3s agent
+      ansible.builtin.command: /tmp/install-k3s.sh
+      environment:
+        K3S_URL: "{{ k3s_control_url }}"
+        K3S_TOKEN: "{{ hostvars[k3s_control_host].k3s_node_token }}"
+        INSTALL_K3S_EXEC: "agent --node-ip {{ ansible_host }}"
+      when: not k3s_agent_service.stat.exists
+      no_log: true
+
+- name: Fetch kubeconfig and validate cluster
+  hosts: k3s_control
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Wait for all nodes to report Ready
+      ansible.builtin.command: k3s kubectl wait --for=condition=Ready nodes --all --timeout=180s
+      changed_when: false
+
+    - name: Show cluster nodes
+      ansible.builtin.command: k3s kubectl get nodes -o wide
+      register: k3s_nodes
+      changed_when: false
+
+    - name: Print cluster nodes
+      ansible.builtin.debug:
+        msg: "{{ k3s_nodes.stdout_lines }}"
+
+    - name: Create local kubeconfig directory
+      ansible.builtin.file:
+        path: "{{ k3s_kubeconfig_local_path | dirname }}"
+        state: directory
+        mode: "0700"
+      delegate_to: localhost
+      become: false
+
+    - name: Fetch kubeconfig
+      ansible.builtin.fetch:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: "{{ k3s_kubeconfig_local_path }}"
+        flat: true
+
+    - name: Point local kubeconfig at the control-plane IP
+      ansible.builtin.replace:
+        path: "{{ k3s_kubeconfig_local_path }}"
+        regexp: 'https://127\.0\.0\.1:6443'
+        replace: "https://{{ ansible_host }}:6443"
+      delegate_to: localhost
+      become: false

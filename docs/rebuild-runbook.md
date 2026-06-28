@@ -21,19 +21,22 @@ This lab should be reproducible. Anything important should live in Git or be doc
 7. Enable OpenSSH, install `qemu-guest-agent`, and skip featured server snaps
 8. Clone VMs
 9. Expand VM disks in Proxmox, then expand Ubuntu LVM inside the guest
-10. Install k3s
-11. Apply Kubernetes bootstrap manifests
-12. Deploy infrastructure services
-13. Deploy apps
-14. Validate ingress and monitoring
+10. Temporarily enable passwordless sudo for node prep
+11. Prepare Kubernetes nodes
+12. Remove temporary passwordless sudo and return to password-required sudo
+13. Install k3s
+14. Apply Kubernetes bootstrap manifests
+15. Deploy infrastructure services
+16. Deploy apps
+17. Validate ingress and monitoring
 
 ## Current Next Steps
 
-1. Create or verify the UDM Pro Homelab network on VLAN ID `40`
-2. Verify gateway reachability at `192.168.40.1`
-3. Clone `k8s-control-01`
-4. Set `k8s-control-01` hostname and static IP
-5. Verify SSH to `k8s-control-01`
+1. Install k3s control plane
+2. Join k3s workers
+3. Configure local kubeconfig
+4. Verify all Kubernetes nodes are Ready
+5. Commit the working milestone
 
 ## Ubuntu Template Notes
 
@@ -59,3 +62,33 @@ df -h
 ```
 
 If the disk appears as `/dev/vda` instead of `/dev/sda`, use `/dev/vda3`.
+
+## Kubernetes Node Prep
+
+For non-interactive SSH or Ansible prep, temporarily enable passwordless sudo for `sean` on each Kubernetes node:
+
+```bash
+echo 'sean ALL=(ALL) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/99-sean-homelab-bootstrap
+sudo chmod 440 /etc/sudoers.d/99-sean-homelab-bootstrap
+```
+
+Run the node prep playbook:
+
+```bash
+ansible-playbook ansible/playbooks/prep-k8s-nodes.yml
+```
+
+After the prep is complete and verified, remove the temporary sudoers file from each node:
+
+```bash
+sudo rm /etc/sudoers.d/99-sean-homelab-bootstrap
+```
+
+Verify `sudo` requires a password again:
+
+```bash
+sudo -k
+sudo -v
+```
+
+Current build status: Kubernetes node prep has been completed on the three Kubernetes nodes, the prep playbook was idempotent with `changed=0`, and the temporary sudoers file was removed.

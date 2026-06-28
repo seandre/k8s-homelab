@@ -8,3 +8,7 @@ dns_server: 192.168.40.1
 proxmox_host: pve-01
 proxmox_ip: 192.168.40.20
 proxmox_vm_storage: vmdata
+k3s_disable_components:
+  - traefik
+  - servicelb
+k3s_kubeconfig_local_path: kubeconfig/homelab.kubeconfig

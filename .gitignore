@@ -25,10 +25,13 @@ secrets/
 *.tfstate.*
 .terraform.lock.hcl
 # Ansible
+.ansible/
 *.retry
 ansible/vault-password.txt
+kubeconfig/
 # Generated files
 dist/
 build/
 tmp/
 .cache/
+diagnostics/
