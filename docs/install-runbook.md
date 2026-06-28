@@ -111,6 +111,7 @@ Validation completed on the control node:
 - `k8s-control-01` reported `Ready`
 - `coredns`, `local-path-provisioner`, and `metrics-server` reported `Running`
 - bundled Traefik and ServiceLB were disabled
+- workstation `kubectl` access using `~/.kube/k8s-homelab.yaml` succeeded
 
 The workstation kubeconfig was fetched to `~/.kube/k8s-homelab.yaml` and rewritten to use `https://192.168.40.21:6443`.
 

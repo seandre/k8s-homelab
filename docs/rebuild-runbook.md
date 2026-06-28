@@ -115,4 +115,4 @@ sed -i '' 's#https://127\.0\.0\.1:6443#https://192.168.40.21:6443#' ~/.kube/k8s-
 chmod 600 ~/.kube/k8s-homelab.yaml
 ```
 
-Current build status: k3s server `v1.36.2+k3s1` is installed on `k8s-control-01`, the node reports `Ready`, core system pods are running, bundled Traefik and ServiceLB are disabled, and temporary passwordless sudo has been removed from the control node. Worker join is the next milestone.
+Current build status: k3s server `v1.36.2+k3s1` is installed on `k8s-control-01`, the node reports `Ready`, core system pods are running, workstation `kubectl` access using `~/.kube/k8s-homelab.yaml` succeeds, bundled Traefik and ServiceLB are disabled, and temporary passwordless sudo has been removed from the control node. Worker join is the next milestone.
