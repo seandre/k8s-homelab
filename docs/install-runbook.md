@@ -34,7 +34,7 @@
 - [x] Remove temporary passwordless sudo and return to password-required sudo
 - [x] Install k3s control plane
 - [x] Join k3s workers
-- [ ] Add Argo CD
+- [x] Add Argo CD
 - [ ] Add ingress
 - [ ] Add cert-manager
 - [ ] Add monitoring
@@ -90,7 +90,7 @@ Current status: node prep completed on `k8s-control-01`, `k8s-worker-01`, and `k
 
 ## k3s Control Plane
 
-The k3s server was installed on `k8s-control-01` (`192.168.40.21`) only. Workers have not been joined yet.
+The k3s server was installed on `k8s-control-01` (`192.168.40.21`) first, then the workers were joined in the next milestone.
 
 Install command used:
 
@@ -142,6 +142,42 @@ Validation completed:
 - workstation `kubectl get nodes -o wide` using `~/.kube/k8s-homelab.yaml` succeeded
 
 Temporary passwordless sudo was removed from all three Kubernetes nodes after the worker join, and `sudo -n true` again requires interactive authentication.
+
+## Argo CD
+
+Argo CD was installed into the `argocd` namespace from the official stable install manifest using the repo kustomization at `kubernetes/clusters/homelab`.
+
+Apply command used:
+
+```bash
+KUBECONFIG=~/.kube/k8s-homelab.yaml kubectl apply --server-side --force-conflicts -k kubernetes/clusters/homelab
+```
+
+Server-side apply was required because the `applicationsets.argoproj.io` CRD is too large for the client-side apply annotation limit.
+
+Installed version from the stable manifest: `v3.4.4`.
+
+Validation completed:
+
+- `argocd-application-controller` statefulset rolled out
+- `argocd-applicationset-controller`, `argocd-dex-server`, `argocd-notifications-controller`, `argocd-redis`, `argocd-repo-server`, and `argocd-server` deployments rolled out
+- all Argo CD pods reported `1/1 Running`
+- `argocd-server` is currently `ClusterIP`; use port-forward access until ingress is installed
+
+Initial local access:
+
+```bash
+KUBECONFIG=~/.kube/k8s-homelab.yaml kubectl -n argocd port-forward svc/argocd-server 8080:443
+```
+
+Then open `https://localhost:8080`.
+
+Fetch the initial admin password when needed:
+
+```bash
+KUBECONFIG=~/.kube/k8s-homelab.yaml kubectl -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath='{.data.password}' | base64 -d
+```
 
 ## Network Troubleshooting Note
 

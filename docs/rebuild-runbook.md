@@ -33,11 +33,11 @@ This lab should be reproducible. Anything important should live in Git or be doc
 
 ## Current Next Steps
 
-1. Commit the working three-node k3s milestone
-2. Add Argo CD
-3. Add ingress
-4. Add cert-manager
-5. Add monitoring
+1. Commit the Argo CD bootstrap milestone
+2. Add ingress
+3. Add cert-manager
+4. Add monitoring
+5. Deploy first real app
 
 ## Ubuntu Template Notes
 
@@ -117,7 +117,7 @@ sed -i '' 's#https://127\.0\.0\.1:6443#https://192.168.40.21:6443#' ~/.kube/k8s-
 chmod 600 ~/.kube/k8s-homelab.yaml
 ```
 
-Current build status: k3s server `v1.36.2+k3s1` is installed on `k8s-control-01`, the node reports `Ready`, core system pods are running, workstation `kubectl` access using `~/.kube/k8s-homelab.yaml` succeeds, bundled Traefik and ServiceLB are disabled, and temporary passwordless sudo has been removed from the control node. Worker join is the next milestone.
+Current build status: k3s server `v1.36.2+k3s1` is installed on `k8s-control-01`, the node reports `Ready`, core system pods are running, workstation `kubectl` access using `~/.kube/k8s-homelab.yaml` succeeds, bundled Traefik and ServiceLB are disabled, and temporary passwordless sudo has been removed from the control node.
 
 ## k3s Worker Join
 
@@ -149,3 +149,37 @@ kubectl get pods -A
 ```
 
 Current build status: `k8s-control-01`, `k8s-worker-01`, and `k8s-worker-02` are `Ready` on k3s `v1.36.2+k3s1`. `k3s-agent` is active and enabled on both workers, workstation `kubectl` access succeeds, and temporary passwordless sudo has been removed from all three Kubernetes nodes.
+
+## Argo CD Bootstrap
+
+Apply the cluster kustomization:
+
+```bash
+KUBECONFIG=~/.kube/k8s-homelab.yaml kubectl apply --server-side --force-conflicts -k kubernetes/clusters/homelab
+```
+
+Use server-side apply because the Argo CD `applicationsets.argoproj.io` CRD exceeds the client-side apply annotation limit.
+
+Validate Argo CD:
+
+```bash
+KUBECONFIG=~/.kube/k8s-homelab.yaml kubectl -n argocd get pods -o wide
+KUBECONFIG=~/.kube/k8s-homelab.yaml kubectl -n argocd get svc
+```
+
+Initial local UI access:
+
+```bash
+KUBECONFIG=~/.kube/k8s-homelab.yaml kubectl -n argocd port-forward svc/argocd-server 8080:443
+```
+
+Open `https://localhost:8080`.
+
+Fetch the initial admin password when needed:
+
+```bash
+KUBECONFIG=~/.kube/k8s-homelab.yaml kubectl -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath='{.data.password}' | base64 -d
+```
+
+Current build status: Argo CD `v3.4.4` is installed in the `argocd` namespace, all standard Argo CD pods are running, `argocd-server` is `ClusterIP`, and ingress is the next milestone.
