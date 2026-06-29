@@ -33,11 +33,16 @@ This lab should be reproducible. Anything important should live in Git or be doc
 
 ## Current Next Steps
 
-1. Add ingress
-2. Add cert-manager
-3. Add monitoring
-4. Deploy first real app
-5. Validate end-to-end access through the future ingress VIP
+1. Add Argo CD root applications so Argo watches this repo and reconciles `kubernetes/clusters/homelab`
+2. Add ingress/load balancer support for the future ingress VIP
+3. Expose Argo CD through ingress so day-to-day access no longer depends on port-forwarding
+4. Add cert-manager
+5. Add monitoring
+6. Deploy first real app
+7. Add a utility/admin VM for stable in-network operations
+8. Validate end-to-end access through the future ingress VIP
+
+Do not prioritize self-hosted Git yet. Use GitHub as the durable source of truth while the cluster is still being built. A self-hosted Git service can be added later, ideally mirrored to GitHub, but it should not be required to recover the cluster.
 
 ## Ubuntu Template Notes
 
@@ -183,3 +188,22 @@ KUBECONFIG=~/.kube/k8s-homelab.yaml kubectl -n argocd get secret argocd-initial-
 ```
 
 Current build status: Argo CD `v3.4.4` is installed in the `argocd` namespace, all standard Argo CD pods are running, `argocd-server` is `ClusterIP`, and ingress is the next milestone.
+
+## GitOps Target State
+
+The intended steady-state workflow is:
+
+```text
+GitHub repo change -> Argo CD detects drift -> Argo CD syncs Kubernetes
+```
+
+Manual `kubectl apply` should remain available for bootstrap and break-glass recovery, but normal cluster changes should move into Git and be applied by Argo CD.
+
+Near-term Argo CD work:
+
+1. Create root `Application` resources for cluster infrastructure and apps.
+2. Have the root applications point at this GitHub repo.
+3. Add future infrastructure directories under `kubernetes/clusters/homelab`.
+4. Let Argo CD reconcile ingress, cert-manager, monitoring, and apps from Git.
+
+The utility/admin VM is still useful, but its job is operational convenience: keep `kubectl`, `helm`, `k9s`, Ansible, SSH keys, and a checkout of this repo on a stable machine inside the homelab network. It should not become the only place where desired state exists.
