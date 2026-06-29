@@ -40,23 +40,24 @@ Target stack:
 - Workstation kubeconfig lives at `~/.kube/k8s-homelab.yaml`
 - Argo CD is installed in the `argocd` namespace
 - Argo CD is currently accessed with `kubectl port-forward` because ingress is not installed yet
-- Argo CD is installed but is not yet the primary reconciler for cluster infrastructure
+- Argo CD reconciles this repo through the `homelab` root application
+- `homelab-infrastructure` and `homelab-apps` child applications are defined and ready for future manifests
 - UniFi UDM Pro Intrusion Prevention was identified as the cause of intermittent SSH/TCP timeouts and adjusted
-- Next step: add Argo CD root applications and ingress
+- Next step: add ingress/load balancer support
 
 ## Repo Map
 
 - `docs/`: hardware, network, install, rebuild, decision, and troubleshooting notes
 - `proxmox/`: Proxmox storage and VM layout notes
 - `ansible/`: inventory and playbooks for node prep and k3s operations
-- `kubernetes/clusters/homelab/`: cluster bootstrap manifests, currently including Argo CD
+- `kubernetes/clusters/homelab/`: cluster bootstrap manifests and Argo CD application targets
 
 ## Current Direction
 
 The cluster is moving from workstation-driven `kubectl apply` toward GitOps:
 
 1. Keep GitHub as the source of truth for now.
-2. Teach Argo CD to watch this repo and reconcile cluster infrastructure from `kubernetes/clusters/homelab`.
+2. Let Argo CD reconcile cluster infrastructure and apps from `kubernetes/clusters/homelab`.
 3. Add ingress/load balancer support so services, including Argo CD, do not require port-forwarding.
 4. Add cert-manager, monitoring, and a first real app through Argo CD.
 5. Add a utility/admin VM after the GitOps path is clear, so cluster administration can happen from inside the homelab network.
@@ -75,6 +76,7 @@ Check Argo CD:
 
 ```bash
 KUBECONFIG=~/.kube/k8s-homelab.yaml kubectl -n argocd get pods
+KUBECONFIG=~/.kube/k8s-homelab.yaml kubectl get applications.argoproj.io -A
 ```
 
 Access Argo CD locally:

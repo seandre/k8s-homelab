@@ -163,6 +163,8 @@ Validation completed:
 - `argocd-applicationset-controller`, `argocd-dex-server`, `argocd-notifications-controller`, `argocd-redis`, `argocd-repo-server`, and `argocd-server` deployments rolled out
 - all Argo CD pods reported `1/1 Running`
 - `argocd-server` is currently `ClusterIP`; use port-forward access until ingress is installed
+- the `homelab` root application reconciles this repo from GitHub
+- `homelab-infrastructure` and `homelab-apps` child applications are defined for future manifests
 
 Initial local access:
 
