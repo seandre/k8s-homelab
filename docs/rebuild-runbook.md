@@ -159,7 +159,7 @@ Current build status: `k8s-control-01`, `k8s-worker-01`, and `k8s-worker-02` are
 Apply the cluster kustomization:
 
 ```bash
-KUBECONFIG=~/.kube/k8s-homelab.yaml kubectl apply --server-side --force-conflicts -k kubernetes/clusters/homelab
+KUBECONFIG=~/.kube/k8s-homelab.yaml kubectl apply --server-side --force-conflicts -k kubernetes/bootstrap
 ```
 
 Use server-side apply because the Argo CD `applicationsets.argoproj.io` CRD exceeds the client-side apply annotation limit.

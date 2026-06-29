@@ -145,12 +145,12 @@ Temporary passwordless sudo was removed from all three Kubernetes nodes after th
 
 ## Argo CD
 
-Argo CD was installed into the `argocd` namespace from the official stable install manifest using the repo kustomization at `kubernetes/clusters/homelab`.
+Argo CD was installed into the `argocd` namespace from the official stable install manifest using the bootstrap kustomization at `kubernetes/bootstrap`.
 
 Apply command used:
 
 ```bash
-KUBECONFIG=~/.kube/k8s-homelab.yaml kubectl apply --server-side --force-conflicts -k kubernetes/clusters/homelab
+KUBECONFIG=~/.kube/k8s-homelab.yaml kubectl apply --server-side --force-conflicts -k kubernetes/bootstrap
 ```
 
 Server-side apply was required because the `applicationsets.argoproj.io` CRD is too large for the client-side apply annotation limit.

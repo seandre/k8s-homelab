@@ -50,7 +50,8 @@ Target stack:
 - `docs/`: hardware, network, install, rebuild, decision, and troubleshooting notes
 - `proxmox/`: Proxmox storage and VM layout notes
 - `ansible/`: inventory and playbooks for node prep and k3s operations
-- `kubernetes/clusters/homelab/`: cluster bootstrap manifests and Argo CD application targets
+- `kubernetes/bootstrap/`: one-time bootstrap manifests for Argo CD and other cluster bring-up steps
+- `kubernetes/clusters/homelab/`: Argo CD-managed cluster applications and infrastructure targets
 
 ## Current Direction
 
