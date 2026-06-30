@@ -45,10 +45,12 @@ Target stack:
 - MetalLB assigns the reserved ingress VIP `192.168.40.30`
 - cert-manager is installed through Argo CD
 - Internal TLS certificates are issued by the `homelab-ca` ClusterIssuer
+- Monitoring is installed through Argo CD with kube-prometheus-stack
 - Argo CD is exposed at `https://argocd.lab.home.arpa`
 - The nginx test app is exposed at `https://nginx-test.lab.home.arpa`
+- Grafana is exposed at `https://grafana.lab.home.arpa`
 - UniFi UDM Pro Intrusion Prevention was identified as the cause of intermittent SSH/TCP timeouts and adjusted
-- Next step: add monitoring
+- Next step: deploy the first real app
 
 ## Repo Map
 
@@ -65,7 +67,7 @@ The cluster is moving from workstation-driven `kubectl apply` toward GitOps:
 1. Keep GitHub as the source of truth for now.
 2. Let Argo CD reconcile cluster infrastructure and apps from `kubernetes/clusters/homelab`.
 3. Use cert-manager's internal CA issuer for lab HTTPS certificates.
-4. Add monitoring and a first real app through Argo CD.
+4. Deploy the first real app through Argo CD.
 5. Add a utility/admin VM after the core GitOps path is stable, so cluster administration can happen from inside the homelab network.
 
 Self-hosted Git is intentionally deferred. It can be revisited later, but GitHub is simpler and safer during bootstrap because the desired cluster state remains available even if the homelab is down.

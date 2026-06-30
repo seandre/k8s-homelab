@@ -4,3 +4,4 @@ resources:
   - root-application.yaml
   - apps.yaml
   - infrastructure.yaml
+  - monitoring.yaml

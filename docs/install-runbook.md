@@ -37,7 +37,7 @@
 - [x] Add Argo CD
 - [x] Add ingress
 - [x] Add cert-manager
-- [ ] Add monitoring
+- [x] Add monitoring
 - [ ] Deploy first real app
 
 ## VM Disk Resize Procedure
@@ -288,6 +288,50 @@ Troubleshooting notes:
 - If Argo CD reports missing cert-manager custom resource types during the first sync, verify `SkipDryRunOnMissingResource=true` is present on the infrastructure application or the cert-manager custom resources.
 - If certificates are ready but Traefik returns `404 page not found` on HTTPS, confirm the ingress has both `traefik.ingress.kubernetes.io/router.entrypoints: websecure` and `traefik.ingress.kubernetes.io/router.tls: "true"`.
 - If Argo CD loops with `307` redirects after TLS is enabled, restart `argocd-server` so it picks up `server.insecure: "true"` from `argocd-cmd-params-cm`.
+
+## Monitoring
+
+Monitoring is managed by the `homelab-monitoring` application from `kubernetes/clusters/homelab/monitoring.yaml`.
+
+Components:
+
+- kube-prometheus-stack chart `87.3.0` from the Prometheus Community Helm repository.
+- Prometheus Operator and Prometheus with `7d` retention.
+- Grafana with the default dashboards enabled.
+- Alertmanager enabled with no external receivers yet.
+- Grafana ingress exposed through Traefik at `https://grafana.lab.home.arpa`.
+- Grafana TLS certificate issued by the `homelab-ca` ClusterIssuer.
+
+Current status: monitoring is installed through Argo CD. Grafana should be reachable at `https://grafana.lab.home.arpa` after DNS points that hostname to the ingress VIP `192.168.40.30`.
+
+Create a UniFi DNS record for `grafana.lab.home.arpa` pointing at `192.168.40.30`.
+
+Validation commands:
+
+```bash
+kubectl -n argocd get application homelab-monitoring
+kubectl -n monitoring get pods
+kubectl -n monitoring get svc
+kubectl -n monitoring get ingress
+kubectl get certificate -n monitoring
+curl -k -I https://grafana.lab.home.arpa
+```
+
+Expected results:
+
+- `homelab-monitoring` reports `Synced` and `Healthy`.
+- Monitoring pods report `Running` or `Completed`.
+- Grafana, Prometheus, and Alertmanager services are present.
+- Grafana ingress has host `grafana.lab.home.arpa`.
+- `grafana-tls` reports `Ready=True`.
+- The HTTPS probe returns `HTTP/2 200` or a login redirect.
+
+Troubleshooting notes:
+
+- If Argo CD reports missing monitoring CRDs during the first sync, confirm `SkipDryRunOnMissingResource=true` is present on `homelab-monitoring`.
+- If Grafana's certificate is ready but HTTPS returns `404 page not found`, confirm the Grafana ingress has the Traefik `websecure` and `router.tls` annotations.
+- If `grafana.lab.home.arpa` does not resolve, test through the VIP directly with `curl -k -I --resolve grafana.lab.home.arpa:443:192.168.40.30 https://grafana.lab.home.arpa`.
+- Grafana browser certificate warnings are expected until the lab root CA is trusted by the client device.
 
 ## Network Troubleshooting Note
 
