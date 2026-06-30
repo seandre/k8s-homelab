@@ -39,11 +39,14 @@ Target stack:
   - `k8s-worker-02` at `192.168.40.23`
 - Workstation kubeconfig lives at `~/.kube/k8s-homelab.yaml`
 - Argo CD is installed in the `argocd` namespace
-- Argo CD is currently accessed with `kubectl port-forward` because ingress is not installed yet
 - Argo CD reconciles this repo through the `homelab` root application
-- `homelab-infrastructure` and `homelab-apps` child applications are defined and ready for future manifests
+- `homelab-infrastructure` and `homelab-apps` child applications are defined and reconciling
+- MetalLB and Traefik ingress are installed through Argo CD
+- MetalLB assigns the reserved ingress VIP `192.168.40.30`
+- Argo CD is exposed at `http://argocd.lab.home.arpa`
+- The nginx test app is exposed at `http://nginx-test.lab.home.arpa`
 - UniFi UDM Pro Intrusion Prevention was identified as the cause of intermittent SSH/TCP timeouts and adjusted
-- Next step: add ingress/load balancer support
+- Next step: add cert-manager
 
 ## Repo Map
 
@@ -59,9 +62,9 @@ The cluster is moving from workstation-driven `kubectl apply` toward GitOps:
 
 1. Keep GitHub as the source of truth for now.
 2. Let Argo CD reconcile cluster infrastructure and apps from `kubernetes/clusters/homelab`.
-3. Add ingress/load balancer support so services, including Argo CD, do not require port-forwarding.
-4. Add cert-manager, monitoring, and a first real app through Argo CD.
-5. Add a utility/admin VM after the GitOps path is clear, so cluster administration can happen from inside the homelab network.
+3. Add cert-manager so internal services can move from HTTP/self-signed access toward managed TLS.
+4. Add monitoring and a first real app through Argo CD.
+5. Add a utility/admin VM after the core GitOps path is stable, so cluster administration can happen from inside the homelab network.
 
 Self-hosted Git is intentionally deferred. It can be revisited later, but GitHub is simpler and safer during bootstrap because the desired cluster state remains available even if the homelab is down.
 
@@ -84,6 +87,12 @@ Access Argo CD locally:
 
 ```bash
 KUBECONFIG=~/.kube/k8s-homelab.yaml kubectl -n argocd port-forward svc/argocd-server 8080:443
+```
+
+Access Argo CD through ingress:
+
+```bash
+open http://argocd.lab.home.arpa
 ```
 
 Get the initial Argo CD admin password:

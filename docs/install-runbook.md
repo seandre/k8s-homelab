@@ -35,7 +35,7 @@
 - [x] Install k3s control plane
 - [x] Join k3s workers
 - [x] Add Argo CD
-- [ ] Add ingress
+- [x] Add ingress
 - [ ] Add cert-manager
 - [ ] Add monitoring
 - [ ] Deploy first real app
@@ -191,6 +191,8 @@ Components:
 - Traefik runs in the `traefik` namespace and exposes ports `80` and `443` through a `LoadBalancer` Service.
 - Argo CD is exposed at `http://argocd.lab.home.arpa`.
 - A simple nginx test app is exposed at `http://nginx-test.lab.home.arpa`.
+
+Current status: ingress is installed and working. Traefik receives `192.168.40.30`, Argo CD is reachable through `argocd.lab.home.arpa`, and the nginx test app is reachable through `nginx-test.lab.home.arpa`.
 
 Create UniFi DNS records for `argocd.lab.home.arpa` and `nginx-test.lab.home.arpa` pointing at `192.168.40.30`.
 
