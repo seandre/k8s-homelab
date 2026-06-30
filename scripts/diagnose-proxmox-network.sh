@@ -3,8 +3,8 @@ set -u
 
 suspect_ip="${SUSPECT_IP:-192.168.40.22}"
 suspect_name="${SUSPECT_NAME:-k8s-worker-01}"
-hosts=(${HOSTS:-192.168.40.21 192.168.40.22 192.168.40.23 192.168.40.112 192.168.40.170})
-vm_names=(${VM_NAMES:-k8s-control-01 k8s-worker-01 k8s-worker-02})
+read -ra hosts <<< "${HOSTS:-192.168.40.21 192.168.40.22 192.168.40.23 192.168.40.112 192.168.40.170}"
+read -ra vm_names <<< "${VM_NAMES:-k8s-control-01 k8s-worker-01 k8s-worker-02}"
 log_dir="${LOG_DIR:-diagnostics}"
 timestamp="$(date +%Y%m%d-%H%M%S)"
 log_file="${log_dir}/proxmox-network-${timestamp}.log"
