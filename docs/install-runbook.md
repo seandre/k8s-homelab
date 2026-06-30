@@ -206,6 +206,34 @@ KUBECONFIG=~/.kube/k8s-homelab.yaml kubectl get ingress -A
 curl -H 'Host: nginx-test.lab.home.arpa' http://192.168.40.30/
 ```
 
+Ingress sync ordering matters during bootstrap:
+
+- MetalLB CRDs and controllers must exist before MetalLB custom resources can be applied.
+- The `IPAddressPool` and `L2Advertisement` for `192.168.40.30` must exist before Traefik's `LoadBalancer` Service can become healthy.
+- Traefik's `LoadBalancer` Service must be ready before Argo CD and app ingress routes are useful.
+
+The manifests encode this with Argo CD sync waves:
+
+- MetalLB pool and L2 advertisement: wave `1`
+- Traefik `LoadBalancer` Service: wave `2`
+- Argo CD ingress: wave `3`
+
+If `homelab-infrastructure` is `OutOfSync` and the only missing resources are `IPAddressPool` and `L2Advertisement`, check for a sync-wave dependency loop. A common symptom is Traefik stuck with `EXTERNAL-IP <pending>` because the MetalLB pool has not been applied yet.
+
+If Traefik has the external IP but every host returns `404 page not found`, traffic is reaching Traefik but routes are not active. Check Traefik logs:
+
+```bash
+kubectl -n traefik logs deployment/traefik --tail=160
+```
+
+During bootstrap, Traefik logged this RBAC failure:
+
+```text
+nodes is forbidden: User "system:serviceaccount:traefik:traefik" cannot list resource "nodes"
+```
+
+The Traefik ClusterRole must allow `get`, `list`, and `watch` on `nodes` so its Kubernetes provider can watch the cluster state it needs.
+
 Argo CD is configured with `server.insecure: "true"` so Traefik can route internal HTTP before cert-manager is installed. Restart `argocd-server` after the first ingress sync if the setting is not picked up immediately:
 
 ```bash

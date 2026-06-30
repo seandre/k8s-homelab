@@ -18,4 +18,6 @@
 | 2026-06-29 | Defer self-hosted Git | Forgejo/Gitea can be evaluated later, but it is not needed for the current learning and bootstrap path |
 | 2026-06-29 | Use Argo CD to reconcile cluster infrastructure from this repo | The next GitOps milestone is for Argo CD to watch `kubernetes/clusters/homelab` rather than relying on repeated workstation `kubectl apply` |
 | 2026-06-29 | Add a utility/admin VM after the initial GitOps path is clear | A utility VM is useful for stable in-network administration, but it should support the workflow rather than block ingress and Argo CD app setup |
+| 2026-06-30 | Use explicit Argo CD sync waves for ingress bootstrap dependencies | MetalLB pool resources must be created before Traefik's `LoadBalancer` Service can receive `192.168.40.30`, and ingress routes should come after the load balancer |
+| 2026-06-30 | Grant Traefik read access to Kubernetes nodes | Traefik v3's Kubernetes ingress provider attempted to list/watch nodes; without that RBAC permission, requests reached Traefik but host routes returned 404 |
 | TBD | Resize Ubuntu VM disks with LVM after Proxmox disk expansion | Ubuntu Server template disks use LVM, so expanded VM disks need `growpart`, `pvresize`, and `lvextend` inside the guest |
