@@ -4,6 +4,7 @@ metadata:
   name: traefik
   namespace: traefik
   annotations:
+    argocd.argoproj.io/sync-wave: "2"
     metallb.io/address-pool: ingress-vip
 spec:
   type: LoadBalancer

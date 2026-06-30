@@ -4,6 +4,7 @@ metadata:
   name: argocd-server
   namespace: argocd
   annotations:
+    argocd.argoproj.io/sync-wave: "3"
     traefik.ingress.kubernetes.io/router.entrypoints: web
 spec:
   ingressClassName: traefik
