@@ -1,91 +1,25 @@
 # Learning Roadmap
 
-Last updated: 2026-06-30.
+Last updated: 2026-07-09.
 
-The homelab now has a working GitOps platform: k3s, Argo CD, MetalLB, Traefik, cert-manager, kube-prometheus-stack, Homepage, and a test app are running from this repo. The best next steps are to use that foundation to learn operational workflows instead of only adding more tools.
+The platform baseline is working. New work should now teach day-2 operations rather than add tools without a recovery story.
 
-## Current Baseline
+## Ordered Projects
 
-- Three-node k3s cluster is running on Proxmox.
-- Argo CD reconciles the `homelab` root application and child applications from this repo.
-- `homelab`, `homelab-apps`, `homelab-infrastructure`, and `homelab-monitoring` are `Synced` and `Healthy`.
-- Traefik is exposed through MetalLB at `192.168.40.30`.
-- Internal HTTPS works through cert-manager and the `homelab-ca` ClusterIssuer.
-- Grafana, Argo CD, Homepage, and the nginx test app are exposed through `*.lab.home.arpa`.
+1. Build and validate `utility-01` with [Project 1: Utility Bastion](utility-bastion-tutorial.md).
+2. Add [Utility Desktop and KOReader](utility-desktop-koreader-tutorial.md) only if a GUI is useful.
+3. Integrate the new host with [Project 2: pve-02 Hardware Integration](add-pve-02-node-tutorial.md), keeping it standalone during the first pass.
+4. Close KOReader Sync registration and complete the persistence checks in the [KOReader Sync Runbook](koreader-sync-runbook.md).
+5. Add a persistent storage layer and document its node-loss assumptions.
+6. Back up and restore one stateful workload before trusting its data.
+7. Choose a Git-compatible secrets workflow and prove rotation and recovery.
+8. Add practical node, ingress, and storage alerts.
+9. Practice GitOps rollback, drift correction, node reboots, and k3s upgrades.
 
-## Recommended Learning Path
+## Project Requirements
 
-1. Storage and persistence
-   - Choose a first storage layer, likely Longhorn or democratic-csi against Proxmox-backed storage.
-   - Deploy one small stateful workload with a PVC.
-   - Delete and recreate the workload to prove the volume survives.
-   - Document the storage class, failure assumptions, and recovery procedure.
-
-2. Backup and restore
-   - Add Velero or a simpler first backup workflow.
-   - Back up Kubernetes objects and persistent data for one stateful app.
-   - Perform a restore test on purpose and document the exact commands.
-   - Treat untested backups as no backups.
-
-3. Secrets management
-   - Pick one approach before deploying sensitive services: Sealed Secrets, External Secrets Operator, or SOPS with age.
-   - Start with one low-risk secret, such as a test app credential.
-   - Document how to rotate it and how to rebuild from Git plus the required private key material.
-
-4. GitOps operations
-   - Make changes through Git, then watch Argo CD sync them.
-   - Practice rollback by reverting a commit.
-   - Introduce a harmless drift manually with `kubectl`, then observe and fix it through Argo CD.
-   - Keep using manual `kubectl apply` only for bootstrap and break-glass recovery.
-
-5. Monitoring and alerting
-   - Build a small set of Grafana dashboards for nodes, pods, ingress, and storage.
-   - Add one or two practical alerts, such as node down and persistent volume nearly full.
-   - Route alerts somewhere visible, even if it is just a local SMTP or webhook target at first.
-
-6. Real workloads
-   - Replace the nginx test app with one or two services that teach something concrete.
-   - Use KOReader Sync Server as the next learning workload because it is small, personally useful, stateful, and exercises ingress, TLS, PVCs, registration, backups, and client trust of the lab CA.
-   - Good candidates are a small database-backed app, a wiki, a pastebin, or a GitOps-managed internal dashboard.
-   - Prefer services that require ingress, TLS, secrets, storage, backup, and monitoring.
-
-7. Upgrade and failure drills
-   - Practice k3s patch upgrades on one worker before touching the control plane.
-   - Reboot nodes one at a time and observe workload behavior.
-   - Break one non-critical component intentionally, then recover it from Git and documented runbooks.
-
-8. Utility/admin VM
-   - Add this after the storage and backup path is clear.
-   - Install `kubectl`, `helm`, `k9s`, Ansible, SSH keys, and a repo checkout.
-   - Use it for stable in-network operations, not as the only source of desired state.
-
-## Near-Term Backlog
-
-1. Add a persistent storage layer and commit the manifests through Argo CD.
-2. Document and then deploy KOReader Sync Server as the next learning workload.
-3. Add a first backup and restore test.
-4. Choose and document a secrets-management approach.
-5. Replace `nginx-test` with a real learning workload.
-6. Add basic alerting for node health, ingress availability, and storage capacity.
-7. Update the rebuild runbook after each milestone.
-
-## Next Learning Workload: KOReader Sync Server
-
-KOReader Sync Server is a good first real stateful app for this lab because it is small enough to reason about, useful on the internal network, and touches several platform concepts at once:
-
-- Ingress and internal TLS through Traefik and cert-manager.
-- Persistent Redis data through a PVC.
-- Bootstrap-time account registration and later lock-down.
-- Client trust of the homelab CA.
-- Backup and restore discipline before treating synced reading progress as important data.
-
-The planned v1 deployment should use the upstream all-in-one container first, with Redis bundled in the app container and persisted through a `local-path` PVC. That keeps the first deployment focused on understanding the app behavior and the Kubernetes plumbing. Splitting Redis into its own workload, or adopting a Redis chart/operator, should wait until the all-in-one deployment is understood and backup/restore expectations are clearer.
-
-Use [KOReader Sync Server Tutorial](koreader-sync-tutorial.md) for the guided install steps, copyable manifests, verification commands, and follow-up hardening path.
-
-## Learning Rules
-
-- Every new service should teach at least one platform concept.
-- Every stateful service needs a restore test before it matters.
-- Every manual fix should become either Git state or a runbook note.
-- Prefer boring, recoverable choices until the GitOps and backup workflows feel routine.
+- Desired state belongs in Git and Argo CD; utility VMs are operational conveniences.
+- Every stateful service needs a tested restore procedure.
+- Every manual fix becomes code or a concise troubleshooting note.
+- Prefer recoverable, well-understood components over a larger tool catalog.
+- Keep GitHub as the primary remote until self-hosted Git can fail without blocking recovery.

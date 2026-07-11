@@ -5,9 +5,6 @@ Thumbs.db
 !.vscode/settings.json
 !.vscode/extensions.json
 
-# Local planning context
-docs/chatgpt-context.md
-
 # Secrets
 *.key
 *.pem

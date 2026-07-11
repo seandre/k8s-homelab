@@ -4,12 +4,15 @@ Kubernetes homelab built on Proxmox VE.
 
 ## Hardware
 
-- Host: HP EliteDesk 800 G6 Mini
+- Primary host: HP EliteDesk 800 G6 Mini (`pve-01`)
 - CPU: Intel Core i5-10500T
 - RAM: 64 GB
 - Boot/system disk: 256 GB NVMe
 - VM/data disk: 2 TB NVMe
 - Hypervisor: Proxmox VE
+- Planned second host: HP EliteDesk 800 G6 (`pve-02`) with Intel Core i5-10500, 32 GB RAM, and 512 GB NVMe
+
+See [Infrastructure Reference](docs/infrastructure.md) for the complete hardware, storage, VM, network, and DNS layout.
 
 ## Goal
 
@@ -53,18 +56,24 @@ Last verified: 2026-06-30.
 - Grafana is exposed at `https://grafana.lab.home.arpa`
 - Homepage is exposed at `https://home.lab.home.arpa`
 - UniFi UDM Pro Intrusion Prevention was identified as the cause of intermittent SSH/TCP timeouts and adjusted
-- Next step: add a storage/persistence layer and start practicing operational workflows around backup, restore, upgrades, and GitOps changes
+- Next project: build `utility-01` as the in-network administration VM, then use it as the control point for the separate `pve-02` hardware-integration project
 
 ## Repo Map
 
-- `docs/`: hardware, network, install, rebuild, decision, and troubleshooting notes
-- `proxmox/`: Proxmox storage and VM layout notes
+- `docs/infrastructure.md`: canonical hardware, storage, VM, network, and DNS reference
+- `docs/rebuild-runbook.md`: rebuild and recovery sequence
+- `docs/troubleshooting.md`: network, ingress, TLS, and application diagnostics
+- `docs/decisions.md`: durable architectural decisions and rationale
+- `docs/learning-roadmap.md`: prioritized projects and platform-learning backlog
 - `ansible/`: inventory and playbooks for node prep and k3s operations
 - `kubernetes/bootstrap/`: one-time bootstrap manifests for Argo CD and other cluster bring-up steps
 - `kubernetes/apps/`: reusable application definitions that can be selected by one or more clusters
 - `kubernetes/infrastructure/`: reusable infrastructure definitions such as ingress and certificate management
 - `kubernetes/clusters/homelab/`: the homelab cluster entrypoint and selection layer for Argo CD-managed apps and infrastructure
-- `docs/learning-roadmap.md`: practical next steps for learning from the running homelab
+- `docs/utility-bastion-tutorial.md`: required tutorial for the `utility-01` admin VM
+- `docs/utility-desktop-koreader-tutorial.md`: optional XFCE, RDP, and KOReader companion guide for `utility-01`
+- `docs/add-pve-02-node-tutorial.md`: tutorial for adding the planned second Proxmox host and `k8s-worker-03`
+- `docs/koreader-sync-runbook.md`: KOReader Sync deployment and operations
 
 ## GitOps Flow
 
@@ -79,15 +88,9 @@ App manifests should stay in `kubernetes/apps` unless they are truly cluster-spe
 
 ## Current Direction
 
-The cluster has a working GitOps control plane. The next phase should use that foundation to learn day-2 platform operations:
+Build the [Utility Bastion](docs/utility-bastion-tutorial.md) first, then complete the separate [pve-02 Hardware Integration Project](docs/add-pve-02-node-tutorial.md). The remaining ordered backlog lives in the [Learning Roadmap](docs/learning-roadmap.md).
 
-1. Keep GitHub as the source of truth while the lab is still easy to rebuild.
-2. Add persistent storage, then prove backup and restore with a small stateful workload.
-3. Replace temporary test workloads with real services that exercise ingress, TLS, storage, secrets, and monitoring.
-4. Practice GitOps change management: PR, sync, rollback, drift detection, and failure recovery.
-5. Add a utility/admin VM for stable in-network operations after the storage and backup path is understood.
-
-Self-hosted Git is intentionally deferred. It can be revisited later, but GitHub is simpler and safer during bootstrap because the desired cluster state remains available even if the homelab is down.
+GitHub remains the recovery-safe source of truth during bootstrap. Self-hosted Git is deferred so cluster recovery never depends on an in-cluster Git service.
 
 ## Common Commands
 

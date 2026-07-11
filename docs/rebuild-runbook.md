@@ -1,214 +1,145 @@
 # Rebuild Runbook
 
-This lab should be reproducible. Anything important should live in Git or be documented here.
+This runbook restores the homelab control plane and GitOps-managed resources. Hardware, addresses, VM sizes, and storage live in [Infrastructure Reference](infrastructure.md). Persistent application data requires a separate backup and restore procedure.
 
-## Rebuild Principles
+## Recovery Boundaries
 
-- Do not rely on undocumented manual changes.
-- Keep IPs, hostnames, and VM sizes documented.
-- Commit changes after each working milestone.
-- Keep secrets out of Git.
-- Prefer rebuilding over debugging mystery state when early in the lab.
+Git contains Kubernetes desired state, Ansible automation, and documentation. It does not contain:
+
+- Proxmox installation or VM disks.
+- Kubeconfigs, SSH private keys, or other credentials.
+- PersistentVolume data.
+- The existing homelab CA private key.
+
+A full rebuild can create a new CA, but clients must then trust the new root certificate. Do not call recovery complete until stateful data has also been restored and tested.
 
 ## Rebuild Order
 
-1. Install Proxmox on the 256 GB NVMe
-2. Add the separate 2 TB NVMe as Proxmox LVM-thin storage named `vmdata`
-3. Configure host networking on the UniFi `Servers` / Homelab network: `192.168.40.0/24`, VLAN ID `40`, gateway `192.168.40.1`, domain `lab.home.arpa`
-4. Confirm Proxmox is reachable at `192.168.40.20`
-5. Upload Ubuntu Server ISO
-6. Create an Ubuntu Server 26.04 template using the normal install
-7. Enable OpenSSH, install `qemu-guest-agent`, and skip featured server snaps
-8. Clone VMs
-9. Expand VM disks in Proxmox, then expand Ubuntu LVM inside the guest
-10. Temporarily enable passwordless sudo for node prep
-11. Prepare Kubernetes nodes
-12. Remove temporary passwordless sudo and return to password-required sudo
-13. Install the k3s control plane on `k8s-control-01`
-14. Join k3s workers
-15. Apply Kubernetes bootstrap manifests
-16. Deploy infrastructure services
-17. Deploy apps
-18. Validate ingress and monitoring
+1. Install and configure `pve-01` and `vmdata` according to [Infrastructure Reference](infrastructure.md).
+2. Recreate the Ubuntu Server 26.04 template with OpenSSH and `qemu-guest-agent`.
+3. Recreate the three Kubernetes VMs with the documented sizes and addresses.
+4. Confirm SSH access and update `ansible/inventory/hosts.ini` if addresses changed.
+5. Prepare the nodes and install k3s with Ansible.
+6. Put the fetched kubeconfig at `~/.kube/k8s-homelab.yaml`.
+7. Bootstrap Argo CD.
+8. Let the root application reconcile infrastructure, monitoring, and apps from Git.
+9. Restore external DNS records and client CA trust.
+10. Restore and test persistent application data.
 
-## Current Next Steps
+## Proxmox and Ubuntu
 
-1. Add a persistent storage layer and validate PVC behavior with a small stateful workload
-2. Add KOReader Sync Server (`kosync`) as the next stateful learning workload after recording the plan
-3. Add a backup and restore workflow before relying on stateful services
-4. Choose and document a secrets-management approach
-5. Replace temporary test workloads with real services that exercise ingress, TLS, storage, secrets, and monitoring
-6. Add practical Grafana dashboards and a small number of useful alerts
-7. Practice GitOps rollback, drift correction, node reboot, and upgrade workflows
-8. Add a utility/admin VM for stable in-network operations after the storage and backup path is understood
+Use the normal Ubuntu Server install, not the minimized option, and skip featured server snaps. Enable OpenSSH and install `qemu-guest-agent`.
 
-Do not prioritize self-hosted Git yet. Use GitHub as the durable source of truth while the cluster is still being built. A self-hosted Git service can be added later, ideally mirrored to GitHub, but it should not be required to recover the cluster.
-
-## Ubuntu Template Notes
-
-The template was built from Ubuntu Server 26.04 using the normal install. The minimized install was not used, no featured server snaps were installed, OpenSSH was enabled, and `qemu-guest-agent` was installed.
-
-The qemu guest agent `systemctl enable` warning was encountered and treated as non-fatal.
-
-## VM Disk Resize Procedure
-
-Resize the VM disk in the Proxmox GUI first. Proxmox disk resize is additive, so from a 40 GB Ubuntu Server template disk:
-
-- `k8s-control-01` target 80 GB: add `+40G`
-- `k8s-worker-01` target 150 GB: add `+110G`
-- `k8s-worker-02` target 150 GB: add `+110G`
-
-Inside Ubuntu, the install used LVM. Use `lsblk` first to confirm the disk and partition layout, then resize the LVM-backed root filesystem:
+After increasing a clone's virtual disk in Proxmox, grow the Ubuntu LVM root filesystem:
 
 ```bash
+lsblk
 sudo growpart /dev/sda 3
 sudo pvresize /dev/sda3
 sudo lvextend -r -l +100%FREE /dev/mapper/ubuntu--vg-ubuntu--lv
 df -h
 ```
 
-If the disk appears as `/dev/vda` instead of `/dev/sda`, use `/dev/vda3`.
+Use `/dev/vda3` if the virtual disk is `/dev/vda`.
 
-## Kubernetes Node Prep
+## Verify Ansible Access
 
-For non-interactive SSH or Ansible prep, temporarily enable passwordless sudo for `sean` on each Kubernetes node:
-
-```bash
-echo 'sean ALL=(ALL) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/99-sean-homelab-bootstrap
-sudo chmod 440 /etc/sudoers.d/99-sean-homelab-bootstrap
-```
-
-Run the node prep playbook:
+From the repository root:
 
 ```bash
-ansible-playbook ansible/playbooks/prep-k8s-nodes.yml
+ansible-inventory --graph
+ansible k3s_cluster -m ping
 ```
 
-After the prep is complete and verified, remove the temporary sudoers file from each node:
+The configured SSH user is `sean`. If sudo requires a password, use Ansible's `--ask-become-pass` option. Temporary passwordless sudo is acceptable only during bootstrap and must be removed immediately afterward.
+
+## Install k3s
+
+The install playbook prepares all Kubernetes nodes, installs the control plane with bundled Traefik and ServiceLB disabled, joins the workers, waits for them to become ready, and fetches a kubeconfig:
 
 ```bash
-sudo rm /etc/sudoers.d/99-sean-homelab-bootstrap
+ansible-playbook --ask-become-pass ansible/playbooks/install-k3s.yml
 ```
 
-Verify `sudo` requires a password again:
-
-```bash
-sudo -k
-sudo -v
-```
-
-Current build status: Kubernetes node prep has been completed on the three Kubernetes nodes, the prep playbook was idempotent with `changed=0`, and the temporary sudoers file was removed.
-
-## k3s Control Plane Install
-
-Install the k3s server on `k8s-control-01` only:
-
-```bash
-curl -sfL https://get.k3s.io | sh -s - server \
-  --node-ip 192.168.40.21 \
-  --advertise-address 192.168.40.21 \
-  --tls-san 192.168.40.21 \
-  --disable traefik \
-  --disable servicelb
-```
-
-Fetch the workstation kubeconfig and point it at the control-plane IP:
+Install the fetched kubeconfig at the standard workstation path:
 
 ```bash
 mkdir -p ~/.kube
-ssh -i ~/.ssh/id_ed25519_github sean@192.168.40.21 \
-  "sudo cat /etc/rancher/k3s/k3s.yaml" > ~/.kube/k8s-homelab.yaml
-sed -i '' 's#https://127\.0\.0\.1:6443#https://192.168.40.21:6443#' ~/.kube/k8s-homelab.yaml
-chmod 600 ~/.kube/k8s-homelab.yaml
-```
-
-Current build status: k3s server `v1.36.2+k3s1` is installed on `k8s-control-01`, the node reports `Ready`, core system pods are running, workstation `kubectl` access using `~/.kube/k8s-homelab.yaml` succeeds, bundled Traefik and ServiceLB are disabled, and temporary passwordless sudo has been removed from the control node.
-
-## k3s Worker Join
-
-Read the node token from the control plane:
-
-```bash
-sudo cat /var/lib/rancher/k3s/server/node-token
-```
-
-Join `k8s-worker-01`:
-
-```bash
-curl -sfL https://get.k3s.io | K3S_URL=https://192.168.40.21:6443 K3S_TOKEN='<TOKEN>' sh -s - agent \
-  --node-ip 192.168.40.22
-```
-
-Join `k8s-worker-02`:
-
-```bash
-curl -sfL https://get.k3s.io | K3S_URL=https://192.168.40.21:6443 K3S_TOKEN='<TOKEN>' sh -s - agent \
-  --node-ip 192.168.40.23
-```
-
-Validate:
-
-```bash
+install -m 0600 kubeconfig/homelab.kubeconfig ~/.kube/k8s-homelab.yaml
+export KUBECONFIG="$HOME/.kube/k8s-homelab.yaml"
 kubectl get nodes -o wide
 kubectl get pods -A
 ```
 
-Current build status: `k8s-control-01`, `k8s-worker-01`, and `k8s-worker-02` are `Ready` on k3s `v1.36.2+k3s1`. `k3s-agent` is active and enabled on both workers, workstation `kubectl` access succeeds, and temporary passwordless sudo has been removed from all three Kubernetes nodes.
+All three nodes must report `Ready` before bootstrap continues.
 
-## Argo CD Bootstrap
+## Bootstrap Argo CD
 
-Apply the cluster kustomization:
+Apply the one-time bootstrap manifests with server-side apply:
 
 ```bash
 KUBECONFIG=~/.kube/k8s-homelab.yaml kubectl apply --server-side --force-conflicts -k kubernetes/bootstrap
 ```
 
-Use server-side apply because the Argo CD `applicationsets.argoproj.io` CRD exceeds the client-side apply annotation limit.
+Server-side apply is required because the Argo CD CRDs exceed the client-side annotation limit.
 
-Validate Argo CD:
+Wait for the Argo CD pods, then inspect the root application:
 
 ```bash
-KUBECONFIG=~/.kube/k8s-homelab.yaml kubectl -n argocd get pods -o wide
-KUBECONFIG=~/.kube/k8s-homelab.yaml kubectl -n argocd get svc
+kubectl -n argocd get pods
+kubectl -n argocd get application homelab
+kubectl get applications.argoproj.io -A
 ```
 
-Initial local UI access:
+Initial UI access is available through a port forward while ingress reconciles:
 
 ```bash
-KUBECONFIG=~/.kube/k8s-homelab.yaml kubectl -n argocd port-forward svc/argocd-server 8080:443
+kubectl -n argocd port-forward svc/argocd-server 8080:443
 ```
 
 Open `https://localhost:8080`.
 
-Fetch the admin username and initial password when needed:
+## Reconcile Desired State
+
+The `homelab` root application creates and reconciles:
+
+- `homelab-infrastructure`: MetalLB, Traefik, cert-manager, and ingress resources.
+- `homelab-monitoring`: kube-prometheus-stack and Grafana ingress.
+- `homelab-apps`: nginx test, Homepage, and KOReader Sync.
+
+Normal recovery should come from Git reconciliation. Use direct `kubectl apply` only for bootstrap or break-glass recovery.
+
+If Argo CD has not noticed the current revision, request a hard refresh:
 
 ```bash
-echo admin
-KUBECONFIG=~/.kube/k8s-homelab.yaml kubectl -n argocd get secret argocd-initial-admin-secret \
-  -o jsonpath='{.data.password}' | base64 -d
+kubectl -n argocd annotate application homelab argocd.argoproj.io/refresh=hard --overwrite
+kubectl get applications.argoproj.io -A
 ```
 
-Current build status: Argo CD `v3.4.4` is installed in the `argocd` namespace, all standard Argo CD pods are running, `argocd-server` is `ClusterIP`, and the `homelab` root application reconciles this repo. Argo CD is also exposed through Traefik ingress at `https://argocd.lab.home.arpa`.
+## Restore External State
 
-## GitOps Target State
+Recreate the internal DNS records listed in [Infrastructure Reference](infrastructure.md). All Kubernetes application hostnames point to `192.168.40.30`.
 
-The intended steady-state workflow is:
+If the CA was regenerated, export the new public root certificate and reinstall it on client devices. Never copy the CA private key into Git.
 
-```text
-GitHub repo change -> Argo CD detects drift -> Argo CD syncs Kubernetes
+Restore persistent data only after the corresponding workloads and PVCs exist. KOReader-specific checks are in [KOReader Sync Runbook](koreader-sync-runbook.md).
+
+## Validate Recovery
+
+```bash
+kubectl get nodes -o wide
+kubectl get applications.argoproj.io -A
+kubectl get pods -A
+kubectl get ingress -A
+kubectl get certificate -A
+kubectl get pvc -A
+curl -k -I https://argocd.lab.home.arpa
+curl -k -I https://grafana.lab.home.arpa
+curl -k -I https://home.lab.home.arpa
+curl -k -I https://nginx-test.lab.home.arpa
+curl -k -I https://kosync.lab.home.arpa
 ```
 
-Manual `kubectl apply` should remain available for bootstrap and break-glass recovery, but normal cluster changes should move into Git and be applied by Argo CD.
+Recovery is complete when nodes are ready, Argo CD applications are synced and healthy, workloads are running, certificates are ready, endpoints respond, and restored application data has been verified.
 
-Current Argo CD layout:
-
-- `homelab`: root application for `kubernetes/clusters/homelab`
-- `homelab-infrastructure`: child application for cluster infrastructure manifests
-- `homelab-apps`: child application for workload manifests
-- `homelab-monitoring`: child application for kube-prometheus-stack
-
-Current GitOps status: `homelab`, `homelab-infrastructure`, `homelab-apps`, and `homelab-monitoring` are `Synced` and `Healthy`. MetalLB, Traefik, cert-manager, monitoring, Homepage, and the nginx test app are managed through Argo CD.
-
-Near-term Argo CD work is to add storage, backup/restore, secrets management, alerts, and real learning workloads under the existing app and infrastructure paths.
-
-The utility/admin VM is still useful, but its job is operational convenience: keep `kubectl`, `helm`, `k9s`, Ansible, SSH keys, and a checkout of this repo on a stable machine inside the homelab network. It should not become the only place where desired state exists.
+Use [Troubleshooting](troubleshooting.md) when any layer fails.
