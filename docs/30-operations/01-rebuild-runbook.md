@@ -1,6 +1,8 @@
-# Rebuild Runbook
+# Operations 01: Rebuild Runbook
 
-This runbook restores the homelab control plane and GitOps-managed resources. Hardware, addresses, VM sizes, and storage live in [Infrastructure Reference](infrastructure.md). Persistent application data requires a separate backup and restore procedure.
+This runbook restores the homelab control plane and GitOps-managed resources. Hardware, addresses, VM sizes, and storage live in the [Infrastructure Reference](../00-overview/01-infrastructure-reference.md). Persistent application data requires a separate backup and restore procedure.
+
+The steps below describe the current VM-based k3s cluster. The planned compact OKD cluster has separate installation and failure tests in [Build 04: Connected Compact OKD](../10-build/04-compact-okd.md). Do not mix kubeconfigs, ingress VIPs, installer artifacts, or restore targets.
 
 ## Recovery Boundaries
 
@@ -13,18 +15,21 @@ Git contains Kubernetes desired state, Ansible automation, and documentation. It
 
 A full rebuild can create a new CA, but clients must then trust the new root certificate. Do not call recovery complete until stateful data has also been restored and tested.
 
+Sealed Secrets adds a separate root of trust that Git cannot restore. Before using encrypted secrets, complete the key-backup and recovery exercise in [Optional 03: Sealed Secrets](../20-optional/03-sealed-secrets.md). During a rebuild, restore the sealing-key Secrets before starting or restarting the controller, then allow Argo CD to reconcile dependent `SealedSecret` resources.
+
 ## Rebuild Order
 
-1. Install and configure `pve-01` and `vmdata` according to [Infrastructure Reference](infrastructure.md).
+1. Install and configure `pve-01` and `vmdata` according to the [Infrastructure Reference](../00-overview/01-infrastructure-reference.md).
 2. Recreate the Ubuntu Server 26.04 template with OpenSSH and `qemu-guest-agent`.
 3. Recreate the three Kubernetes VMs with the documented sizes and addresses.
 4. Confirm SSH access and update `ansible/inventory/hosts.ini` if addresses changed.
 5. Prepare the nodes and install k3s with Ansible.
 6. Put the fetched kubeconfig at `~/.kube/k8s-homelab.yaml`.
-7. Bootstrap Argo CD.
-8. Let the root application reconcile infrastructure, monitoring, and apps from Git.
-9. Restore external DNS records and client CA trust.
-10. Restore and test persistent application data.
+7. If Sealed Secrets is in use, restore its backed-up sealing-key Secrets into `kube-system` from the protected backup before the controller starts, following the rebuild order in [Optional 03: Sealed Secrets](../20-optional/03-sealed-secrets.md#perform-a-non-destructive-offline-recovery-exercise).
+8. Bootstrap Argo CD; if a Sealed Secrets controller was already running when keys were restored, restart it so it loads them.
+9. Verify the controller can decrypt existing ciphertext, then let the root application reconcile infrastructure, encrypted secrets, monitoring, and apps from Git.
+10. Restore external DNS records and client CA trust.
+11. Restore and test persistent application data.
 
 ## Proxmox and Ubuntu
 
@@ -118,11 +123,11 @@ kubectl get applications.argoproj.io -A
 
 ## Restore External State
 
-Recreate the internal DNS records listed in [Infrastructure Reference](infrastructure.md). All Kubernetes application hostnames point to `192.168.40.30`.
+Recreate the internal DNS records listed in the [Infrastructure Reference](../00-overview/01-infrastructure-reference.md). All Kubernetes application hostnames point to `192.168.40.30`.
 
 If the CA was regenerated, export the new public root certificate and reinstall it on client devices. Never copy the CA private key into Git.
 
-Restore persistent data only after the corresponding workloads and PVCs exist. KOReader-specific checks are in [KOReader Sync Runbook](koreader-sync-runbook.md).
+Restore persistent data only after the corresponding workloads and PVCs exist. KOReader-specific checks are in [Optional 02: KOReader Sync Runbook](../20-optional/02-koreader-sync-runbook.md).
 
 ## Validate Recovery
 
@@ -142,4 +147,4 @@ curl -k -I https://kosync.lab.home.arpa
 
 Recovery is complete when nodes are ready, Argo CD applications are synced and healthy, workloads are running, certificates are ready, endpoints respond, and restored application data has been verified.
 
-Use [Troubleshooting](troubleshooting.md) when any layer fails.
+Use [Operations 02: Troubleshooting](02-troubleshooting.md) when any layer fails.

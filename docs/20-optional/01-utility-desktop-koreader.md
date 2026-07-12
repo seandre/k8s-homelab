@@ -1,8 +1,8 @@
-# Optional: Utility Desktop and KOReader
+# Optional 01: Utility Desktop and KOReader
 
 This companion guide adds a lightweight XFCE desktop, RDP access, and KOReader Desktop to the existing `utility-01` VM.
 
-Complete [Project 1: Utility Bastion](utility-bastion-tutorial.md) first. This desktop is optional and is not required for [Project 2: pve-02 Hardware Integration](add-pve-02-node-tutorial.md).
+Complete [Build 02: Utility Automation Server](../10-build/02-utility-automation-server.md) first. This desktop is optional and is not required for [Build 04: Compact OKD](../10-build/04-compact-okd.md).
 
 Keep RDP internal to trusted LAN or VPN networks. Do not expose it through Kubernetes ingress or forward it from the public internet.
 
@@ -17,7 +17,7 @@ Keep RDP internal to trusted LAN or VPN networks. Do not expose it through Kuber
 | Sync endpoint | `https://kosync.lab.home.arpa` |
 | Access | Trusted LAN/VPN clients only |
 
-## Step 1: Confirm the Bastion Prerequisite
+## Step 1: Confirm the Automation Server Prerequisite
 
 Connect to `utility-01` and confirm the core build is healthy:
 

@@ -1,0 +1,10 @@
+.git
+.github
+.ansible
+.cache
+.DS_Store
+**/node_modules
+diagnostics
+kubernetes
+ansible
+scripts

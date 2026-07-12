@@ -10,9 +10,10 @@ Kubernetes homelab built on Proxmox VE.
 - Boot/system disk: 256 GB NVMe
 - VM/data disk: 2 TB NVMe
 - Hypervisor: Proxmox VE
-- Planned second host: HP EliteDesk 800 G6 (`pve-02`) with Intel Core i5-10500, 32 GB RAM, and 512 GB NVMe
+- Additional virtualization host received: HP EliteDesk 800 G6 Mini (`pve-02`) with Intel Core i5-10500T, 32 GB RAM, and 512 GB storage
+- Bare-metal cluster hardware received: three matching HP EliteDesk 805 G8 Minis, each with an AMD Ryzen 5 PRO 5650GE, 16 GB RAM, and a 1 TB Patriot Memory P400 Lite SSD waiting to be installed
 
-See [Infrastructure Reference](docs/infrastructure.md) for the complete hardware, storage, VM, network, and DNS layout.
+Start with the [Documentation Order](docs/00-overview/00-documentation-order.md). The [Infrastructure Reference](docs/00-overview/01-infrastructure-reference.md) contains the complete hardware, storage, VM, network, and DNS layout.
 
 ## Goal
 
@@ -56,24 +57,20 @@ Last verified: 2026-06-30.
 - Grafana is exposed at `https://grafana.lab.home.arpa`
 - Homepage is exposed at `https://home.lab.home.arpa`
 - UniFi UDM Pro Intrusion Prevention was identified as the cause of intermittent SSH/TCP timeouts and adjusted
-- Next project: build `utility-01` as the in-network administration VM, then use it as the control point for the separate `pve-02` hardware-integration project
+- Next sequence: prove public DNS-01 on k3s, finish `utility-01`, build `pve-02` and `bastion-01`, then install connected compact OKD on the three Ryzen systems
 
 ## Repo Map
 
-- `docs/infrastructure.md`: canonical hardware, storage, VM, network, and DNS reference
-- `docs/rebuild-runbook.md`: rebuild and recovery sequence
-- `docs/troubleshooting.md`: network, ingress, TLS, and application diagnostics
-- `docs/decisions.md`: durable architectural decisions and rationale
-- `docs/learning-roadmap.md`: prioritized projects and platform-learning backlog
+- `docs/00-overview/`: documentation order, infrastructure reference, roadmap, and architecture decisions
+- `docs/10-build/`: required dependency-ordered build sequence
+- `docs/20-optional/`: optional desktop, application, and GitOps learning projects
+- `docs/30-operations/`: rebuild and troubleshooting references
+- `docs-site/`: Docusaurus configuration, local search, and static container build
 - `ansible/`: inventory and playbooks for node prep and k3s operations
 - `kubernetes/bootstrap/`: one-time bootstrap manifests for Argo CD and other cluster bring-up steps
 - `kubernetes/apps/`: reusable application definitions that can be selected by one or more clusters
 - `kubernetes/infrastructure/`: reusable infrastructure definitions such as ingress and certificate management
 - `kubernetes/clusters/homelab/`: the homelab cluster entrypoint and selection layer for Argo CD-managed apps and infrastructure
-- `docs/utility-bastion-tutorial.md`: required tutorial for the `utility-01` admin VM
-- `docs/utility-desktop-koreader-tutorial.md`: optional XFCE, RDP, and KOReader companion guide for `utility-01`
-- `docs/add-pve-02-node-tutorial.md`: tutorial for adding the planned second Proxmox host and `k8s-worker-03`
-- `docs/koreader-sync-runbook.md`: KOReader Sync deployment and operations
 
 ## GitOps Flow
 
@@ -88,7 +85,7 @@ App manifests should stay in `kubernetes/apps` unless they are truly cluster-spe
 
 ## Current Direction
 
-Build the [Utility Bastion](docs/utility-bastion-tutorial.md) first, then complete the separate [pve-02 Hardware Integration Project](docs/add-pve-02-node-tutorial.md). The remaining ordered backlog lives in the [Learning Roadmap](docs/learning-roadmap.md).
+Follow the [numbered documentation order](docs/00-overview/00-documentation-order.md): [prove public DNS/TLS](docs/10-build/01-public-domain-tls.md), finish the [`utility-01` automation server](docs/10-build/02-utility-automation-server.md), build [standalone `pve-02` and `bastion-01`](docs/10-build/03-pve-02-and-bastion.md), then install [compact OKD](docs/10-build/04-compact-okd.md). The broader backlog lives in the [Learning Roadmap](docs/00-overview/02-learning-roadmap.md).
 
 GitHub remains the recovery-safe source of truth during bootstrap. Self-hosted Git is deferred so cluster recovery never depends on an in-cluster Git service.
 

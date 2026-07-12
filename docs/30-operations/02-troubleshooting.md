@@ -1,4 +1,4 @@
-# Troubleshooting
+# Operations 02: Troubleshooting
 
 Start with the failing layer and collect evidence before changing identities, networking, or desired state.
 
@@ -26,6 +26,31 @@ Work through failures in this order:
 4. Service endpoints and ingress matching.
 5. TLS certificate readiness and client trust.
 6. Application logs and configuration.
+
+## Argo CD and Grafana Credentials
+
+Treat these values as secrets. Run the commands in a private terminal and do not paste their output into tickets, chat, logs, or Git.
+
+The Argo CD username is `admin`. Retrieve its initial password:
+
+```bash
+kubectl -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath='{.data.password}' | base64 -d
+echo
+```
+
+Retrieve the Grafana admin username and password:
+
+```bash
+kubectl -n monitoring get secret kube-prometheus-stack-grafana \
+  -o jsonpath='{.data.admin-user}' | base64 -d
+echo
+kubectl -n monitoring get secret kube-prometheus-stack-grafana \
+  -o jsonpath='{.data.admin-password}' | base64 -d
+echo
+```
+
+If `argocd-initial-admin-secret` is not found, the initial secret may have been deleted after the administrator password was changed. Use the current credential from the password manager or follow the Argo CD password-reset procedure.
 
 ## SSH and VM Identity
 

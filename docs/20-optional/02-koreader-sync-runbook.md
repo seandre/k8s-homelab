@@ -1,4 +1,4 @@
-# KOReader Sync Runbook
+# Optional 02: KOReader Sync Runbook
 
 KOReader Sync is managed by Argo CD from `kubernetes/apps/kosync` and selected by `kubernetes/clusters/homelab/apps/kustomization.yaml`.
 
@@ -73,7 +73,7 @@ Set the custom sync server to:
 https://kosync.lab.home.arpa
 ```
 
-Clients must trust the homelab root CA. The `utility-01` desktop procedure is documented in [Utility Desktop and KOReader](utility-desktop-koreader-tutorial.md).
+Clients must trust the homelab root CA. The `utility-01` desktop procedure is documented in [Optional 01: Utility Desktop and KOReader](01-utility-desktop-koreader.md).
 
 ## Next Hardening Steps
 

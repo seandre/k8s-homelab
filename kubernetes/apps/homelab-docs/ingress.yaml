@@ -1,0 +1,28 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: homelab-docs
+  namespace: homelab-docs
+  labels:
+    app.kubernetes.io/name: homelab-docs
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-production
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - docs.lab.seandre.dev
+      secretName: homelab-docs-public-tls
+  rules:
+    - host: docs.lab.seandre.dev
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: homelab-docs
+                port:
+                  name: http

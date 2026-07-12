@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/Seandre/k8s-homelab.git
+    repoURL: https://github.com/seandre/k8s-homelab.git
     targetRevision: main
     path: kubernetes/clusters/homelab/apps
   destination:

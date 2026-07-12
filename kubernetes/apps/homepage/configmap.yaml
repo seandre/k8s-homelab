@@ -41,7 +41,7 @@ data:
     - Homelab:
         - Repository:
             - abbr: GH
-              href: https://github.com/Seandre/k8s-homelab
+              href: https://github.com/seandre/k8s-homelab
         - Homepage Docs:
             - abbr: HP
               href: https://gethomepage.dev/

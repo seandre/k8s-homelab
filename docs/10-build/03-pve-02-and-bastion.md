@@ -1,10 +1,10 @@
-# Project 2: pve-02 Hardware Integration
+# Build 03: `pve-02` and `bastion-01`
 
-This separate project integrates the new HP EliteDesk 800 G6 as `pve-02`, a second Proxmox host on the homelab `Servers` network. Start it as a standalone Proxmox host, then add one VM-backed k3s worker named `k8s-worker-03`.
+This project integrates the HP EliteDesk 800 G6 Mini as standalone `pve-02`. Its first required workload is `bastion-01`, which provides DNS, HAProxy, and Nexus for [Build 04: Compact OKD](04-compact-okd.md). The older `k8s-worker-03` exercise below is optional and must not consume the bastion's resources or addresses.
 
 Do not join `pve-01` and `pve-02` into a Proxmox cluster during this first pass. A two-node Proxmox cluster needs a quorum plan, such as a qdevice or a third voter. The first goal is simple capacity and operational practice without risking the working `pve-01` setup.
 
-Start this project only after completing [Project 1: Utility Bastion](utility-bastion-tutorial.md). Run the Ansible, Kubernetes, and Git commands below from the `utility-01` repository checkout. The separate [Utility Desktop and KOReader](utility-desktop-koreader-tutorial.md) companion is not a prerequisite for this hardware project.
+Start this project only after completing the [`utility-01` automation-server validation](02-utility-automation-server.md#step-9-validate-the-automation-server). Run Ansible, Kubernetes, and Git commands from its repository checkout. [Optional 01: Utility Desktop and KOReader](../20-optional/01-utility-desktop-koreader.md) is not a prerequisite.
 
 ## Target Design
 
@@ -13,29 +13,44 @@ Start this project only after completing [Project 1: Utility Bastion](utility-ba
 | Proxmox hostname | `pve-02` |
 | Proxmox FQDN | `pve-02.lab.home.arpa` |
 | Proxmox IP | `192.168.40.25` |
-| Model | HP EliteDesk 800 G6 |
-| CPU | Intel Core i5-10500 |
+| Model | HP EliteDesk 800 G6 Mini |
+| CPU | Intel Core i5-10500T |
 | RAM | 32 GB |
-| Disk | 512 GB NVMe |
+| Disk | 512 GB storage |
 | Network | UniFi `Servers`, VLAN ID `40` |
 | Gateway/DNS | `192.168.40.1` |
-| Initial Proxmox storage | `local-lvm` on the 512 GB NVMe |
-| First VM | `k8s-worker-03` |
-| First VM IP | `192.168.40.26` |
-| First VM size | 4 vCPU, 12 GB RAM, 150 GB disk |
+| Initial Proxmox storage | `local-lvm` on the 512 GB device |
+| First VM | `bastion-01` |
+| First VM IPs | `.33` management, `.29` OKD API, `.31` OKD ingress |
+| First VM size | 4 vCPU, 12 GB RAM, approximately 300 GB disk |
 
 ## Step 1: Confirm the Project Prerequisites
 
-Before touching the new hardware, confirm that `utility-01` is reachable and has the tools needed to manage the project:
+Before touching the new hardware, confirm that `utility-01` is reachable and can actually run the repository's automation. Run the remaining commands after SSH connects:
 
 ```bash
 ssh sean@utility-01.lab.home.arpa
+cd ~/Developer/homelab
 kubectl get nodes -o wide
 ansible --version
-git -C ~/Developer/homelab status
+git status
+ansible-config dump --only-changed
+ansible-inventory --graph
+ansible-playbook --syntax-check ansible/playbooks/prep-k8s-nodes.yml
+ansible k3s_cluster --list-hosts
+ansible k3s_cluster -m ping
 ```
 
-The existing three Kubernetes nodes should be `Ready`. Do not start this project while the current cluster is unhealthy.
+These tests are non-mutating: they parse the inventory and playbook, list the selected hosts, and use Ansible's `ping` module to test SSH and remote Python. The existing three Kubernetes nodes should be `Ready`, and every current `k3s_cluster` inventory host should return `pong`.
+
+The repository's `ansible.cfg` currently selects `~/.ssh/id_ed25519_github`. Confirm that file exists on `utility-01` and that its public key is authorized for user `sean` on the managed nodes:
+
+```bash
+test -r ~/.ssh/id_ed25519_github
+ssh -i ~/.ssh/id_ed25519_github sean@192.168.40.21 hostname
+```
+
+If Ansible uses a different host-management key in your environment, configure that key deliberately before continuing; do not copy private keys into the repository. If sudo on the target requires a password, later playbook runs that use privilege escalation need `--ask-become-pass`. Do not start the `pve-02` project while the current cluster or this smoke test is unhealthy.
 
 ## Step 2: Reserve Network Identity
 
@@ -44,7 +59,9 @@ Create or reserve these records before installing anything:
 | Hostname | Address |
 |---|---:|
 | `pve-02.lab.home.arpa` | `192.168.40.25` |
-| `k8s-worker-03.lab.home.arpa` | `192.168.40.26` |
+| `bastion-01.lab.home.arpa` | `192.168.40.33` |
+
+Also reserve `.29` for the OKD API VIP and `.31` for the OKD ingress VIP. These secondary addresses belong to `bastion-01`, but do not activate the OKD DNS records until the bastion services pass their validation. Reserve `k8s-worker-03.lab.home.arpa` at `.32` only if you later perform the optional worker exercise.
 
 Use the same UniFi `Servers` network as `pve-01`:
 
@@ -60,12 +77,12 @@ The switch port should carry the `Servers` network the same way it does for `pve
 
 In the HP BIOS:
 
-1. Confirm the system sees 32 GB RAM and the 512 GB NVMe.
+1. Confirm the system sees 32 GB RAM and the 512 GB storage device.
 2. Enable Intel virtualization.
 3. Disable Secure Boot if the Proxmox installer requires it.
 4. Set the NVMe as the primary boot device after install.
 
-Install Proxmox VE onto the 512 GB NVMe:
+Install Proxmox VE onto the 512 GB device:
 
 1. Use hostname `pve-02.lab.home.arpa`.
 2. Set the management IP to `192.168.40.25/24`.
@@ -82,7 +99,7 @@ nc -vz 192.168.40.25 8006
 
 ## Step 4: Configure Proxmox Storage
 
-`pve-02` is standalone, so its storage is local to that host and is not shared with `pve-01`. Keep the installer default on the single 512 GB NVMe:
+`pve-02` is standalone, so its storage is local to that host and is not shared with `pve-01`. Keep the installer default on the single 512 GB device:
 
 | Storage | Purpose |
 |---|---|
@@ -105,9 +122,19 @@ Use the same template conventions as `pve-01`:
 - OpenSSH enabled
 - `qemu-guest-agent` installed
 
-If copying or recreating the template is not convenient, create the `k8s-worker-03` VM manually with the same baseline. The important part is that the guest has SSH, `qemu-guest-agent`, and the same Ubuntu LVM layout used by the existing nodes.
+If copying or recreating the template is not convenient, create `bastion-01` manually with the same baseline. The important part is that the guest has SSH, `qemu-guest-agent`, and the same Ubuntu LVM layout used by the existing VMs.
 
-## Step 6: Create `k8s-worker-03`
+## Step 6: Create Required `bastion-01`
+
+Create the first VM on `pve-02` with 4 vCPU, 12 GB RAM, and approximately 300 GB on `local-lvm`. Reserve `192.168.40.33` for management and configure `192.168.40.29` and `192.168.40.31` as secondary addresses on the same interface after confirming they are unused.
+
+Install `dnsmasq`, HAProxy, and Nexus. Bind Nexus HTTPS to `.33:443`; bind OKD API and machine-config frontends to `.29:6443` and `.29:22623`; bind OKD application ingress to `.31:80` and `.31:443`. Keep management access limited to trusted LAN/VPN networks.
+
+Do not activate the OKD private records or UniFi Forward Domain until `dnsmasq` is healthy and forwards unmatched public TXT queries. The complete DNS, load-balancer, install, and validation sequence is in [Build 04: Compact OKD](04-compact-okd.md).
+
+Back up Nexus configuration and blob storage to storage outside this VM and perform a restore test before relying on it.
+
+## Optional Exercise: Create `k8s-worker-03`
 
 Create a VM on `pve-02`:
 
@@ -118,7 +145,7 @@ Create a VM on `pve-02`:
 | RAM | 12 GB |
 | Disk | 150 GB |
 | Storage | `local-lvm` |
-| IP | `192.168.40.26` |
+| IP | `192.168.40.32` |
 | Gateway/DNS | `192.168.40.1` |
 
 Set the hostname inside the guest:
@@ -154,7 +181,7 @@ ping -c 3 192.168.40.1
 Verify from your workstation:
 
 ```bash
-ssh sean@192.168.40.26
+ssh sean@192.168.40.32
 ssh sean@k8s-worker-03.lab.home.arpa
 ```
 
@@ -166,7 +193,7 @@ After SSH works, add `k8s-worker-03` to the `k3s_workers` group in `ansible/inve
 [k3s_workers]
 k8s-worker-01 ansible_host=192.168.40.22
 k8s-worker-02 ansible_host=192.168.40.23
-k8s-worker-03 ansible_host=192.168.40.26
+k8s-worker-03 ansible_host=192.168.40.32
 ```
 
 Do not add the inventory row before the VM exists. Existing playbooks target the full `k3s_cluster` group, so a premature inventory entry will make routine Ansible runs fail against a missing host.
@@ -201,7 +228,7 @@ On `k8s-worker-03`, join the existing cluster:
 
 ```bash
 curl -sfL https://get.k3s.io | sudo env K3S_URL=https://192.168.40.21:6443 K3S_TOKEN='<TOKEN>' sh -s - agent \
-  --node-ip 192.168.40.26
+  --node-ip 192.168.40.32
 ```
 
 Remove the temporary sudoers file after the join:
