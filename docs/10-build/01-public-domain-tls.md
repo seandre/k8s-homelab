@@ -87,7 +87,7 @@ Confirm only the Secret metadata and key name:
 
 ```bash
 kubectl -n cert-manager get secret cloudflare-api-token \
-  -o go-template='{{range $k, $v := .data}}{{$k}{{"\n"}}{{end}}'
+  -o go-template='{{range $k, $v := .data}}{{$k}}{{"\n"}}{{end}}'
 ```
 
 Expected output is `api-token`. Never commit the plaintext Secret. Record its recovery procedure in the password manager; losing the cluster does not invalidate the token, but a rebuilt cluster needs the Secret recreated before certificate renewal.
