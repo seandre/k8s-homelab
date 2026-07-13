@@ -21,11 +21,11 @@ data:
   services.yaml: |
     - Infrastructure:
         - Argo CD:
-            href: https://argocd.lab.home.arpa
+            href: https://argocd.lab.seandre.dev
             description: GitOps control plane
             icon: argo-cd.png
         - Grafana:
-            href: https://grafana.lab.home.arpa
+            href: https://grafana.lab.seandre.dev
             description: Cluster dashboards
             icon: grafana.png
         - Proxmox:
@@ -34,7 +34,7 @@ data:
             icon: proxmox.png
     - Apps:
         - nginx test:
-            href: https://nginx-test.lab.home.arpa
+            href: https://nginx-test.lab.seandre.dev
             description: Ingress test app
             icon: nginx.png
   bookmarks.yaml: |

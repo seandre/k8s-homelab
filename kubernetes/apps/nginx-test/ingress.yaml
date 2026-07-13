@@ -4,17 +4,17 @@ metadata:
   name: nginx-test
   namespace: nginx-test
   annotations:
-    cert-manager.io/cluster-issuer: homelab-ca
+    cert-manager.io/cluster-issuer: letsencrypt-production
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
 spec:
   ingressClassName: traefik
   tls:
     - hosts:
-        - nginx-test.lab.home.arpa
-      secretName: nginx-test-tls
+        - nginx-test.lab.seandre.dev
+      secretName: nginx-test-public-tls
   rules:
-    - host: nginx-test.lab.home.arpa
+    - host: nginx-test.lab.seandre.dev
       http:
         paths:
           - path: /

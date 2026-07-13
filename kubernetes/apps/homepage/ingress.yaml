@@ -6,17 +6,17 @@ metadata:
   labels:
     app.kubernetes.io/name: homepage
   annotations:
-    cert-manager.io/cluster-issuer: homelab-ca
+    cert-manager.io/cluster-issuer: letsencrypt-production
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
 spec:
   ingressClassName: traefik
   tls:
     - hosts:
-        - home.lab.home.arpa
-      secretName: homepage-tls
+        - home.lab.seandre.dev
+      secretName: homepage-public-tls
   rules:
-    - host: home.lab.home.arpa
+    - host: home.lab.seandre.dev
       http:
         paths:
           - path: /

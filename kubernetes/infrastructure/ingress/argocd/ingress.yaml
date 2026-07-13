@@ -5,17 +5,17 @@ metadata:
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "3"
-    cert-manager.io/cluster-issuer: homelab-ca
+    cert-manager.io/cluster-issuer: letsencrypt-production
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
 spec:
   ingressClassName: traefik
   tls:
     - hosts:
-        - argocd.lab.home.arpa
-      secretName: argocd-server-tls
+        - argocd.lab.seandre.dev
+      secretName: argocd-public-tls
   rules:
-    - host: argocd.lab.home.arpa
+    - host: argocd.lab.seandre.dev
       http:
         paths:
           - path: /

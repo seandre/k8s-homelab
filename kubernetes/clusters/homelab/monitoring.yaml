@@ -21,15 +21,15 @@ spec:
             enabled: true
             ingressClassName: traefik
             annotations:
-              cert-manager.io/cluster-issuer: homelab-ca
+              cert-manager.io/cluster-issuer: letsencrypt-production
               traefik.ingress.kubernetes.io/router.entrypoints: websecure
               traefik.ingress.kubernetes.io/router.tls: "true"
             hosts:
-              - grafana.lab.home.arpa
+              - grafana.lab.seandre.dev
             tls:
-              - secretName: grafana-tls
+              - secretName: grafana-public-tls
                 hosts:
-                  - grafana.lab.home.arpa
+                  - grafana.lab.seandre.dev
 
         prometheus:
           prometheusSpec:
