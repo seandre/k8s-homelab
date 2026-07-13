@@ -204,19 +204,63 @@ If the challenge stalls, check the token permissions, the `seandre.dev` zone res
 
 ## Step 5: Prove Production with KOReader Sync
 
-Change only the issuer annotation:
+Keep the existing `kubernetes/apps/kosync/ingress.yaml` unchanged during the migration window. It continues to serve `kosync.lab.home.arpa` with the private-CA certificate, which preserves the current KOReader endpoint and provides a rollback path.
+
+Create `kubernetes/apps/kosync/ingress-public.yaml` as a separate Ingress for the new public-domain endpoint:
 
 ```yaml
-cert-manager.io/cluster-issuer: letsencrypt-production
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kosync-public
+  namespace: kosync
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-production
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - kosync.lab.seandre.dev
+      secretName: kosync-public-tls
+  rules:
+    - host: kosync.lab.seandre.dev
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kosync
+                port:
+                  number: 17200
 ```
 
-Use a new Secret name in the Ingress so the existing private-CA certificate remains available during rollback:
+Add the new file to `kubernetes/apps/kosync/kustomization.yaml` while retaining the private Ingress:
 
 ```yaml
-secretName: kosync-public-tls
+resources:
+  - namespace.yaml
+  - pvc.yaml
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
+  - ingress-public.yaml
 ```
 
-Commit and push. Wait for the new certificate:
+Using a separate Ingress is important: changing only the issuer on the existing `.home.arpa` Ingress would ask Let's Encrypt for an ineligible private hostname. The new Ingress requests only `kosync.lab.seandre.dev` and uses the distinct `kosync-public-tls` Secret.
+
+Render, commit, and push:
+
+```bash
+kubectl kustomize kubernetes/apps/kosync >/dev/null
+git add kubernetes/apps/kosync
+git commit -m "add public TLS endpoint for KOReader Sync"
+git push origin main
+```
+
+Wait for Argo CD to reconcile and for the new certificate to become ready:
 
 ```bash
 kubectl -n kosync get certificate,certificaterequest,order,challenge
