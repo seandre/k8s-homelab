@@ -3,3 +3,4 @@ kind: Kustomization
 resources:
   - https://github.com/cert-manager/cert-manager/releases/download/v1.20.3/cert-manager.yaml
   - issuers.yaml
+  - letsencrypt-issuers.yaml
