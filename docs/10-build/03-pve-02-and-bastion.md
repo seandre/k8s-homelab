@@ -11,7 +11,7 @@ Start this project only after completing the [`utility-01` automation-server val
 | Item | Value |
 |---|---|
 | Proxmox hostname | `pve-02` |
-| Proxmox FQDN | `pve-02.lab.home.arpa` |
+| Proxmox FQDN | `pve-02.lab.seandre.dev` |
 | Proxmox IP | `192.168.40.25` |
 | Model | HP EliteDesk 800 G6 Mini |
 | CPU | Intel Core i5-10500T |
@@ -29,7 +29,7 @@ Start this project only after completing the [`utility-01` automation-server val
 Before touching the new hardware, confirm that `utility-01` is reachable and can actually run the repository's automation. Run the remaining commands after SSH connects:
 
 ```bash
-ssh sean@utility-01.lab.home.arpa
+ssh sean@utility-01.lab.seandre.dev
 cd ~/Developer/k8s-homelab
 kubectl get nodes -o wide
 ansible --version
@@ -58,10 +58,10 @@ Create or reserve these records before installing anything:
 
 | Hostname | Address |
 |---|---:|
-| `pve-02.lab.home.arpa` | `192.168.40.25` |
-| `bastion-01.lab.home.arpa` | `192.168.40.33` |
+| `pve-02.lab.seandre.dev` | `192.168.40.25` |
+| `bastion-01.lab.seandre.dev` | `192.168.40.33` |
 
-Also reserve `.29` for the OKD API VIP and `.31` for the OKD ingress VIP. These secondary addresses belong to `bastion-01`, but do not activate the OKD DNS records until the bastion services pass their validation. Reserve `k8s-worker-03.lab.home.arpa` at `.32` only if you later perform the optional worker exercise.
+Also reserve `.29` for the OKD API VIP and `.31` for the OKD ingress VIP. These secondary addresses belong to `bastion-01`, but do not activate the OKD DNS records until the bastion services pass their validation. Reserve `k8s-worker-03.lab.seandre.dev` at `.32` only if you later perform the optional worker exercise.
 
 Use the same UniFi `Servers` network as `pve-01`:
 
@@ -69,7 +69,7 @@ Use the same UniFi `Servers` network as `pve-01`:
 - VLAN ID: `40`
 - Gateway: `192.168.40.1`
 - DNS: `192.168.40.1`
-- Domain: `lab.home.arpa`
+- Domain: `lab.seandre.dev`
 
 The switch port should carry the `Servers` network the same way it does for `pve-01`. VM NIC VLAN tags should stay blank when the switch port/native network already carries VLAN `40`.
 
@@ -84,7 +84,7 @@ In the HP BIOS:
 
 Install Proxmox VE onto the 512 GB device:
 
-1. Use hostname `pve-02.lab.home.arpa`.
+1. Use hostname `pve-02.lab.seandre.dev`.
 2. Set the management IP to `192.168.40.25/24`.
 3. Set gateway and DNS to `192.168.40.1`.
 4. Select the default LVM-thin storage layout so Proxmox creates `local-lvm` for VM disks. Do not select ZFS for this project.
@@ -152,8 +152,8 @@ Set the hostname inside the guest:
 
 ```bash
 sudo hostnamectl set-hostname k8s-worker-03
-grep -q '^127.0.1.1 k8s-worker-03.lab.home.arpa k8s-worker-03$' /etc/hosts || \
-  echo '127.0.1.1 k8s-worker-03.lab.home.arpa k8s-worker-03' | sudo tee -a /etc/hosts
+grep -q '^127.0.1.1 k8s-worker-03.lab.seandre.dev k8s-worker-03$' /etc/hosts || \
+  echo '127.0.1.1 k8s-worker-03.lab.seandre.dev k8s-worker-03' | sudo tee -a /etc/hosts
 hostnamectl
 ```
 
@@ -182,7 +182,7 @@ Verify from your workstation:
 
 ```bash
 ssh sean@192.168.40.32
-ssh sean@k8s-worker-03.lab.home.arpa
+ssh sean@k8s-worker-03.lab.seandre.dev
 ```
 
 ## Step 7: Add the Worker to Ansible Inventory
