@@ -29,28 +29,35 @@ Work through failures in this order:
 
 ## Argo CD and Grafana Credentials
 
-Treat these values as secrets. Run the commands in a private terminal and do not paste their output into tickets, chat, logs, or Git.
+Treat these values as secrets. Keep the current passwords in the password manager and do not paste them into tickets, chat, logs, or Git.
 
-The Argo CD username is `admin`. Retrieve its initial password:
+The administrator Mac stores the current credentials in the login Keychain as generic-password entries with these service names:
+
+- `argocd.lab.seandre.dev`, account `admin`, label `Homelab Argo CD admin`;
+- `grafana.lab.seandre.dev`, account `admin`, label `Homelab Grafana admin`.
+
+Use Keychain Access to copy them into the preferred password manager. Do not use terminal commands that print the password during routine login or troubleshooting.
+
+The Argo CD username is `admin`. The durable password hash and server signing key live in `argocd/argocd-secret`; do not delete or recreate that Secret during routine bootstrap or reconciliation. `argocd-initial-admin-secret` is only a bootstrap delivery mechanism, not the persistent credential source. After confirming the current admin password is stored in the password manager and works, delete the bootstrap Secret as upstream recommends:
 
 ```bash
-kubectl -n argocd get secret argocd-initial-admin-secret \
-  -o jsonpath='{.data.password}' | base64 -d
-echo
+kubectl -n argocd get secret argocd-secret \
+  -o go-template='{{range $k, $v := .data}}{{$k}}{{"\n"}}{{end}}'
+kubectl -n argocd delete secret argocd-initial-admin-secret
 ```
 
-Retrieve the Grafana admin username and password:
+Expected Argo CD keys include `admin.password`, `admin.passwordMtime`, and `server.secretkey`. Reset a forgotten password by following the official Argo CD password-reset procedure; do not regenerate or print the server signing key.
+
+Grafana consumes the stable `monitoring/grafana-admin-credentials` Secret through the chart's `grafana.admin.existingSecret` values. Confirm only its key names and the Deployment reference:
 
 ```bash
-kubectl -n monitoring get secret kube-prometheus-stack-grafana \
-  -o jsonpath='{.data.admin-user}' | base64 -d
-echo
-kubectl -n monitoring get secret kube-prometheus-stack-grafana \
-  -o jsonpath='{.data.admin-password}' | base64 -d
-echo
+kubectl -n monitoring get secret grafana-admin-credentials \
+  -o go-template='{{range $k, $v := .data}}{{$k}}{{"\n"}}{{end}}'
+kubectl -n monitoring get deployment kube-prometheus-stack-grafana \
+  -o yaml | grep -A3 -B3 grafana-admin-credentials
 ```
 
-If `argocd-initial-admin-secret` is not found, the initial secret may have been deleted after the administrator password was changed. Use the current credential from the password manager or follow the Argo CD password-reset procedure.
+The chart-generated `kube-prometheus-stack-grafana` Secret is intentionally replaced by `grafana-admin-credentials`; do not use the generated Secret as a password-recovery source. A manually created Secret survives normal Argo CD and Helm reconciliation but not namespace deletion or cluster loss. Complete the Sealed Secrets tutorial and its controller-key backup exercise before treating Git as sufficient disaster recovery for credentials.
 
 ## SSH and VM Identity
 
