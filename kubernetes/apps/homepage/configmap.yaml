@@ -54,6 +54,10 @@ data:
             - abbr: HP
               href: https://gethomepage.dev/
   widgets.yaml: |
+    - resources:
+        cpu: true
+        memory: true
+        disk: /
     - search:
         provider: duckduckgo
         target: _blank
