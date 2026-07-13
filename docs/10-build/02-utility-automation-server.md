@@ -250,7 +250,7 @@ The repo checkout is for inspection, commits, and break-glass commands. It is no
 mkdir -p ~/Developer
 cd ~/Developer
 git clone git@github.com:seandre/k8s-homelab.git
-cd homelab
+cd k8s-homelab
 git status
 ```
 
@@ -283,7 +283,7 @@ tmux new -A -s admin
 kubectl get nodes -o wide
 helm version
 k9s version
-cd ~/Developer/homelab
+cd ~/Developer/k8s-homelab
 git status
 ansible-config dump --only-changed
 ansible-inventory --graph

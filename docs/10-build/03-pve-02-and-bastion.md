@@ -30,7 +30,7 @@ Before touching the new hardware, confirm that `utility-01` is reachable and can
 
 ```bash
 ssh sean@utility-01.lab.home.arpa
-cd ~/Developer/homelab
+cd ~/Developer/k8s-homelab
 kubectl get nodes -o wide
 ansible --version
 git status

@@ -19,7 +19,7 @@ You need:
 Start in the repository root and make sure you are targeting the homelab:
 
 ```bash
-cd ~/Developer/homelab
+cd ~/Developer/k8s-homelab
 export KUBECONFIG="$HOME/.kube/k8s-homelab.yaml"
 kubectl config current-context
 kubectl get nodes

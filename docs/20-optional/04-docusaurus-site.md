@@ -11,7 +11,7 @@ The Kubernetes app is deliberately not selected by Argo CD yet. Complete the fol
 Install the pinned Node dependencies, build the production-static site, and serve that output:
 
 ```bash
-cd ~/Developer/homelab/docs-site/docusaurus
+cd ~/Developer/k8s-homelab/docs-site/docusaurus
 npm ci
 npm run build
 npm run serve -- --port 3000

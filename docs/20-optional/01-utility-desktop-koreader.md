@@ -24,7 +24,7 @@ Connect to `utility-01` and confirm the core build is healthy:
 ```bash
 ssh sean@utility-01.lab.home.arpa
 kubectl get nodes -o wide
-git -C ~/Developer/homelab status
+git -C ~/Developer/k8s-homelab status
 sudo ufw status verbose
 ```
 
