@@ -60,14 +60,37 @@ data:
             - abbr: HP
               href: https://gethomepage.dev/
   widgets.yaml: |
+    - kubernetes:
+        cluster:
+          show: true
+          cpu: true
+          memory: true
+          showLabel: true
+          label: Cluster
+        nodes:
+          show: true
+          cpu: true
+          memory: true
+          showLabel: true
     - resources:
+        label: Homepage Pod
+        expanded: true
         cpu: true
         memory: true
         disk: /
+        uptime: true
     - search:
         provider: duckduckgo
         target: _blank
-  kubernetes.yaml: ""
+    - datetime:
+        text_size: xl
+        format:
+          dateStyle: short
+          timeStyle: short
+          hour12: true
+  kubernetes.yaml: |
+    mode: cluster
+    ingress: false
   docker.yaml: ""
   proxmox.yaml: ""
   custom.css: ""
