@@ -52,10 +52,10 @@ Last verified: 2026-06-30.
 - cert-manager is installed through Argo CD
 - Internal TLS certificates are issued by the `homelab-ca` ClusterIssuer
 - Monitoring is installed through Argo CD with kube-prometheus-stack
-- Argo CD is exposed at `https://argocd.lab.home.arpa`
-- The nginx test app is exposed at `https://nginx-test.lab.home.arpa`
-- Grafana is exposed at `https://grafana.lab.home.arpa`
-- Homepage is exposed at `https://home.lab.home.arpa`
+- Argo CD is exposed at `https://argocd.lab.seandre.dev`
+- The nginx test app is exposed at `https://nginx-test.lab.seandre.dev`
+- Grafana is exposed at `https://grafana.lab.seandre.dev`
+- Homepage is exposed at `https://home.lab.seandre.dev`
 - UniFi UDM Pro Intrusion Prevention was identified as the cause of intermittent SSH/TCP timeouts and adjusted
 - Next sequence: prove public DNS-01 on k3s, finish `utility-01`, build `pve-02` and `bastion-01`, then install connected compact OKD on the three Ryzen systems
 
@@ -113,28 +113,15 @@ KUBECONFIG=~/.kube/k8s-homelab.yaml kubectl -n argocd port-forward svc/argocd-se
 Access Argo CD through ingress:
 
 ```bash
-open https://argocd.lab.home.arpa
+open https://argocd.lab.seandre.dev
 ```
 
-Get the Argo CD admin username and initial password:
-
-```bash
-echo admin
-KUBECONFIG=~/.kube/k8s-homelab.yaml kubectl -n argocd get secret argocd-initial-admin-secret \
-  -o jsonpath='{.data.password}' | base64 -d
-```
+The Argo CD username is `admin`. Retrieve its stable password through Keychain Access by searching for `Homelab Argo CD admin`. See [Stable Argo CD and Grafana Admin Credentials](docs/30-operations/03-stable-admin-credentials.md) for setup, rotation, verification, and recovery.
 
 Access Grafana through ingress:
 
 ```bash
-open https://grafana.lab.home.arpa
+open https://grafana.lab.seandre.dev
 ```
 
-Get the Grafana admin username and password:
-
-```bash
-KUBECONFIG=~/.kube/k8s-homelab.yaml kubectl -n monitoring get secret kube-prometheus-stack-grafana \
-  -o jsonpath='{.data.admin-user}' | base64 -d
-KUBECONFIG=~/.kube/k8s-homelab.yaml kubectl -n monitoring get secret kube-prometheus-stack-grafana \
-  -o jsonpath='{.data.admin-password}' | base64 -d
-```
+The Grafana username is `admin`. Retrieve its stable password through Keychain Access by searching for `Homelab Grafana admin`. The stable-credentials tutorial explains why the chart-generated Secret is not used.

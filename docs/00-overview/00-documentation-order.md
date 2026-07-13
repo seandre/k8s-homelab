@@ -28,3 +28,4 @@ Do not activate the OKD private records before `bastion-01` is operational. Do n
 
 1. [Rebuild Runbook](../30-operations/01-rebuild-runbook.md) restores the existing VM-based k3s cluster.
 2. [Troubleshooting](../30-operations/02-troubleshooting.md) contains network, ingress, TLS, and workload diagnostics.
+3. [Stable Admin Credentials](../30-operations/03-stable-admin-credentials.md) establishes durable Argo CD and Grafana passwords with macOS Keychain custody and stable Kubernetes Secrets.

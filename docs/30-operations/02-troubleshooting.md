@@ -57,7 +57,7 @@ kubectl -n monitoring get deployment kube-prometheus-stack-grafana \
   -o yaml | grep -A3 -B3 grafana-admin-credentials
 ```
 
-The chart-generated `kube-prometheus-stack-grafana` Secret is intentionally replaced by `grafana-admin-credentials`; do not use the generated Secret as a password-recovery source. A manually created Secret survives normal Argo CD and Helm reconciliation but not namespace deletion or cluster loss. Complete the Sealed Secrets tutorial and its controller-key backup exercise before treating Git as sufficient disaster recovery for credentials.
+The chart-generated `kube-prometheus-stack-grafana` Secret is intentionally replaced by `grafana-admin-credentials`; do not use the generated Secret as a password-recovery source. Follow [Operations 03: Stable Admin Credentials](03-stable-admin-credentials.md) for rotation, Keychain custody, rollout, and recovery. A manually created Secret survives normal Argo CD and Helm reconciliation but not namespace deletion or cluster loss. Complete the Sealed Secrets tutorial and its controller-key backup exercise before treating Git as sufficient disaster recovery for credentials.
 
 ## SSH and VM Identity
 

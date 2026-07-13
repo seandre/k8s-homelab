@@ -40,6 +40,7 @@ const sidebars = {
       items: [
         'operations/rebuild-runbook',
         'operations/troubleshooting',
+        'operations/stable-admin-credentials',
       ],
     },
   ],
