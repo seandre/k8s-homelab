@@ -12,6 +12,8 @@ spec:
       app.kubernetes.io/name: homepage
   template:
     metadata:
+      annotations:
+        homelab.seandre.dev/config-revision: "86a009c"
       labels:
         app.kubernetes.io/name: homepage
     spec:
