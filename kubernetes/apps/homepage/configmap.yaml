@@ -15,6 +15,9 @@ data:
       Infrastructure:
         style: row
         columns: 3
+      Host Hardware:
+        style: row
+        columns: 3
       Apps:
         style: row
         columns: 3
@@ -33,12 +36,27 @@ data:
             description: Virtualization host
             icon: proxmox.png
             widget:
-              type: glances
-              url: http://192.168.40.20:61208
-              version: 4
-              metric: info
+              type: customapi
+              url: http://192.168.40.20:61208/api/4/all
               refreshInterval: 5000
-        - HP Host Temperature:
+              mappings:
+                - field: cpu.total
+                  label: CPU
+                  format: percent
+                - field: mem.percent
+                  label: RAM
+                  format: percent
+                - field: memswap.percent
+                  label: Swap
+                  format: percent
+                - field: uptime
+                  label: Uptime
+        - UniFi:
+            href: https://unifi.ui.com
+            description: Network management
+            icon: unifi.png
+    - Host Hardware:
+        - CPU Temperature:
             href: https://pve-01.lab.seandre.dev:8006
             description: pve-01 CPU package temperature
             icon: proxmox.png
@@ -48,10 +66,56 @@ data:
               version: 4
               metric: sensor:Package id 0
               refreshInterval: 5000
-        - UniFi:
-            href: https://unifi.ui.com
-            description: Network management
-            icon: unifi.png
+        - System NVMe Temperature:
+            href: https://pve-01.lab.seandre.dev:8006
+            description: 256 GB system NVMe temperature
+            icon: mdi-harddisk
+            widget:
+              type: glances
+              url: http://192.168.40.20:61208
+              version: 4
+              metric: sensor:Composite
+              refreshInterval: 5000
+        - VM Data NVMe Temperature:
+            href: https://pve-01.lab.seandre.dev:8006
+            description: 2 TB VM storage NVMe temperature
+            icon: mdi-harddisk
+            widget:
+              type: glances
+              url: http://192.168.40.20:61208
+              version: 4
+              metric: sensor:Composite 1
+              refreshInterval: 5000
+        - Host OS Storage:
+            href: https://pve-01.lab.seandre.dev:8006
+            description: Proxmox root filesystem usage
+            icon: mdi-harddisk
+            widget:
+              type: glances
+              url: http://192.168.40.20:61208
+              version: 4
+              metric: fs:/
+              refreshInterval: 5000
+        - VM Data Disk I/O:
+            href: https://pve-01.lab.seandre.dev:8006
+            description: 2 TB vmdata NVMe throughput
+            icon: mdi-chart-line
+            widget:
+              type: glances
+              url: http://192.168.40.20:61208
+              version: 4
+              metric: disk:nvme1n1
+              refreshInterval: 5000
+        - Proxmox Network:
+            href: https://pve-01.lab.seandre.dev:8006
+            description: vmbr0 bridge traffic
+            icon: mdi-lan
+            widget:
+              type: glances
+              url: http://192.168.40.20:61208
+              version: 4
+              metric: network:vmbr0
+              refreshInterval: 5000
     - Apps:
         - Homelab Docs:
             href: https://docs.lab.seandre.dev

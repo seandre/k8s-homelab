@@ -794,10 +794,14 @@
       when: hpl_host_result_directory.stat.exists
 
     - name: Extract raw host results locally
-      ansible.builtin.unarchive:
-        src: "{{ hpl_local_result_dir }}/raw/{{ inventory_hostname }}.tar.gz"
-        dest: "{{ hpl_local_result_dir }}/raw/{{ inventory_hostname }}"
-        remote_src: true
+      ansible.builtin.command:
+        argv:
+          - tar
+          - -xzf
+          - "{{ hpl_local_result_dir }}/raw/{{ inventory_hostname }}.tar.gz"
+          - -C
+          - "{{ hpl_local_result_dir }}/raw/{{ inventory_hostname }}"
+      changed_when: true
       delegate_to: localhost
       become: false
       when: hpl_host_result_directory.stat.exists
