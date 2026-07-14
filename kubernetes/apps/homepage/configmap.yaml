@@ -156,8 +156,14 @@ data:
     - search:
         provider: duckduckgo
         target: _blank
+    - openmeteo:
+        label: Local Weather
+        units: imperial
+        cache: 5
+        format:
+          maximumFractionDigits: 0
     - datetime:
-        text_size: xl
+        text_size: sm
         format:
           dateStyle: short
           timeStyle: short
