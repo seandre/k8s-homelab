@@ -300,10 +300,6 @@ body {
     padding: 0 var(--docs-content-pad-x) 3vh;
   }
 
-  .VPDoc.has-sidebar .content-container {
-    margin-right: 0;
-    margin-left: 0;
-  }
 }
 
 @media (min-width: 1280px) {
