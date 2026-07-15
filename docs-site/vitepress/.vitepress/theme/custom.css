@@ -47,7 +47,7 @@
   --docs-content-width: 800px;
   --docs-content-pad-x: 24px;
   --docs-content-gap: 16px;
-  --docs-toc-width: 172px;
+  --docs-toc-width: 200px;
 }
 
 @media (min-width: 800px) {
@@ -310,6 +310,7 @@ body {
 
   .VPDoc .aside-container,
   .VPDoc .aside-curtain {
+    right: 0;
     width: var(--docs-toc-width);
   }
 
