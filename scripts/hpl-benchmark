@@ -24,6 +24,16 @@ die() {
   exit 1
 }
 
+say() {
+  # Console output is informational. A closed display stream must not change
+  # the benchmark status or interfere with the durable result log.
+  local format="$1"
+  shift
+  trap '' PIPE
+  printf "${format}" "$@" 2>/dev/null || true
+  trap - PIPE
+}
+
 update_upstream() {
   mkdir -p "${CACHE_ROOT}"
 
@@ -65,7 +75,7 @@ update_upstream() {
   printf '%s\n' "${revision}" > "${revision_tmp}"
   mv "${revision_tmp}" "${REVISION_FILE}"
 
-  printf 'Selected top500-benchmark revision %s\n' "${revision}"
+  say 'Selected top500-benchmark revision %s\n' "${revision}"
 }
 
 selected_revision() {
@@ -95,14 +105,37 @@ format_command() {
   printf '\n'
 }
 
+LOG_TAIL_PID=""
+
+stop_log_tail() {
+  if [[ -n "${LOG_TAIL_PID}" ]]; then
+    kill "${LOG_TAIL_PID}" 2>/dev/null || true
+    wait "${LOG_TAIL_PID}" 2>/dev/null || true
+    LOG_TAIL_PID=""
+  fi
+}
+
+trap stop_log_tail EXIT
+
 run_logged() {
   local log_file="$1"
   shift
 
+  # Make the log—not the terminal—the command's output destination. When a
+  # terminal is present, tail mirrors new log content for live progress. If
+  # that display stream closes, the foreground Ansible process retains its
+  # independent file descriptors and continues recording the complete run.
+  if [[ -t 1 ]]; then
+    tail -n 0 -f "${log_file}" &
+    LOG_TAIL_PID=$!
+  fi
+
   set +e
-  "$@" 2>&1 | tee -a "${log_file}"
-  local status=${PIPESTATUS[0]}
+  "$@" >> "${log_file}" 2>&1
+  local status=$?
   set -e
+
+  stop_log_tail
   return "${status}"
 }
 
@@ -199,7 +232,7 @@ run_profile() {
     printf '\n'
   } > "${log_file}"
 
-  printf 'Logging %s benchmark at revision %s to %s\n' "${profile}" "${revision}" "${log_file}"
+  say 'Logging %s benchmark at revision %s to %s\n' "${profile}" "${revision}" "${log_file}"
 
   local preflight_status=0
   run_logged "${log_file}" "${preflight_command[@]}" || preflight_status=$?
@@ -220,7 +253,7 @@ run_profile() {
     die "upstream benchmark failed with status ${upstream_status}; see ${log_file}"
   fi
 
-  printf 'Benchmark complete: %s\n' "${log_file}"
+  say 'Benchmark complete: %s\n' "${log_file}"
 }
 
 main() {

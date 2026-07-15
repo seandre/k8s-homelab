@@ -88,7 +88,7 @@ Every invocation writes a raw log here:
 benchmark-results/<UTC-timestamp>-<short-sha>/<profile>.log
 ```
 
-The header records the full upstream SHA, profile, mode, remote build root, and exact preflight and upstream commands. The footer records the upstream exit status. The directory is ignored by Git.
+The header records the full upstream SHA, profile, mode, remote build root, and exact preflight and upstream commands. The footer records the upstream exit status. Ansible writes directly to this file; when launched from an interactive terminal, a separate `tail` process mirrors it for live progress without putting the benchmark behind a fragile output pipe. The directory is ignored by Git.
 
 Find the HPL result rows and residual checks in both logs:
 
