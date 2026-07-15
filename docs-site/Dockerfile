@@ -1,5 +1,7 @@
 FROM node:22.22.0-alpine AS build
 
+RUN apk add --no-cache git
+
 WORKDIR /workspace/docs-site/vitepress
 COPY docs-site/vitepress/package.json ./package.json
 COPY docs-site/vitepress/package-lock.json ./package-lock.json
