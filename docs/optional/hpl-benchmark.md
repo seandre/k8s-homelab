@@ -85,10 +85,18 @@ These commands use the selected revision and its revision-specific build. They f
 Every invocation writes a raw log here:
 
 ```text
-benchmark-results/<UTC-timestamp>-<short-sha>/<profile>.log
+benchmark-results/<UTC-timestamp>-<short-sha>/
+├── <profile>.log
+└── <profile>.md
 ```
 
-The header records the full upstream SHA, profile, mode, remote build root, and exact preflight and upstream commands. The footer records the upstream exit status. Ansible writes directly to this file; when launched from an interactive terminal, a separate `tail` process mirrors it for live progress without putting the benchmark behind a fragile output pipe. The directory is ignored by Git.
+The `.log` header records the full upstream SHA, profile, mode, remote build root, and exact preflight and upstream commands. Its footer records the upstream exit status. Ansible writes directly to this file; when launched from an interactive terminal, a separate `tail` process mirrors it for live progress without putting the benchmark behind a fragile output pipe. The `.md` sidecar summarizes the outcome, GFLOPS, solve time, matrix and block sizes, MPI layout, approximate matrix storage, residual, hosts, revision, and timestamps. The directory is ignored by Git.
+
+To create or recreate a sidecar for an existing raw log:
+
+```bash
+scripts/hpl-benchmark summarize benchmark-results/<run>/<profile>.log
+```
 
 Find the HPL result rows and residual checks in both logs:
 

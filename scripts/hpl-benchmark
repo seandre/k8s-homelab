@@ -16,6 +16,7 @@ Usage:
   scripts/hpl-benchmark k3s
   scripts/hpl-benchmark baremetal
   scripts/hpl-benchmark <k3s|baremetal> benchmark
+  scripts/hpl-benchmark summarize <benchmark-log>
 EOF
 }
 
@@ -139,6 +140,52 @@ run_logged() {
   return "${status}"
 }
 
+generate_summary() {
+  local log_file="$1"
+  local summary_file="${log_file%.log}.md"
+  local summary_tmp="${summary_file}.tmp.$$"
+  local profile hosts
+
+  profile="$(awk -F= '$1 == "profile" { print $2; exit }' "${log_file}")"
+  case "${profile}" in
+    k3s)
+      hosts='`k8s-control-01`, `k8s-worker-01`, `k8s-worker-02`'
+      ;;
+    baremetal)
+      hosts='`okd-cp-01`, `okd-cp-02`, `okd-cp-03`'
+      ;;
+    *)
+      hosts=unknown
+      ;;
+  esac
+
+  local summary_status=0
+  set +e
+  awk '{ gsub(/\\n/, "\n"); gsub(/\\\"/, "\""); print }' "${log_file}" | \
+    awk \
+      -v "raw_log=$(basename "${log_file}")" \
+      -v "hosts=${hosts}" \
+      -f "${SCRIPT_DIR}/hpl-summary.awk" > "${summary_tmp}"
+  summary_status=$?
+  set -e
+
+  mv "${summary_tmp}" "${summary_file}"
+  return "${summary_status}"
+}
+
+summarize_log() {
+  local log_file="$1"
+  [[ -f "${log_file}" ]] || die "benchmark log does not exist: ${log_file}"
+  [[ "${log_file}" == *.log ]] || die "benchmark log must end in .log: ${log_file}"
+
+  local summary_status=0
+  generate_summary "${log_file}" || summary_status=$?
+  if (( summary_status != 0 )); then
+    die "the log reports success but contains no HPL result row; wrote diagnostic summary to ${log_file%.log}.md"
+  fi
+  say 'Summary written to %s\n' "${log_file%.log}.md"
+}
+
 run_profile() {
   local profile="$1"
   local mode="$2"
@@ -238,7 +285,11 @@ run_profile() {
   run_logged "${log_file}" "${preflight_command[@]}" || preflight_status=$?
   printf '\npreflight_exit_status=%s\n' "${preflight_status}" >> "${log_file}"
   if (( preflight_status != 0 )); then
-    printf 'upstream_exit_status=not-run\n' >> "${log_file}"
+    {
+      printf 'upstream_exit_status=not-run\n'
+      printf 'finished_utc=%s\n' "$(date -u +%Y%m%dT%H%M%SZ)"
+    } >> "${log_file}"
+    generate_summary "${log_file}" || true
     die "preflight failed for ${profile}; see ${log_file}"
   fi
 
@@ -249,16 +300,27 @@ run_profile() {
     printf 'finished_utc=%s\n' "$(date -u +%Y%m%dT%H%M%SZ)"
   } >> "${log_file}"
 
+  local summary_status=0
+  generate_summary "${log_file}" || summary_status=$?
+
   if (( upstream_status != 0 )); then
     die "upstream benchmark failed with status ${upstream_status}; see ${log_file}"
   fi
+  if (( summary_status != 0 )); then
+    die "upstream completed but no HPL result was found; see ${log_file%.log}.md"
+  fi
 
-  say 'Benchmark complete: %s\n' "${log_file}"
+  say 'Benchmark complete: %s\nSummary: %s\n' "${log_file}" "${log_file%.log}.md"
 }
 
 main() {
   if (( $# == 1 )) && [[ "$1" == "update" ]]; then
     update_upstream
+    return
+  fi
+
+  if (( $# == 2 )) && [[ "$1" == "summarize" ]]; then
+    summarize_log "$2"
     return
   fi
 
