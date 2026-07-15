@@ -156,21 +156,21 @@ body {
   border-right: 1px solid var(--vp-c-divider);
 }
 
-/* Keep the 18.75rem rail, but let each item provide its own small inset. */
+/* Keep the rail edge-anchored with a compact, readable inner gutter. */
 @media (min-width: 960px) {
   .Layout .VPSidebar {
     width: var(--vp-sidebar-width);
     padding-right: 16px;
-    padding-left: 0;
+    padding-left: 8px;
   }
 
   .Layout .VPSidebar .curtain {
     margin-right: -16px;
-    margin-left: 0;
+    margin-left: -8px;
   }
 
   .Layout .VPSidebar .group {
-    width: calc(var(--vp-sidebar-width) - 16px);
+    width: calc(var(--vp-sidebar-width) - 24px);
   }
 
   .Layout .VPNavBar.has-sidebar .title {
