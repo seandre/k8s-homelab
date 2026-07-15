@@ -158,34 +158,34 @@ body {
 
 /* Keep the 18.75rem rail, but let each item provide its own small inset. */
 @media (min-width: 960px) {
-  .VPSidebar {
+  .Layout .VPSidebar {
     width: var(--vp-sidebar-width);
     padding-right: 16px;
     padding-left: 0;
   }
 
-  .VPSidebar .curtain {
+  .Layout .VPSidebar .curtain {
     margin-right: -16px;
     margin-left: 0;
   }
 
-  .VPSidebar .group {
+  .Layout .VPSidebar .group {
     width: calc(var(--vp-sidebar-width) - 16px);
   }
 
-  .VPNavBar.has-sidebar .title {
+  .Layout .VPNavBar.has-sidebar .title {
     width: var(--vp-sidebar-width);
     padding-right: 16px;
     padding-left: 16px;
   }
 
-  .VPNavBar.has-sidebar .content,
-  .VPLocalNav.has-sidebar,
-  .VPContent.has-sidebar {
+  .Layout .VPNavBar.has-sidebar .content,
+  .Layout .VPLocalNav.has-sidebar,
+  .Layout .VPContent.has-sidebar {
     padding-left: var(--vp-sidebar-width);
   }
 
-  .VPNavBar.has-sidebar .content {
+  .Layout .VPNavBar.has-sidebar .content {
     padding-right: 16px;
   }
 }
