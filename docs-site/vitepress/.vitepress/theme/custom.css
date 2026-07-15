@@ -42,7 +42,7 @@
   --vp-font-family-mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   --vp-code-font-size: 0.875em;
   --vp-layout-max-width: 1520px;
-  --vp-sidebar-width: 300px;
+  --vp-sidebar-width: 272px;
 }
 
 .dark {
@@ -117,6 +117,13 @@ body {
 
 .VPNavBarSocialLinks {
   border-left: 0 !important;
+}
+
+/* Replaced by the three-state Light/Dark/Auto selector in the nav slot. */
+.VPNavBarAppearance,
+.VPNavScreenAppearance,
+.VPNavBarExtra .item.appearance {
+  display: none !important;
 }
 
 .VPNavBarSocialLinks .VPSocialLink,
