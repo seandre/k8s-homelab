@@ -77,6 +77,7 @@ onBeforeUnmount(() => {
 .ThemeSelector {
   position: relative;
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   height: 2.25rem;
   margin-left: 0.5rem;

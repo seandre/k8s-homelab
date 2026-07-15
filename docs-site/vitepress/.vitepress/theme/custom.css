@@ -42,7 +42,7 @@
   --vp-font-family-mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   --vp-code-font-size: 0.875em;
   --vp-layout-max-width: 1520px;
-  --vp-sidebar-width: 272px;
+  --vp-sidebar-width: 300px;
 }
 
 .dark {
@@ -154,6 +154,40 @@ body {
 /* Sidebar and table of contents */
 .VPSidebar {
   border-right: 1px solid var(--vp-c-divider);
+}
+
+/* Grimmory/Starlight uses an 18.75rem rail with a 1rem inline inset. */
+@media (min-width: 960px) {
+  .VPSidebar {
+    width: var(--vp-sidebar-width);
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .VPSidebar .curtain {
+    margin-right: -16px;
+    margin-left: -16px;
+  }
+
+  .VPSidebar .group {
+    width: calc(var(--vp-sidebar-width) - 32px);
+  }
+
+  .VPNavBar.has-sidebar .title {
+    width: var(--vp-sidebar-width);
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .VPNavBar.has-sidebar .content,
+  .VPLocalNav.has-sidebar,
+  .VPContent.has-sidebar {
+    padding-left: var(--vp-sidebar-width);
+  }
+
+  .VPNavBar.has-sidebar .content {
+    padding-right: 16px;
+  }
 }
 
 .VPSidebarItem .text {
