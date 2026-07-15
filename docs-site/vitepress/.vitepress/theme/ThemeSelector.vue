@@ -27,10 +27,6 @@ function applyMode(nextMode) {
   }));
 }
 
-function handleChange(event) {
-  applyMode(event.target.value);
-}
-
 function handleStorage(event) {
   if (event.key === appearanceKey) {
     mode.value = normalizeMode(event.newValue);
@@ -48,29 +44,61 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <label class="ThemeSelector" title="Color theme">
-    <svg v-if="mode === 'light'" class="mode-icon" viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41" />
-    </svg>
-    <svg v-else-if="mode === 'dark'" class="mode-icon" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M20.5 14.3A8.5 8.5 0 0 1 9.7 3.5 8.5 8.5 0 1 0 20.5 14.3Z" />
-    </svg>
-    <svg v-else class="mode-icon" viewBox="0 0 24 24" aria-hidden="true">
-      <rect x="3" y="4" width="18" height="13" rx="2" />
-      <path d="M8 21h8M12 17v4" />
-    </svg>
+  <div
+    class="ThemeSelector"
+    :class="`is-${mode}`"
+    role="radiogroup"
+    aria-label="Color theme"
+  >
+    <span class="selection" aria-hidden="true" />
 
-    <select :value="mode" aria-label="Color theme" @change="handleChange">
-      <option value="light">Light</option>
-      <option value="dark">Dark</option>
-      <option value="auto">Auto</option>
-    </select>
+    <button
+      type="button"
+      class="theme-option"
+      :class="{active: mode === 'light'}"
+      role="radio"
+      :aria-checked="mode === 'light'"
+      title="Light theme"
+      @click="applyMode('light')"
+    >
+      <svg class="mode-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="4" />
+        <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41" />
+      </svg>
+      <span class="visually-hidden">Light</span>
+    </button>
 
-    <svg class="chevron" viewBox="0 0 12 12" aria-hidden="true">
-      <path d="m3 4.5 3 3 3-3" />
-    </svg>
-  </label>
+    <button
+      type="button"
+      class="theme-option"
+      :class="{active: mode === 'auto'}"
+      role="radio"
+      :aria-checked="mode === 'auto'"
+      title="Use system theme"
+      @click="applyMode('auto')"
+    >
+      <svg class="mode-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="3" y="4" width="18" height="13" rx="2" />
+        <path d="M8 21h8M12 17v4" />
+      </svg>
+      <span class="visually-hidden">Auto</span>
+    </button>
+
+    <button
+      type="button"
+      class="theme-option"
+      :class="{active: mode === 'dark'}"
+      role="radio"
+      :aria-checked="mode === 'dark'"
+      title="Dark theme"
+      @click="applyMode('dark')"
+    >
+      <svg class="mode-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M20.5 14.3A8.5 8.5 0 0 1 9.7 3.5 8.5 8.5 0 1 0 20.5 14.3Z" />
+      </svg>
+      <span class="visually-hidden">Dark</span>
+    </button>
+  </div>
 </template>
 
 <style scoped>
@@ -79,10 +107,12 @@ onBeforeUnmount(() => {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
+  width: 6rem;
   height: 2.25rem;
   margin-left: 0.5rem;
+  padding: 2px;
   border: 1px solid var(--vp-c-border);
-  border-radius: 0.5rem;
+  border-radius: 999px;
   color: var(--vp-c-text-2);
   background: var(--vp-input-bg-color);
   transition: color 150ms ease, border-color 150ms ease, background-color 150ms ease;
@@ -95,9 +125,55 @@ onBeforeUnmount(() => {
   background: var(--vp-c-brand-soft);
 }
 
-.mode-icon {
+.selection {
   position: absolute;
-  left: 0.55rem;
+  top: 2px;
+  left: 2px;
+  width: 1.875rem;
+  height: 1.875rem;
+  border-radius: 50%;
+  background: var(--vp-c-bg-elv);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 18%);
+  transition: transform 180ms ease;
+}
+
+.is-auto .selection {
+  transform: translateX(1.875rem);
+}
+
+.is-dark .selection {
+  transform: translateX(3.75rem);
+}
+
+.theme-option {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 1.875rem;
+  width: 1.875rem;
+  height: 1.875rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+  transition: color 150ms ease;
+}
+
+.theme-option:hover,
+.theme-option.active {
+  color: var(--vp-c-brand-1);
+}
+
+.theme-option:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: 1px;
+}
+
+.mode-icon {
   width: 1rem;
   height: 1rem;
   fill: none;
@@ -105,49 +181,11 @@ onBeforeUnmount(() => {
   stroke-width: 1.75;
   stroke-linecap: round;
   stroke-linejoin: round;
-  pointer-events: none;
-}
-
-select {
-  width: 5.75rem;
-  height: 100%;
-  padding: 0 1.5rem 0 1.85rem;
-  border: 0;
-  outline: 0;
-  appearance: none;
-  color: inherit;
-  background: transparent;
-  font: inherit;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-select option {
-  color: var(--vp-c-text-1);
-  background: var(--vp-c-bg-elv);
-}
-
-.chevron {
-  position: absolute;
-  right: 0.5rem;
-  width: 0.75rem;
-  height: 0.75rem;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  pointer-events: none;
 }
 
 @media (max-width: 479px) {
   .ThemeSelector {
     margin-left: 0;
-  }
-
-  select {
-    width: 5.25rem;
   }
 }
 </style>
