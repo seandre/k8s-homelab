@@ -156,21 +156,21 @@ body {
   border-right: 1px solid var(--vp-c-divider);
 }
 
-/* Grimmory/Starlight uses an 18.75rem rail with a 1rem inline inset. */
+/* Keep the 18.75rem rail, but let each item provide its own small inset. */
 @media (min-width: 960px) {
   .VPSidebar {
     width: var(--vp-sidebar-width);
     padding-right: 16px;
-    padding-left: 16px;
+    padding-left: 0;
   }
 
   .VPSidebar .curtain {
     margin-right: -16px;
-    margin-left: -16px;
+    margin-left: 0;
   }
 
   .VPSidebar .group {
-    width: calc(var(--vp-sidebar-width) - 32px);
+    width: calc(var(--vp-sidebar-width) - 16px);
   }
 
   .VPNavBar.has-sidebar .title {
@@ -199,6 +199,10 @@ body {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.VPSidebarItem.level-0 > .item {
+  padding-left: 0.625rem;
 }
 
 .VPSidebarItem.level-1 > .item {
