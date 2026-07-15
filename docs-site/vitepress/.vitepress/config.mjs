@@ -35,9 +35,6 @@ export default defineConfig({
 
   themeConfig: {
     siteTitle: 'seandre homelab',
-    nav: [
-      {text: 'Documentation', link: '/'},
-    ],
     sidebar: [
       {text: 'Home', link: '/'},
       {

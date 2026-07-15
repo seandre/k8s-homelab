@@ -178,14 +178,18 @@ body {
 }
 
 .VPDocAsideOutline .outline-title {
+  margin-bottom: 0.25rem;
   font-size: 0.75rem;
   font-weight: 700;
+  line-height: 1.75;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
 .VPDocAsideOutline .outline-link {
-  line-height: 1.45;
+  padding: 0.3rem 0;
+  line-height: 1.6;
+  white-space: normal;
 }
 
 .VPDocAsideOutline .outline-link.active {
@@ -195,6 +199,18 @@ body {
 /* Article typography and content */
 .VPDoc.has-sidebar .content-container {
   max-width: 800px;
+}
+
+@media (min-width: 1280px) {
+  .VPDoc .aside {
+    max-width: 200px;
+    padding-left: 24px;
+  }
+
+  .VPDoc .aside-container,
+  .VPDoc .aside-curtain {
+    width: 176px;
+  }
 }
 
 .vp-doc {
