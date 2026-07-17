@@ -146,13 +146,784 @@ If copying or recreating the template is not convenient, create `bastion-01` man
 
 ## Step 6: Create Required `bastion-01`
 
-Create the first VM on `pve-02` with 4 vCPU, 12 GB RAM, and approximately 300 GB on `local-lvm`. Reserve `192.168.40.33` for management and configure `192.168.40.29` and `192.168.40.31` as secondary addresses on the same interface after confirming they are unused.
+`bastion-01` is an infrastructure dependency, not a general-purpose server. It owns the management address, the two future OKD virtual IPs, the forwarding DNS service, the OKD load-balancer listeners, and the Nexus artifact repository.
 
-Install `dnsmasq`, HAProxy, and Nexus. Bind Nexus HTTPS to `.33:443`; bind OKD API and machine-config frontends to `.29:6443` and `.29:22623`; bind OKD application ingress to `.31:80` and `.31:443`. Keep management access limited to trusted LAN/VPN networks.
+| Purpose | Address and port | Process |
+|---|---|---|
+| Bastion management | `192.168.40.33:22` | OpenSSH |
+| Forwarding DNS | `192.168.40.33:53` TCP/UDP | `dnsmasq` |
+| Nexus HTTPS | `192.168.40.33:443` | HAProxy to Nexus on loopback |
+| OKD API | `192.168.40.29:6443` | HAProxy |
+| OKD machine config | `192.168.40.29:22623` | HAProxy |
+| OKD application HTTP | `192.168.40.31:80` | HAProxy |
+| OKD application HTTPS | `192.168.40.31:443` | HAProxy |
 
-Do not activate the OKD private records or UniFi Forward Domain until `dnsmasq` is healthy and forwards unmatched public TXT queries. The complete DNS, load-balancer, install, and validation sequence is in [Build 04: Compact OKD](compact-okd.md).
+::: warning Hold the OKD DNS gate
+Do not create the `okd.lab.seandre.dev` records or the UniFi Forward Domain during this step. First prove that `dnsmasq` forwards unmatched public queries, Nexus works through trusted HTTPS, and HAProxy owns the intended listeners. Activate the OKD records later in [Build 04: Compact OKD](compact-okd.md#gate-3-activate-private-dns).
+:::
 
-Back up Nexus configuration and blob storage to storage outside this VM and perform a restore test before relying on it.
+### 6.1 Clone and size the VM
+
+In the Proxmox UI, right-click `ubuntu-2604-template` and select **Clone**. Use:
+
+| Setting | Value |
+|---|---|
+| Target node | `pve-02` |
+| VM ID | Any unused ID, such as `200` |
+| Name | `bastion-01` |
+| Mode | **Full Clone** |
+| Target storage | `local-lvm` |
+
+A full clone keeps the bastion independent of the template's base disk. Before starting it, edit its hardware:
+
+- 1 socket and 4 cores;
+- `12288 MiB` RAM with ballooning disabled for predictable Nexus memory;
+- VirtIO network device on `vmbr0`, with the VLAN tag blank;
+- QEMU Guest Agent enabled; and
+- **Start at boot** enabled, with startup order `10` and an approximately 60-second startup delay.
+
+Select **Hardware → Hard Disk (`scsi0`) → Disk Action → Resize**. The resize dialog asks how much to add, not the desired final size. For a 32 GiB template disk, enter `268` to produce a 300 GiB disk.
+
+::: tip Resize arithmetic
+`32 GiB + 268 GiB = 300 GiB`. Entering `300` would create a 332 GiB virtual disk.
+:::
+
+Start the VM, sign in through the Proxmox console, and inspect its disk and LVM layout:
+
+```bash
+lsblk -o NAME,SIZE,FSTYPE,MOUNTPOINTS
+sudo pvs
+sudo vgs
+sudo lvs
+```
+
+If the disk is `/dev/sda` and the LVM physical volume is partition 3, grow the partition, physical volume, and root logical volume:
+
+```bash
+sudo growpart /dev/sda 3
+sudo pvresize /dev/sda3
+sudo lvextend -r -l +100%FREE /dev/mapper/ubuntu--vg-ubuntu--lv
+```
+
+If the disk is `/dev/vda`, substitute `/dev/vda` and `/dev/vda3`. Verify the result:
+
+```bash
+lsblk
+sudo pvs
+sudo vgs
+sudo lvs
+df -h /
+sudo fstrim -av
+```
+
+The virtual disk should be approximately 300 GiB, and `/` should contain nearly all of the available space.
+
+### 6.2 Give the clone a unique identity
+
+Set the final hostname:
+
+```bash
+sudo hostnamectl set-hostname bastion-01
+sudoedit /etc/hosts
+```
+
+Change the `127.0.1.1` entry to:
+
+```text
+127.0.1.1 bastion-01.lab.seandre.dev bastion-01
+```
+
+Because this VM came from a manually installed template, regenerate its machine identity and SSH host keys before treating it as a distinct host:
+
+```bash
+sudo rm -f /etc/machine-id
+sudo systemd-machine-id-setup
+sudo rm -f /var/lib/dbus/machine-id
+sudo ln -s /etc/machine-id /var/lib/dbus/machine-id
+
+sudo rm -f /etc/ssh/ssh_host_*
+sudo ssh-keygen -A
+sudo systemctl restart ssh
+```
+
+Confirm the result. A successful `sshd -t` produces no output:
+
+```bash
+hostnamectl
+cat /etc/machine-id
+sudo sshd -t
+```
+
+### 6.3 Prove that all three addresses are free
+
+Install the duplicate-address probe and identify the VM interface:
+
+```bash
+sudo apt update
+sudo apt install -y iputils-arping
+ip -brief link
+```
+
+The interface will normally be `ens18`. Substitute its actual name below:
+
+```bash
+sudo arping -D -I ens18 -c 3 192.168.40.33
+sudo arping -D -I ens18 -c 3 192.168.40.29
+sudo arping -D -I ens18 -c 3 192.168.40.31
+```
+
+Each test should receive no replies. Also confirm in UniFi that none of the addresses belongs to another client or reservation.
+
+::: danger Stop on a duplicate
+Do not assign an address that answers the duplicate-address probe. Find and correct the reservation or active client first; an IP collision on the future API or ingress endpoint can make an OKD installation fail unpredictably.
+:::
+
+### 6.4 Configure static networking
+
+Use the Proxmox console for this change because applying Netplan will disconnect the temporary DHCP session. Find the existing configuration:
+
+```bash
+ls -l /etc/netplan
+```
+
+Edit the existing YAML file, commonly `50-cloud-init.yaml` or `00-installer-config.yaml`:
+
+```bash
+sudoedit /etc/netplan/50-cloud-init.yaml
+```
+
+Use the actual filename and interface name:
+
+```yaml
+network:
+  version: 2
+  ethernets:
+    ens18:
+      dhcp4: false
+      addresses:
+        - 192.168.40.33/24
+        - 192.168.40.29/24
+        - 192.168.40.31/24
+      routes:
+        - to: default
+          via: 192.168.40.1
+      nameservers:
+        addresses:
+          - 192.168.40.1
+        search:
+          - lab.seandre.dev
+```
+
+Generate and safely test the configuration:
+
+```bash
+sudo netplan generate
+sudo netplan try
+```
+
+Confirm the change when prompted, then apply and validate it:
+
+```bash
+sudo netplan apply
+ip -4 address show dev ens18
+ip route
+resolvectl status ens18
+ping -c 3 192.168.40.1
+ping -c 3 1.1.1.1
+getent hosts ubuntu.com
+```
+
+All three addresses should appear on `ens18`, with one default route through `192.168.40.1`. Reboot once and reconnect from `utility-01`:
+
+```bash
+sudo reboot
+```
+
+```bash
+ssh -i ~/.ssh/id_ed25519_github sean@192.168.40.33
+```
+
+If the template did not already contain the management public key, install it from `utility-01`:
+
+```bash
+ssh-copy-id -i ~/.ssh/id_ed25519_github.pub sean@192.168.40.33
+```
+
+### 6.5 Install the service baseline
+
+On `bastion-01`, update the guest and install the required packages:
+
+```bash
+sudo apt update
+sudo apt full-upgrade -y
+sudo apt install -y \
+  dnsmasq \
+  haproxy \
+  dnsutils \
+  curl \
+  jq \
+  rsync \
+  unzip \
+  ufw \
+  ca-certificates \
+  qemu-guest-agent
+```
+
+Confirm the guest agent remains active:
+
+```bash
+systemctl is-active qemu-guest-agent
+```
+
+### 6.6 Configure `dnsmasq` as a forwarding resolver
+
+Create only the forwarding configuration. The OKD record file deliberately remains absent until Build 04:
+
+```bash
+sudoedit /etc/dnsmasq.d/00-bastion.conf
+```
+
+```ini
+interface=ens18
+listen-address=127.0.0.1
+listen-address=192.168.40.33
+bind-dynamic
+
+no-resolv
+server=192.168.40.1
+
+cache-size=1000
+domain-needed
+bogus-priv
+```
+
+Test, enable, and restart the resolver:
+
+```bash
+sudo dnsmasq --test
+sudo systemctl enable dnsmasq
+sudo systemctl restart dnsmasq
+systemctl is-active dnsmasq
+```
+
+Validate ordinary and TXT forwarding:
+
+```bash
+dig @192.168.40.33 A ubuntu.com
+dig @192.168.40.33 TXT seandre.dev
+dig @192.168.40.33 TXT _acme-challenge.seandre.dev
+dig @192.168.40.1 TXT _acme-challenge.seandre.dev
+```
+
+An empty `_acme-challenge` answer is normal when no challenge is active. The important result is that `192.168.40.33` responds promptly with the same DNS status as the upstream resolver. Confirm that the future private API record is still inactive:
+
+```bash
+dig @192.168.40.33 A api.okd.lab.seandre.dev
+```
+
+::: tip Split-DNS boundary
+Never create a local authoritative copy of the entire `seandre.dev` zone. `dnsmasq` must continue forwarding unmatched names and ACME TXT queries to the public DNS path.
+:::
+
+### 6.7 Install a pinned Nexus Repository release
+
+This build pins Nexus Repository `3.94.0-12`, the current Sonatype release when this procedure was written on July 16, 2026. Check the [Sonatype download page](https://help.sonatype.com/en/download.html) and release notes before deliberately changing the version; do not silently replace the pin with `latest`. The official archive includes its required Java runtime.
+
+Download the archive and its SHA-256 file:
+
+```bash
+cd /tmp
+
+curl --fail --location --remote-name \
+  https://download.sonatype.com/nexus/3/nexus-3.94.0-12-linux-x86_64.tar.gz
+
+curl --fail --location --remote-name \
+  https://download.sonatype.com/nexus/3/nexus-3.94.0-12-linux-x86_64.tar.gz.sha256
+
+sha256sum --check nexus-3.94.0-12-linux-x86_64.tar.gz.sha256
+```
+
+Do not continue unless the checksum reports `OK`. Create a dedicated account and extract the application:
+
+```bash
+sudo useradd \
+  --system \
+  --home-dir /opt/sonatype \
+  --create-home \
+  --shell /bin/bash \
+  nexus
+
+sudo tar \
+  --extract \
+  --gzip \
+  --file /tmp/nexus-3.94.0-12-linux-x86_64.tar.gz \
+  --directory /opt/sonatype
+
+sudo ln -s /opt/sonatype/nexus-3.94.0-12 /opt/sonatype/nexus
+sudo mkdir -p /opt/sonatype/sonatype-work/nexus3/etc
+sudo chown -R nexus:nexus /opt/sonatype
+```
+
+Create the runtime-user file:
+
+```bash
+sudoedit /opt/sonatype/nexus/bin/nexus.rc
+```
+
+```ini
+run_as_user="nexus"
+```
+
+Configure Nexus to listen only on loopback; HAProxy will provide trusted HTTPS:
+
+```bash
+sudoedit /opt/sonatype/sonatype-work/nexus3/etc/nexus.properties
+```
+
+```ini
+application-host=127.0.0.1
+application-port=8081
+nexus-context-path=/
+```
+
+Apply ownership:
+
+```bash
+sudo chown nexus:nexus \
+  /opt/sonatype/nexus/bin/nexus.rc \
+  /opt/sonatype/sonatype-work/nexus3/etc/nexus.properties
+```
+
+Sonatype recommends a dedicated non-root account, at least 65,536 file descriptors, and a reverse proxy for TLS termination. Review the current [system requirements](https://help.sonatype.com/en/sonatype-nexus-repository-system-requirements.html) and [reverse-proxy guidance](https://help.sonatype.com/en/run-behind-a-reverse-proxy.html) before a major upgrade.
+
+### 6.8 Run Nexus as a system service
+
+Create the service unit:
+
+```bash
+sudoedit /etc/systemd/system/nexus.service
+```
+
+```ini
+[Unit]
+Description=Sonatype Nexus Repository
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=forking
+User=nexus
+Group=nexus
+LimitNOFILE=65536
+ExecStart=/opt/sonatype/nexus/bin/nexus start
+ExecStop=/opt/sonatype/nexus/bin/nexus stop
+Restart=on-abort
+TimeoutStartSec=600
+TimeoutStopSec=600
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Activate it:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now nexus
+```
+
+The first startup can take several minutes. Follow it with either command:
+
+```bash
+sudo journalctl -u nexus -f
+```
+
+```bash
+sudo tail -f /opt/sonatype/sonatype-work/nexus3/log/nexus.log
+```
+
+In another session, wait until Nexus responds and confirm port `8081` is loopback-only:
+
+```bash
+curl --fail http://127.0.0.1:8081/
+sudo ss -ltnp | grep 8081
+```
+
+The listener must be `127.0.0.1:8081`, not `0.0.0.0:8081` or one of the VM addresses.
+
+### 6.9 Issue the private Nexus endpoint's public certificate
+
+Create a dedicated Cloudflare API token with **Zone / DNS / Edit** and **Zone / Zone / Read**, restricted to the single `seandre.dev` zone. Store it in the password manager. DNS-01 does not require a public A/AAAA record or any inbound internet port forward.
+
+Install Certbot and its Cloudflare plugin:
+
+```bash
+sudo apt install -y certbot python3-certbot-dns-cloudflare
+sudo install -d -m 0700 /etc/letsencrypt/secrets
+sudoedit /etc/letsencrypt/secrets/cloudflare.ini
+```
+
+Add the restricted token:
+
+```ini
+dns_cloudflare_api_token = YOUR_RESTRICTED_TOKEN
+```
+
+Protect the credential and request the certificate. Replace the email address with one you control:
+
+```bash
+sudo chmod 0600 /etc/letsencrypt/secrets/cloudflare.ini
+
+sudo certbot certonly \
+  --dns-cloudflare \
+  --dns-cloudflare-credentials /etc/letsencrypt/secrets/cloudflare.ini \
+  --dns-cloudflare-propagation-seconds 30 \
+  --non-interactive \
+  --agree-tos \
+  --email YOUR_EMAIL_ADDRESS \
+  --domains nexus.lab.seandre.dev
+```
+
+Build the combined PEM file HAProxy expects:
+
+```bash
+sudo install -d -m 0700 /etc/haproxy/certs
+sudo sh -c 'cat /etc/letsencrypt/live/nexus.lab.seandre.dev/fullchain.pem /etc/letsencrypt/live/nexus.lab.seandre.dev/privkey.pem > /etc/haproxy/certs/nexus.lab.seandre.dev.pem'
+sudo chmod 0600 /etc/haproxy/certs/nexus.lab.seandre.dev.pem
+```
+
+::: warning Secret handling
+Do not place the Cloudflare token, the certificate private key, the Nexus initial password, or a diagnostic containing them in Git. Public trust authenticates a private endpoint; it does not make that endpoint safe to expose to the internet.
+:::
+
+### 6.10 Configure Nexus and OKD listeners in HAProxy
+
+Preserve the package default and replace the active configuration:
+
+```bash
+sudo cp /etc/haproxy/haproxy.cfg /etc/haproxy/haproxy.cfg.package-default
+sudoedit /etc/haproxy/haproxy.cfg
+```
+
+```text
+global
+    log /dev/log local0
+    log /dev/log local1 notice
+    chroot /var/lib/haproxy
+    stats socket /run/haproxy/admin.sock mode 660 level admin
+    user haproxy
+    group haproxy
+    daemon
+    ssl-default-bind-options ssl-min-ver TLSv1.2
+
+defaults
+    log global
+    mode tcp
+    option tcplog
+    timeout connect 10s
+    timeout client 5m
+    timeout server 5m
+    timeout check 10s
+
+frontend nexus_https
+    bind 192.168.40.33:443 ssl crt /etc/haproxy/certs/nexus.lab.seandre.dev.pem
+    mode http
+    option httplog
+    option forwardfor
+    acl trusted src 192.168.2.0/24 192.168.10.0/24 192.168.40.0/24
+    http-request deny unless trusted
+    http-request set-header X-Forwarded-Proto https
+    http-request set-header X-Forwarded-Port 443
+    default_backend nexus_http
+
+backend nexus_http
+    mode http
+    server nexus 127.0.0.1:8081 check
+
+frontend okd_api_6443
+    bind 192.168.40.29:6443
+    mode tcp
+    default_backend okd_api_nodes
+
+backend okd_api_nodes
+    mode tcp
+    balance roundrobin
+    server okd-cp-01 192.168.40.26:6443 check check-ssl verify none inter 10s fall 3 rise 2
+    server okd-cp-02 192.168.40.27:6443 check check-ssl verify none inter 10s fall 3 rise 2
+    server okd-cp-03 192.168.40.28:6443 check check-ssl verify none inter 10s fall 3 rise 2
+
+frontend okd_machine_config_22623
+    bind 192.168.40.29:22623
+    mode tcp
+    default_backend okd_machine_config_nodes
+
+backend okd_machine_config_nodes
+    mode tcp
+    balance roundrobin
+    server okd-cp-01 192.168.40.26:22623 check inter 10s fall 3 rise 2
+    server okd-cp-02 192.168.40.27:22623 check inter 10s fall 3 rise 2
+    server okd-cp-03 192.168.40.28:22623 check inter 10s fall 3 rise 2
+
+frontend okd_ingress_http
+    bind 192.168.40.31:80
+    mode tcp
+    default_backend okd_ingress_http_nodes
+
+backend okd_ingress_http_nodes
+    mode tcp
+    balance source
+    server okd-cp-01 192.168.40.26:80 check inter 10s fall 3 rise 2
+    server okd-cp-02 192.168.40.27:80 check inter 10s fall 3 rise 2
+    server okd-cp-03 192.168.40.28:80 check inter 10s fall 3 rise 2
+
+frontend okd_ingress_https
+    bind 192.168.40.31:443
+    mode tcp
+    default_backend okd_ingress_https_nodes
+
+backend okd_ingress_https_nodes
+    mode tcp
+    balance source
+    server okd-cp-01 192.168.40.26:443 check check-ssl verify none inter 10s fall 3 rise 2
+    server okd-cp-02 192.168.40.27:443 check check-ssl verify none inter 10s fall 3 rise 2
+    server okd-cp-03 192.168.40.28:443 check check-ssl verify none inter 10s fall 3 rise 2
+```
+
+Validate and activate HAProxy:
+
+```bash
+sudo haproxy -c -f /etc/haproxy/haproxy.cfg
+sudo systemctl enable haproxy
+sudo systemctl restart haproxy
+systemctl is-active haproxy
+```
+
+::: tip Expected backend state
+The OKD backends will report `DOWN` until the three OKD nodes exist and expose their services. That does not prevent HAProxy from starting or owning the frontends. Nexus should be the only healthy backend at this stage.
+:::
+
+These frontends implement the current [OKD user-managed load-balancer requirements](https://docs.okd.io/latest/installing/installing_bare_metal/bare-metal-postinstallation-configuration.html). Port `22623` is restricted later to the server VLAN; the API and ingress endpoints are reachable only from documented trusted networks.
+
+### 6.11 Automate certificate deployment
+
+Create a Certbot deployment hook:
+
+```bash
+sudoedit /etc/letsencrypt/renewal-hooks/deploy/haproxy-nexus
+```
+
+```sh
+#!/bin/sh
+set -eu
+
+PEM=/etc/haproxy/certs/nexus.lab.seandre.dev.pem
+TMP="${PEM}.new"
+
+cat \
+  /etc/letsencrypt/live/nexus.lab.seandre.dev/fullchain.pem \
+  /etc/letsencrypt/live/nexus.lab.seandre.dev/privkey.pem \
+  > "$TMP"
+
+chmod 0600 "$TMP"
+mv "$TMP" "$PEM"
+
+haproxy -c -f /etc/haproxy/haproxy.cfg
+systemctl reload haproxy
+```
+
+Secure the hook and test the renewal path:
+
+```bash
+sudo chmod 0750 /etc/letsencrypt/renewal-hooks/deploy/haproxy-nexus
+sudo /etc/letsencrypt/renewal-hooks/deploy/haproxy-nexus
+sudo certbot renew --dry-run
+systemctl list-timers certbot.timer
+```
+
+### 6.12 Add only the private Nexus DNS record
+
+Add these private/local records in UniFi:
+
+| Record | Address |
+|---|---:|
+| `bastion-01.lab.seandre.dev` | `192.168.40.33` |
+| `nexus.lab.seandre.dev` | `192.168.40.33` |
+
+Do not add public Cloudflare A/AAAA records for either name. From `utility-01`, validate private resolution and trusted TLS:
+
+```bash
+dig @192.168.40.1 A nexus.lab.seandre.dev +short
+curl --fail https://nexus.lab.seandre.dev/
+openssl s_client \
+  -connect nexus.lab.seandre.dev:443 \
+  -servername nexus.lab.seandre.dev \
+  -verify_return_error </dev/null
+```
+
+### 6.13 Complete Nexus onboarding
+
+Read the one-time password locally on `bastion-01`:
+
+```bash
+sudo cat /opt/sonatype/sonatype-work/nexus3/admin.password
+```
+
+Open `https://nexus.lab.seandre.dev`, sign in as `admin`, and:
+
+1. replace the temporary password with a unique password stored in the password manager;
+2. choose Community Edition unless a Pro license is intentional;
+3. disable anonymous access initially;
+4. confirm **Settings → Repository → Data Store** shows H2;
+5. record the installed version, `3.94.0-12`; and
+6. leave OKD mirroring unconfigured until the connected cluster is healthy.
+
+::: details Why H2 is acceptable here
+This is initially a small artifact repository. Sonatype documents H2 for deployments below 200,000 requests per day or 100,000 components. Move to PostgreSQL before exceeding that profile or turning Nexus into a larger shared dependency. Container-based H2 deployments are not supported, which is why this guide uses the official archive and a system service.
+:::
+
+### 6.14 Restrict incoming traffic
+
+Enable UFW from the Proxmox console and keep that console open until a new SSH session succeeds:
+
+```bash
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+```
+
+Allow SSH from the documented trusted networks:
+
+```bash
+sudo ufw allow from 192.168.2.0/24 to 192.168.40.33 port 22 proto tcp
+sudo ufw allow from 192.168.10.0/24 to 192.168.40.33 port 22 proto tcp
+sudo ufw allow from 192.168.40.0/24 to 192.168.40.33 port 22 proto tcp
+```
+
+Allow DNS from those networks:
+
+```bash
+sudo ufw allow from 192.168.2.0/24 to 192.168.40.33 port 53
+sudo ufw allow from 192.168.10.0/24 to 192.168.40.33 port 53
+sudo ufw allow from 192.168.40.0/24 to 192.168.40.33 port 53
+```
+
+Allow Nexus HTTPS:
+
+```bash
+sudo ufw allow from 192.168.2.0/24 to 192.168.40.33 port 443 proto tcp
+sudo ufw allow from 192.168.10.0/24 to 192.168.40.33 port 443 proto tcp
+sudo ufw allow from 192.168.40.0/24 to 192.168.40.33 port 443 proto tcp
+```
+
+Allow the OKD API and restrict machine-config traffic to the server VLAN:
+
+```bash
+sudo ufw allow from 192.168.2.0/24 to 192.168.40.29 port 6443 proto tcp
+sudo ufw allow from 192.168.10.0/24 to 192.168.40.29 port 6443 proto tcp
+sudo ufw allow from 192.168.40.0/24 to 192.168.40.29 port 6443 proto tcp
+sudo ufw allow from 192.168.40.0/24 to 192.168.40.29 port 22623 proto tcp
+```
+
+Allow OKD application ingress from the trusted networks:
+
+```bash
+sudo ufw allow from 192.168.2.0/24 to 192.168.40.31 port 80 proto tcp
+sudo ufw allow from 192.168.10.0/24 to 192.168.40.31 port 80 proto tcp
+sudo ufw allow from 192.168.40.0/24 to 192.168.40.31 port 80 proto tcp
+
+sudo ufw allow from 192.168.2.0/24 to 192.168.40.31 port 443 proto tcp
+sudo ufw allow from 192.168.10.0/24 to 192.168.40.31 port 443 proto tcp
+sudo ufw allow from 192.168.40.0/24 to 192.168.40.31 port 443 proto tcp
+```
+
+Enable and inspect the firewall:
+
+```bash
+sudo ufw enable
+sudo ufw status numbered
+```
+
+Open a new SSH session before closing the console or existing session. Never add an inbound rule for `8081`; Nexus must remain loopback-only.
+
+### 6.15 Validate the bastion checkpoint
+
+On `bastion-01`, confirm the service state and configuration syntax:
+
+```bash
+systemctl is-active ssh
+systemctl is-active qemu-guest-agent
+systemctl is-active dnsmasq
+systemctl is-active haproxy
+systemctl is-active nexus
+
+sudo dnsmasq --test
+sudo haproxy -c -f /etc/haproxy/haproxy.cfg
+sudo ss -ltnup
+```
+
+Expected listeners include:
+
+- `.33:53` TCP/UDP for `dnsmasq`;
+- `.33:443` for Nexus through HAProxy;
+- `.29:6443` and `.29:22623` for the OKD API frontends;
+- `.31:80` and `.31:443` for OKD ingress;
+- `127.0.0.1:8081` for Nexus itself; and
+- TCP `22` for SSH/socket activation.
+
+From `utility-01`, verify DNS, Nexus, and the HAProxy frontends:
+
+```bash
+dig @192.168.40.33 A ubuntu.com
+dig @192.168.40.33 TXT _acme-challenge.seandre.dev
+curl --fail https://nexus.lab.seandre.dev/
+nc -vz 192.168.40.29 6443
+nc -vz 192.168.40.29 22623
+nc -vz 192.168.40.31 80
+nc -vz 192.168.40.31 443
+```
+
+The `nc` checks prove that HAProxy owns the frontends. Application requests cannot succeed until the OKD nodes provide healthy backends.
+
+### 6.16 Back up and restore Nexus before relying on it
+
+Nexus stores metadata and configuration in its database and repository content in blob stores. They must be backed up together. Configure an **Admin – Backup H2 Database** task in Nexus, then preserve these paths in the same recovery set:
+
+```text
+/opt/sonatype/sonatype-work/nexus3/db
+/opt/sonatype/sonatype-work/nexus3/blobs
+/opt/sonatype/sonatype-work/nexus3/etc
+/opt/sonatype/sonatype-work/nexus3/keystores/node
+```
+
+The destination must be outside `bastion-01`, such as a NAS, Proxmox Backup Server, or another independently protected system. A second directory on the same VM disk is not a backup.
+
+For a consistent periodic offline copy, stop Nexus and copy the complete data directory to a timestamped directory on the external target:
+
+```bash
+sudo systemctl stop nexus
+sudo rsync -aHAX \
+  /opt/sonatype/sonatype-work/nexus3/ \
+  /mnt/EXTERNAL-BACKUP/nexus3-TIMESTAMP/
+sudo systemctl start nexus
+```
+
+Replace the example destination with the documented external mount and a real timestamp. Restore the copy into a disposable, isolated VM using the same pinned Nexus version, correct its ownership, and prove that repository configuration and a test artifact are present. Follow Sonatype's current [backup](https://help.sonatype.com/en/prepare-a-backup.html) and [H2 restore](https://help.sonatype.com/en/restore-an-h2-database.html) procedures.
+
+::: warning Recovery is the acceptance test
+A successful copy is not enough. Do not make Nexus an OKD dependency until the database and matching blob-store backup have been restored and a known test artifact has been downloaded from the restored instance.
+:::
+
+The required Step 6 checkpoint is complete when:
+
+| Done | Acceptance criterion |
+|:---:|---|
+| ☐ | `bastion-01` has 4 vCPU, 12 GiB RAM, and approximately 300 GiB on `local-lvm`. |
+| ☐ | `.33`, `.29`, and `.31` survive a reboot on the same interface. |
+| ☐ | SSH and Nexus management are limited to the trusted LAN/VPN networks. |
+| ☐ | `dnsmasq` answers on `.33:53` and forwards unmatched public TXT queries. |
+| ☐ | Nexus is reachable through trusted HTTPS on `nexus.lab.seandre.dev` and listens only on loopback behind HAProxy. |
+| ☐ | HAProxy owns the API, machine-config, and ingress frontends on the correct destination addresses. |
+| ☐ | Nexus database, blobs, configuration, and node identity have an external backup and a successful restore test. |
+| ☐ | No OKD private records or UniFi Forward Domain have been activated yet. |
 
 ## Optional Exercise: Create `k8s-worker-03`
 
