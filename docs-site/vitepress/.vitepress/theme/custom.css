@@ -378,9 +378,14 @@ body {
 .vp-doc h5,
 .vp-doc h6 {
   color: var(--vp-c-text-1);
-  font-weight: 600;
-  letter-spacing: normal;
   line-height: 1.2;
+}
+
+.vp-doc h1,
+.vp-doc h2,
+.vp-doc h3 {
+  font-weight: 700;
+  letter-spacing: -0.035em;
 }
 
 .vp-doc h1 {
@@ -515,7 +520,7 @@ body {
   border-color: var(--vp-c-divider) !important;
   border-radius: 0.5rem !important;
   background: var(--vp-c-bg-soft);
-  box-shadow: none;
+  box-shadow: var(--docs-surface-shadow);
   transition: border-color 150ms ease, background-color 150ms ease;
 }
 
