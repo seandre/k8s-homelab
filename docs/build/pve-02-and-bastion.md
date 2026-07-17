@@ -845,6 +845,14 @@ sudo ufw allow from 192.168.10.0/24 to 192.168.40.31 port 443 proto tcp
 sudo ufw allow from 192.168.40.0/24 to 192.168.40.31 port 443 proto tcp
 ```
 
+Allow only the three k3s nodes to reach the Glances API that Homepage will use. K3s masquerades this off-cluster traffic behind the node that currently runs the Homepage pod, so all three node addresses are required:
+
+```bash
+sudo ufw allow from 192.168.40.21 to 192.168.40.33 port 61208 proto tcp
+sudo ufw allow from 192.168.40.22 to 192.168.40.33 port 61208 proto tcp
+sudo ufw allow from 192.168.40.23 to 192.168.40.33 port 61208 proto tcp
+```
+
 Enable and inspect the firewall:
 
 ```bash
@@ -853,6 +861,110 @@ sudo ufw status numbered
 ```
 
 Open a new SSH session before closing the console or existing session. Never add an inbound rule for `8081`; Nexus must remain loopback-only.
+
+#### Publish host telemetry to Homepage
+
+Homepage now has a dedicated **Host Status** row for `pve-01`, `pve-02`, and `bastion-01`. The existing `pve-01` card already reads Glances. Install the same API service on the two new systems before expecting their cards to show CPU, RAM, swap, and uptime.
+
+This procedure pins Glances `4.5.5` in an isolated Python virtual environment rather than replacing distribution-managed Python packages. Glances web mode provides the REST API on TCP `61208`; Homepage's custom API widget reads `/api/4/all`. Review the upstream [Glances installation](https://github.com/nicolargo/glances#installation), [REST API security guidance](https://glances.readthedocs.io/en/latest/api/restful.html#security), and [Homepage custom API widget](https://gethomepage.dev/widgets/services/customapi/) before deliberately changing this design.
+
+On `pve-02`, open a root shell through SSH or the Proxmox console and install the runtime:
+
+```bash
+apt update
+apt install -y python3-venv lm-sensors
+python3 -m venv /opt/glances
+/opt/glances/bin/pip install --upgrade pip
+/opt/glances/bin/pip install 'glances[web]==4.5.5'
+install -d -m 0755 /etc/glances
+```
+
+Open `editor /etc/glances/glances.conf` and add:
+
+```ini
+[outputs]
+webui_allowed_hosts=localhost,127.0.0.1,192.168.40.25,pve-02.lab.seandre.dev
+```
+
+On `bastion-01`, install the same pinned runtime:
+
+```bash
+sudo apt update
+sudo apt install -y python3-venv lm-sensors
+sudo python3 -m venv /opt/glances
+sudo /opt/glances/bin/pip install --upgrade pip
+sudo /opt/glances/bin/pip install 'glances[web]==4.5.5'
+sudo install -d -m 0755 /etc/glances
+sudoedit /etc/glances/glances.conf
+```
+
+Use this host-specific configuration:
+
+```ini
+[outputs]
+webui_allowed_hosts=localhost,127.0.0.1,192.168.40.33,bastion-01.lab.seandre.dev
+```
+
+Create `/etc/systemd/system/glances.service` on both systems with `editor /etc/systemd/system/glances.service` on `pve-02` and `sudoedit /etc/systemd/system/glances.service` on `bastion-01`. The file content is identical:
+
+```ini
+[Unit]
+Description=Glances web monitoring API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/opt/glances/bin/glances -C /etc/glances/glances.conf -w
+Restart=on-failure
+RestartSec=5s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Reload systemd and activate the service on each system. Omit `sudo` in the `pve-02` root shell:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now glances
+systemctl is-enabled glances
+systemctl is-active glances
+curl --fail http://127.0.0.1:61208/api/4/status
+```
+
+The status endpoint should return JSON containing `"version":"4.5.5"`. The `webui_allowed_hosts` setting protects against DNS-rebinding requests, while UFW limits the bastion endpoint to the Kubernetes nodes. Do not forward TCP `61208` from the internet or expose it through public DNS.
+
+From `utility-01`, prove that the Homepage pod can reach both APIs through the same network path its widgets use:
+
+```bash
+kubectl -n homepage exec -i deployment/homepage -- node - <<'NODE'
+(async () => {
+  const endpoints = {
+    'pve-02': 'http://192.168.40.25:61208/api/4/status',
+    'bastion-01': 'http://192.168.40.33:61208/api/4/status',
+  };
+
+  for (const [name, url] of Object.entries(endpoints)) {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`${name}: HTTP ${response.status}`);
+    const status = await response.json();
+    console.log(`${name}: Glances ${status.version}`);
+  }
+})().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
+NODE
+```
+
+::: tip Why there is no CORS setting
+Homepage fetches service-widget data through its server-side proxy, not directly from the browser. The firewall rules and Glances host-header allowlist protect the internal API without opening browser-origin access.
+:::
 
 #### Validate the bastion checkpoint
 
@@ -864,6 +976,7 @@ systemctl is-active qemu-guest-agent
 systemctl is-active dnsmasq
 systemctl is-active haproxy
 systemctl is-active nexus
+systemctl is-active glances
 
 sudo dnsmasq --test
 sudo haproxy -c -f /etc/haproxy/haproxy.cfg
@@ -876,7 +989,8 @@ Expected listeners include:
 - `.33:443` for Nexus through HAProxy;
 - `.29:6443` and `.29:22623` for the OKD API frontends;
 - `.31:80` and `.31:443` for OKD ingress;
-- `127.0.0.1:8081` for Nexus itself; and
+- `127.0.0.1:8081` for Nexus itself;
+- `.33:61208` for Glances, restricted by UFW to the three k3s nodes; and
 - TCP `22` for SSH/socket activation.
 
 From `utility-01`, verify DNS, Nexus, and the HAProxy frontends:
@@ -932,6 +1046,7 @@ The required Step 6 checkpoint is complete when:
 | ☐ | `dnsmasq` answers on `.33:53` and forwards unmatched public TXT queries. |
 | ☐ | Nexus is reachable through trusted HTTPS on `nexus.lab.seandre.dev` and listens only on loopback behind HAProxy. |
 | ☐ | HAProxy owns the API, machine-config, and ingress frontends on the correct destination addresses. |
+| ☐ | Homepage shows live CPU, RAM, swap, and uptime for both `pve-02` and `bastion-01`. |
 | ☐ | Nexus database, blobs, configuration, and node identity have an external backup and a successful restore test. |
 | ☐ | No OKD private records or UniFi Forward Domain have been activated yet. |
 

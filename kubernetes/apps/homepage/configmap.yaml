@@ -15,6 +15,9 @@ data:
       Infrastructure:
         style: row
         columns: 3
+      Host Status:
+        style: row
+        columns: 3
       Host Hardware:
         style: row
         columns: 3
@@ -31,9 +34,14 @@ data:
             href: https://grafana.lab.seandre.dev
             description: Cluster dashboards
             icon: grafana.png
-        - Proxmox:
+        - UniFi:
+            href: https://unifi.ui.com
+            description: Network management
+            icon: unifi.png
+    - Host Status:
+        - pve-01:
             href: https://pve-01.lab.seandre.dev:8006
-            description: Virtualization host
+            description: Primary Proxmox host
             icon: proxmox.png
             widget:
               type: customapi
@@ -51,10 +59,46 @@ data:
                   format: percent
                 - field: uptime
                   label: Uptime
-        - UniFi:
-            href: https://unifi.ui.com
-            description: Network management
-            icon: unifi.png
+        - pve-02:
+            href: https://pve-02.lab.seandre.dev:8006
+            description: Standalone Proxmox host
+            icon: proxmox.png
+            widget:
+              type: customapi
+              url: http://192.168.40.25:61208/api/4/all
+              refreshInterval: 5000
+              mappings:
+                - field: cpu.total
+                  label: CPU
+                  format: percent
+                - field: mem.percent
+                  label: RAM
+                  format: percent
+                - field: memswap.percent
+                  label: Swap
+                  format: percent
+                - field: uptime
+                  label: Uptime
+        - bastion-01:
+            href: https://nexus.lab.seandre.dev
+            description: OKD infrastructure VM on pve-02
+            icon: mdi-server-network
+            widget:
+              type: customapi
+              url: http://192.168.40.33:61208/api/4/all
+              refreshInterval: 5000
+              mappings:
+                - field: cpu.total
+                  label: CPU
+                  format: percent
+                - field: mem.percent
+                  label: RAM
+                  format: percent
+                - field: memswap.percent
+                  label: Swap
+                  format: percent
+                - field: uptime
+                  label: Uptime
     - Host Hardware:
         - CPU Temperature:
             href: https://pve-01.lab.seandre.dev:8006
