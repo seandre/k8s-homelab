@@ -144,7 +144,7 @@ Use the same template conventions as `pve-01`:
 
 If copying or recreating the template is not convenient, create `bastion-01` manually with the same baseline. The important part is that the guest has SSH, `qemu-guest-agent`, and the same Ubuntu LVM layout used by the existing VMs.
 
-## Step 6: Create Required `bastion-01`
+## Step 6: Build and Secure `bastion-01`
 
 `bastion-01` is an infrastructure dependency, not a general-purpose server. It owns the management address, the two future OKD virtual IPs, the forwarding DNS service, the OKD load-balancer listeners, and the Nexus artifact repository.
 
@@ -162,7 +162,9 @@ If copying or recreating the template is not convenient, create `bastion-01` man
 Do not create the `okd.lab.seandre.dev` records or the UniFi Forward Domain during this step. First prove that `dnsmasq` forwards unmatched public queries, Nexus works through trusted HTTPS, and HAProxy owns the intended listeners. Activate the OKD records later in [Build 04: Compact OKD](compact-okd.md#gate-3-activate-private-dns).
 :::
 
-### 6.1 Clone and size the VM
+### Phase 1: Provision the VM
+
+#### Clone and size the VM
 
 In the Proxmox UI, right-click `ubuntu-2604-template` and select **Clone**. Use:
 
@@ -218,7 +220,7 @@ sudo fstrim -av
 
 The virtual disk should be approximately 300 GiB, and `/` should contain nearly all of the available space.
 
-### 6.2 Give the clone a unique identity
+#### Give the clone a unique identity
 
 Set the final hostname:
 
@@ -254,7 +256,7 @@ cat /etc/machine-id
 sudo sshd -t
 ```
 
-### 6.3 Prove that all three addresses are free
+#### Prove that all three addresses are free
 
 Install the duplicate-address probe and identify the VM interface:
 
@@ -278,7 +280,7 @@ Each test should receive no replies. Also confirm in UniFi that none of the addr
 Do not assign an address that answers the duplicate-address probe. Find and correct the reservation or active client first; an IP collision on the future API or ingress endpoint can make an OKD installation fail unpredictably.
 :::
 
-### 6.4 Configure static networking
+#### Configure static networking
 
 Use the Proxmox console for this change because applying Netplan will disconnect the temporary DHCP session. Find the existing configuration:
 
@@ -349,7 +351,9 @@ If the template did not already contain the management public key, install it fr
 ssh-copy-id -i ~/.ssh/id_ed25519_github.pub sean@192.168.40.33
 ```
 
-### 6.5 Install the service baseline
+### Phase 2: Establish the Core Services
+
+#### Install the service baseline
 
 On `bastion-01`, update the guest and install the required packages:
 
@@ -375,7 +379,7 @@ Confirm the guest agent remains active:
 systemctl is-active qemu-guest-agent
 ```
 
-### 6.6 Configure `dnsmasq` as a forwarding resolver
+#### Configure `dnsmasq` as a forwarding resolver
 
 Create only the forwarding configuration. The OKD record file deliberately remains absent until Build 04:
 
@@ -425,7 +429,9 @@ dig @192.168.40.33 A api.okd.lab.seandre.dev
 Never create a local authoritative copy of the entire `seandre.dev` zone. `dnsmasq` must continue forwarding unmatched names and ACME TXT queries to the public DNS path.
 :::
 
-### 6.7 Install a pinned Nexus Repository release
+### Phase 3: Install Nexus Repository
+
+#### Install a pinned Nexus Repository release
 
 This build pins Nexus Repository `3.94.0-12`, the current Sonatype release when this procedure was written on July 16, 2026. Check the [Sonatype download page](https://help.sonatype.com/en/download.html) and release notes before deliberately changing the version; do not silently replace the pin with `latest`. The official archive includes its required Java runtime.
 
@@ -496,7 +502,7 @@ sudo chown nexus:nexus \
 
 Sonatype recommends a dedicated non-root account, at least 65,536 file descriptors, and a reverse proxy for TLS termination. Review the current [system requirements](https://help.sonatype.com/en/sonatype-nexus-repository-system-requirements.html) and [reverse-proxy guidance](https://help.sonatype.com/en/run-behind-a-reverse-proxy.html) before a major upgrade.
 
-### 6.8 Run Nexus as a system service
+#### Run Nexus as a system service
 
 Create the service unit:
 
@@ -551,7 +557,9 @@ sudo ss -ltnp | grep 8081
 
 The listener must be `127.0.0.1:8081`, not `0.0.0.0:8081` or one of the VM addresses.
 
-### 6.9 Issue the private Nexus endpoint's public certificate
+### Phase 4: Publish the Services Securely
+
+#### Issue the private Nexus endpoint's public certificate
 
 Create a dedicated Cloudflare API token with **Zone / DNS / Edit** and **Zone / Zone / Read**, restricted to the single `seandre.dev` zone. Store it in the password manager. DNS-01 does not require a public A/AAAA record or any inbound internet port forward.
 
@@ -596,7 +604,7 @@ sudo chmod 0600 /etc/haproxy/certs/nexus.lab.seandre.dev.pem
 Do not place the Cloudflare token, the certificate private key, the Nexus initial password, or a diagnostic containing them in Git. Public trust authenticates a private endpoint; it does not make that endpoint safe to expose to the internet.
 :::
 
-### 6.10 Configure Nexus and OKD listeners in HAProxy
+#### Configure Nexus and OKD listeners in HAProxy
 
 Preserve the package default and replace the active configuration:
 
@@ -704,7 +712,7 @@ The OKD backends will report `DOWN` until the three OKD nodes exist and expose t
 
 These frontends implement the current [OKD user-managed load-balancer requirements](https://docs.okd.io/latest/installing/installing_bare_metal/bare-metal-postinstallation-configuration.html). Port `22623` is restricted later to the server VLAN; the API and ingress endpoints are reachable only from documented trusted networks.
 
-### 6.11 Automate certificate deployment
+#### Automate certificate deployment
 
 Create a Certbot deployment hook:
 
@@ -740,7 +748,7 @@ sudo certbot renew --dry-run
 systemctl list-timers certbot.timer
 ```
 
-### 6.12 Add only the private Nexus DNS record
+#### Add only the private Nexus DNS record
 
 Add these private/local records in UniFi:
 
@@ -760,7 +768,9 @@ openssl s_client \
   -verify_return_error </dev/null
 ```
 
-### 6.13 Complete Nexus onboarding
+### Phase 5: Harden and Validate the Bastion
+
+#### Complete Nexus onboarding
 
 Read the one-time password locally on `bastion-01`:
 
@@ -781,7 +791,7 @@ Open `https://nexus.lab.seandre.dev`, sign in as `admin`, and:
 This is initially a small artifact repository. Sonatype documents H2 for deployments below 200,000 requests per day or 100,000 components. Move to PostgreSQL before exceeding that profile or turning Nexus into a larger shared dependency. Container-based H2 deployments are not supported, which is why this guide uses the official archive and a system service.
 :::
 
-### 6.14 Restrict incoming traffic
+#### Restrict incoming traffic
 
 Enable UFW from the Proxmox console and keep that console open until a new SSH session succeeds:
 
@@ -844,7 +854,7 @@ sudo ufw status numbered
 
 Open a new SSH session before closing the console or existing session. Never add an inbound rule for `8081`; Nexus must remain loopback-only.
 
-### 6.15 Validate the bastion checkpoint
+#### Validate the bastion checkpoint
 
 On `bastion-01`, confirm the service state and configuration syntax:
 
@@ -883,7 +893,7 @@ nc -vz 192.168.40.31 443
 
 The `nc` checks prove that HAProxy owns the frontends. Application requests cannot succeed until the OKD nodes provide healthy backends.
 
-### 6.16 Back up and restore Nexus before relying on it
+#### Back up and restore Nexus before relying on it
 
 Nexus stores metadata and configuration in its database and repository content in blob stores. They must be backed up together. Configure an **Admin – Backup H2 Database** task in Nexus, then preserve these paths in the same recovery set:
 
