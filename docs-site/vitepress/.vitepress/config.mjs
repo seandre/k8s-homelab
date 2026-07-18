@@ -76,6 +76,7 @@ export default defineConfig({
           {text: '02 · Troubleshooting', link: '/operations/troubleshooting'},
           {text: '03 · Stable Admin Credentials', link: '/operations/stable-admin-credentials'},
           {text: '04 · Proxmox Public TLS', link: '/operations/proxmox-public-tls'},
+          {text: '05 · Proxmox Backup Server', link: '/operations/proxmox-backup-server'},
         ],
       },
     ],

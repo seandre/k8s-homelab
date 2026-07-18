@@ -18,3 +18,4 @@
 | 2026-07-12 | Separate `utility-01` automation from `bastion-01` infrastructure services | Installer tools and kubeconfig custody remain independent of the DNS, HAProxy, and Nexus services required by OKD |
 | 2026-07-12 | Keep RFC1918 records private and use Cloudflare only for ACME DNS-01 | Public trust does not require publishing homelab addresses or opening inbound HTTP/S |
 | 2026-07-12 | Install OKD connected before adding Nexus mirroring | This isolates installation failures from mirror and disconnected-registry failures |
+| 2026-07-17 | Run `pbs-01` as a VM on `pve-01` for the first `pve-02` recovery target | Separate physical hosts protect the Nexus copy from `pve-02` loss without requiring a NAS immediately; the design does not claim protection from `pve-01` or site loss |

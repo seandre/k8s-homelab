@@ -1018,7 +1018,7 @@ Nexus stores metadata and configuration in its database and repository content i
 /opt/sonatype/sonatype-work/nexus3/keystores/node
 ```
 
-The destination must be outside `bastion-01`, such as a NAS, Proxmox Backup Server, or another independently protected system. A second directory on the same VM disk is not a backup.
+The destination must be outside `bastion-01`, such as a NAS, Proxmox Backup Server, or another independently protected system. A second directory on the same VM disk is not a backup. For the current two-host architecture, follow [Operations 05: Proxmox Backup Server on `pve-01`](../operations/proxmox-backup-server.md). It creates a PBS VM and datastore on the physically separate `pve-01`, then uses a stopped whole-VM backup to preserve the database, blobs, configuration, and node identity together.
 
 For a consistent periodic offline copy, stop Nexus and copy the complete data directory to a timestamped directory on the external target:
 
@@ -1030,7 +1030,7 @@ sudo rsync -aHAX \
 sudo systemctl start nexus
 ```
 
-Replace the example destination with the documented external mount and a real timestamp. Restore the copy into a disposable, isolated VM using the same pinned Nexus version, correct its ownership, and prove that repository configuration and a test artifact are present. Follow Sonatype's current [backup](https://help.sonatype.com/en/prepare-a-backup.html) and [H2 restore](https://help.sonatype.com/en/restore-an-h2-database.html) procedures.
+The `rsync` example applies when the external target is mounted directly in the guest. When using the planned PBS target, do not add a separate guest mount merely to imitate this command: run the H2 task, make the stopped `bastion-01` backup, and complete the isolated restore drill in Operations 05. For any restore method, use the same pinned Nexus version, correct the data ownership when restoring files, and prove that repository configuration and a test artifact are present. Follow Sonatype's current [backup](https://help.sonatype.com/en/prepare-a-backup.html) and [H2 restore](https://help.sonatype.com/en/restore-an-h2-database.html) procedures.
 
 ::: warning Recovery is the acceptance test
 A successful copy is not enough. Do not make Nexus an OKD dependency until the database and matching blob-store backup have been restored and a known test artifact has been downloaded from the restored instance.

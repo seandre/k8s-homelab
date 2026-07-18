@@ -33,6 +33,7 @@ Storage identifiers are local to each standalone host. The single-disk `pve-02` 
 | `k8s-worker-01` | Active | `pve-01` | 4 | 16 GB | 150 GB | `vmdata` | `192.168.40.22` |
 | `k8s-worker-02` | Active | `pve-01` | 4 | 16 GB | 150 GB | `vmdata` | `192.168.40.23` |
 | `utility-01` | Active | `pve-01` | 2 | 8 GB | 100 GB | `vmdata` | `192.168.40.24` |
+| `pbs-01` | Planned for the Nexus recovery checkpoint | `pve-01` | 4 | 6 GB | 64 GB OS + 500 GB datastore | `vmdata` | proposed `192.168.40.34`; verify before reserving |
 | `bastion-01` | Planned after `pve-02` | `pve-02` | 4 | 12 GB | ~300 GB | `local-lvm` | `192.168.40.33` plus `.29`, `.31` |
 
 Build `utility-01` with [Build 02: Utility Automation Server](../build/utility-automation-server.md). `bastion-01` is a separate infrastructure dependency providing `dnsmasq`, HAProxy, and Nexus.
@@ -52,6 +53,7 @@ The three `okd-cp-*` hosts are physical, schedulable OKD control-plane nodes rat
 | Ingress VIP | `192.168.40.30` |
 | OKD API / ingress VIPs | `192.168.40.29` / `192.168.40.31` |
 | Bastion management | `192.168.40.33` |
+| PBS management | proposed `192.168.40.34`; verify in UniFi before reserving |
 
 The switch port/native network carries VLAN `40`, so Proxmox VM NIC VLAN tags remain blank. The workstation LAN is `192.168.10.0/24`; routing and security policy between it and the server VLAN are handled by UniFi.
 
@@ -70,6 +72,7 @@ Infrastructure names resolve to their host addresses. Kubernetes application nam
 | `pve-02.lab.home.arpa` | `192.168.40.25` |
 | `bastion-01.lab.home.arpa` | `192.168.40.33` |
 | `nexus.lab.seandre.dev` | `192.168.40.33` |
+| `pbs-01.lab.home.arpa` | proposed `192.168.40.34`; create only after collision check |
 | `okd-cp-01.okd.lab.seandre.dev` | `192.168.40.26` |
 | `okd-cp-02.okd.lab.seandre.dev` | `192.168.40.27` |
 | `okd-cp-03.okd.lab.seandre.dev` | `192.168.40.28` |

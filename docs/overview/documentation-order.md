@@ -31,3 +31,4 @@ Do not activate the OKD private records before `bastion-01` is operational. Do n
 2. [Troubleshooting](../operations/troubleshooting.md) contains network, ingress, TLS, and workload diagnostics.
 3. [Stable Admin Credentials](../operations/stable-admin-credentials.md) establishes durable Argo CD and Grafana passwords with macOS Keychain custody and stable Kubernetes Secrets.
 4. [Proxmox Public TLS](../operations/proxmox-public-tls.md) adds private `seandre.dev` aliases for `pve-01` and its VMs, then configures native Proxmox ACME DNS-01. **Complete.**
+5. [Proxmox Backup Server](../operations/proxmox-backup-server.md) builds `pbs-01` on `pve-01` and proves an isolated Nexus restore before Nexus becomes an OKD dependency.
