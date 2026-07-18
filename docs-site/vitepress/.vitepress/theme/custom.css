@@ -51,6 +51,7 @@
   --docs-content-gap: 16px;
   --docs-toc-width: 200px;
   --docs-section-divider: rgb(28 25 23 / 7%);
+  --docs-code-scrollbar-thumb: rgb(87 83 78 / 32%);
   --docs-surface-shadow:
     0 1px 2px -1px rgb(0 0 0 / 6%),
     0 2px 4px rgb(0 0 0 / 4%);
@@ -100,6 +101,7 @@
   --vp-code-block-bg: #111113;
   --vp-input-bg-color: rgb(38 38 38 / 70%);
   --docs-section-divider: rgb(250 250 249 / 8%);
+  --docs-code-scrollbar-thumb: rgb(163 163 163 / 30%);
   --docs-surface-shadow:
     0 1px 2px -1px rgb(0 0 0 / 32%),
     0 2px 6px rgb(0 0 0 / 24%);
@@ -499,6 +501,48 @@ body {
 
 .vp-doc div[class*='language-'] code {
   font-variant-ligatures: none;
+}
+
+.vp-doc div[class*='language-'],
+.vp-doc [class*='language-'] pre,
+.vp-code-group .tabs {
+  scrollbar-color: transparent transparent;
+  scrollbar-width: thin;
+}
+
+.vp-doc div[class*='language-']::-webkit-scrollbar,
+.vp-doc [class*='language-'] pre::-webkit-scrollbar,
+.vp-code-group .tabs::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.vp-doc div[class*='language-']::-webkit-scrollbar-track,
+.vp-doc [class*='language-'] pre::-webkit-scrollbar-track,
+.vp-code-group .tabs::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.vp-doc div[class*='language-']::-webkit-scrollbar-thumb,
+.vp-doc [class*='language-'] pre::-webkit-scrollbar-thumb,
+.vp-code-group .tabs::-webkit-scrollbar-thumb {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background-color: transparent;
+  background-clip: padding-box;
+  transition: background-color 180ms ease;
+}
+
+.vp-doc div[class*='language-'].is-code-scrolling,
+.vp-doc [class*='language-'] pre.is-code-scrolling,
+.vp-code-group .tabs.is-code-scrolling {
+  scrollbar-color: var(--docs-code-scrollbar-thumb) transparent;
+}
+
+.vp-doc div[class*='language-'].is-code-scrolling::-webkit-scrollbar-thumb,
+.vp-doc [class*='language-'] pre.is-code-scrolling::-webkit-scrollbar-thumb,
+.vp-code-group .tabs.is-code-scrolling::-webkit-scrollbar-thumb {
+  background-color: var(--docs-code-scrollbar-thumb);
 }
 
 .vp-doc table {
