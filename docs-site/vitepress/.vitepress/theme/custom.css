@@ -32,7 +32,7 @@
   --vp-nav-bg-color: color-mix(in srgb, #f3f1ef 97%, #fed7aa 3%);
   --vp-nav-screen-bg-color: var(--vp-nav-bg-color);
   --vp-sidebar-bg-color: var(--vp-c-bg);
-  --vp-local-nav-bg-color: rgb(250 250 249 / 92%);
+  --vp-local-nav-bg-color: var(--vp-nav-bg-color);
   --vp-code-bg: rgb(234 88 12 / 9%);
   --vp-code-block-bg: #f3f1ef;
   --vp-code-block-divider-color: var(--vp-c-divider);
@@ -92,7 +92,7 @@
   --vp-nav-bg-color: color-mix(in srgb, #0a0a0a 97%, #9a3412 3%);
   --vp-nav-screen-bg-color: var(--vp-nav-bg-color);
   --vp-sidebar-bg-color: var(--vp-c-bg);
-  --vp-local-nav-bg-color: rgb(23 23 23 / 92%);
+  --vp-local-nav-bg-color: var(--vp-nav-bg-color);
   --vp-code-bg: rgb(251 146 60 / 12%);
   --vp-code-block-bg: #111113;
   --vp-input-bg-color: rgb(38 38 38 / 70%);
