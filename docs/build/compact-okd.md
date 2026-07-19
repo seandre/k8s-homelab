@@ -40,6 +40,11 @@ using untagged access on Servers VLAN 40. UniFi reservations are set to
 `.26`, `.27`, and `.28`. Ubuntu uses `/etc/netplan/01-dhcp.yaml` with
 `eno1`, DHCPv4, DHCPv6 disabled, and `optional: true`; this avoids an
 indefinite `systemd-networkd-wait-online` boot wait after the offline install.
+
+The MacBook SSH aliases temporarily use the short UniFi-resolved names
+(`okd-cp-01`, `okd-cp-02`, and `okd-cp-03`). After Step 4 activates the
+`okd.lab.seandre.dev` records on `bastion-01` and UniFi conditional forwarding,
+change their `HostName` values back to the canonical OKD FQDNs.
 :::
 
 ## Step 1: Confirm the Starting Gate
