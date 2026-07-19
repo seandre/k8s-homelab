@@ -79,12 +79,14 @@ sudo apt install -y \
   curl \
   iputils-arping \
   jq \
-  libnmstate-bin \
   syslinux-utils
 
-command -v nmstatectl
 command -v isohybrid
 ```
+
+Ubuntu Resolute does not publish a `libnmstate-bin` (or `nmstate`) package in
+its standard repositories. The current Agent-based installer workflow below
+does not invoke `nmstatectl`, so it is intentionally not installed here.
 
 Download the installer and client from the same OKD release. Keep this in one shell session so the two variables remain set:
 
