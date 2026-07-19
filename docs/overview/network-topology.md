@@ -2,7 +2,7 @@
 
 This page records the live UniFi topology and the security boundaries around the homelab. Address assignments for individual hosts remain canonical in the [Infrastructure Reference](infrastructure-reference.md).
 
-Last verified: 2026-07-18, after the U6 Pro management-plane migration.
+Last verified: 2026-07-18, after the physical-port, administrative-scope, and configuration-drift hardening pass.
 
 ## Topology
 
@@ -24,13 +24,13 @@ The U6 Pro uplink is a small, explicit trunk: Management VLAN `50` is native for
 | `50` | Management / Management | `192.168.50.0/24` | UniFi infrastructure management | Yes | DHCP pool is `.100-.199`; the AP and PDU use controlled static addresses outside that pool. mDNS forwarding is off. |
 | `999` | Parking | None assigned | Unused physical ports | No | Use as the native network for an intentionally parked port, or disable the port. |
 
-WiFiman Teleport uses `192.168.2.0/24` and is the intended remote-access VPN. It has been tested over cellular from `192.168.2.4` to the Proxmox UI on `192.168.40.20:8006`. The separate standalone WireGuard server is disabled.
+WiFiman Teleport uses `192.168.2.0/24` and is the sole remote-access VPN. It has been tested over cellular from `192.168.2.4` to the Proxmox UI on `192.168.40.20:8006`. The unused standalone WireGuard network object and its `192.168.13.0/24` pool have been deleted.
 
 ## UDM Pro Port Map
 
 | Port | Connected device / role | Native network | Tagged networks | Current state |
 |---:|---|---|---|---|
-| `1` | `pve-01` | Servers VLAN `40` | All currently permitted | Active; this unrestricted tagged set is the highest-priority hardening item. Block all tags if the host does not need a trunk, or allow only explicitly required VM VLANs. |
+| `1` | `pve-01` | Servers VLAN `40` | Blocked | Active at 1 Gbps in native/access mode. Add only explicitly required tagged VLANs if a future VM needs them; do not restore an unrestricted trunk. |
 | `2` | Wired recovery | Default VLAN `1` | Currently not explicitly restricted | Keep available for recovery, but block all tagged VLANs. The recovery path has been tested at 1 Gbps. |
 | `3` | Living Room Apple TV | IoT VLAN `30` | Blocked | Active native-only access port. |
 | `4` | Unused | Review | Review | Disable it or move it to Parking VLAN `999`. |
@@ -71,9 +71,11 @@ Cross-VLAN AirPlay discovery and control from Main are working. mDNS currently f
 - IoT can use gateway DHCP, DNS, NTP, and mDNS plus the Internet, but cannot open the gateway management UI or initiate into Servers.
 - Services can use gateway DHCP, DNS, NTP, and mDNS, but has no Internet access and is blocked from other gateway services.
 - Servers can reach the gateway and Internet but cannot initiate connections into client, management, service, internal, or VPN zones.
-- Trusted currently has broad access to Management, Servers, Services, and IoT. A future policy should restrict administrative access to an explicit group of approved Macs and phones.
-- Management devices currently have broad initiation rules into Trusted, Servers, Services, and IoT. Replace those with only the traffic required for device operation and administration.
+- Trusted-to-Management and Trusted-to-Servers administrative access is restricted to the approved MacBook's stable Main-network identity. Trusted-to-IoT remains broad enough for device control, discovery, and Garmin-to-phone workflows.
+- The four broad Management-to-Trusted, Management-to-Servers, Management-to-Services, and Management-to-IoT initiation rules have been removed. Stateful response traffic and gateway access remain available to management devices.
+- The obsolete `Teleport-ServerVLAN` rule has been removed. Teleport retains unrestricted VPN-to-Trusted and VPN-to-Servers paths, independent of the Trusted admin-device scope.
 - Teleport gateway access remains at UniFi's system default. A narrower DNS/NTP allow plus management-plane block interrupted the tunnel and was rolled back.
+- All routed LAN DHCP domains are standardized on `lab.home.arpa`. LAN IPv6 interfaces are explicitly disabled with router advertisements off; both WANs use manual IPv6 preference with delegation disabled.
 
 ## Operational Notes
 
@@ -84,16 +86,15 @@ Cross-VLAN AirPlay discovery and control from Main are working. mDNS currently f
 - Test both UDP and TCP DNS, Internet access, management access, and cross-VLAN discovery after relevant changes.
 - Keep the DHCP pools unchanged unless a documented stable-address need arises. Use reservations or controlled static addresses outside the pool.
 - UniFi device SSH password authentication should be disabled when not required, or replaced with key-only authentication.
-- DHCP search domains currently drift between `home.arpa`, `lab.home.arpa`, and blank. Standardize them separately from the canonical private split-DNS zone, `lab.seandre.dev`.
-- IPv6 has partial or legacy settings. Either configure it consistently across the active networks or disable it consistently.
+- Treat `lab.home.arpa` as the DHCP search domain and `lab.seandre.dev` as the canonical private split-DNS zone; they serve different purposes.
+- If IPv6 is introduced later, document and enable it deliberately across the required LAN and WAN paths rather than restoring partial legacy flags.
 
 ## Hardening Backlog
 
-1. Restrict tagged VLANs on UDM port 1 and harden the recovery and unused access ports.
-2. Create an explicit admin-device group; narrow Trusted access to Management and Servers.
-3. Remove unnecessary Management-initiated cross-zone rules.
-4. Narrow mDNS network and service scope through the supported UI.
-5. Disable or harden UniFi device SSH, remove the obsolete `Teleport-ServerVLAN` rule, and delete the disabled WireGuard object if it will not be reused.
-6. Standardize DHCP domain and IPv6 intent, export a post-change backup, and complete a documented restore drill.
+1. Block tagged VLANs on recovery port 2, and disable ports 4 and 6 or move them to Parking VLAN `999`.
+2. If a future Proxmox guest needs another VLAN, allow only that explicit VLAN on port 1 after documenting the requirement.
+3. Narrow mDNS network and service scope through the supported UI.
+4. Disable UniFi device SSH when it is not required, or replace password authentication with key-only access.
+5. Export a post-change backup, revoke the temporary API key, remove the local API-header file after controller work is complete, and perform a documented restore drill.
 
 The broader physical-reliability backlog is a UPS, a second AP or WAN path if justified, and deliberate cabling and failover tests.

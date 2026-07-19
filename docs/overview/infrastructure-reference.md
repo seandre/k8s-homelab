@@ -54,14 +54,15 @@ The [Network Topology and UniFi Policy](network-topology.md) documents the compl
 | Subnet | `192.168.40.0/24` |
 | VLAN ID | `40` |
 | Gateway and DNS | `192.168.40.1` |
-| Installed legacy guest domain | `lab.home.arpa` |
+| Routed LAN DHCP domain | `lab.home.arpa` |
 | Canonical private split-DNS zone | `lab.seandre.dev` |
+| IPv6 | Explicitly disabled on LANs; WAN delegation disabled |
 | Ingress VIP | `192.168.40.30` |
 | OKD API / ingress VIPs | `192.168.40.29` / `192.168.40.31` |
 | Bastion management | `192.168.40.33` |
 | PBS management | `pbs-01.lab.seandre.dev` (`192.168.40.34`); active and reserved |
 
-The switch port/native network carries VLAN `40`, so Proxmox VM NIC VLAN tags remain blank. The primary workstation LAN is Main/Trusted VLAN `20` at `192.168.20.0/24`; Default VLAN `1` at `192.168.10.0/24` is retained as a wired recovery network. Routing and security policy between those networks and the server VLAN are handled by UniFi.
+The switch port/native network carries VLAN `40`, so Proxmox VM NIC VLAN tags remain blank. UDM port 1 is hardened as a native/access Servers port with all tagged VLANs blocked. The primary workstation LAN is Main/Trusted VLAN `20` at `192.168.20.0/24`; Default VLAN `1` at `192.168.10.0/24` is retained as a wired recovery network. Administrative access from Trusted to Management and Servers is limited to the approved MacBook, while Teleport retains separate VPN access to Trusted and Servers.
 
 ## Active Internal DNS
 

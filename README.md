@@ -63,6 +63,7 @@ Last verified: 2026-07-18.
 - `bastion-01` owns `.33`, `.29`, and `.31` and runs DNS forwarding, HAProxy, Nexus, and Glances; the OKD DNS records remain inactive
 - `pbs-01.lab.seandre.dev` runs on `pve-01` and holds a verified, protected stopped backup of `bastion-01`; the isolated Nexus artifact restore test passed
 - UniFi UDM Pro Intrusion Prevention was identified as the cause of intermittent SSH/TCP timeouts and adjusted
+- UniFi segmentation hardening is active: `pve-01` uses an access-only Servers port, Trusted administrative paths are MacBook-scoped, broad Management-initiated rules are removed, Teleport is the sole remote-user VPN, and DHCP/IPv6 drift is resolved
 - Next sequence: repair and dry-run the Nexus Certbot deployment hook, install the missing OKD clients on `utility-01`, then prepare and install connected compact OKD on the three Ryzen systems
 
 ## Repo Map
