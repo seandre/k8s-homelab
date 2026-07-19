@@ -1,6 +1,6 @@
 # Build 04: Connected Compact OKD on the Ryzen Nodes
 
-> Status: planned. `pve-02`, `bastion-01`, and `pbs-01` are operational, and the Nexus recovery test has passed. The three Ryzen systems are on hand, but their storage preparation and OKD installation have not started. Keep the OKD DNS records inactive until Step 4.
+> Status: planned, with the temporary-Ubuntu benchmark path selected. `pve-02`, `bastion-01`, and `pbs-01` are operational, and the Nexus recovery test has passed. Install temporary Ubuntu on each Ryzen system, benchmark all three, and preserve the results before generating or booting OKD media. Keep the OKD DNS records inactive until Step 4.
 
 This tutorial installs a connected, Agent-based compact OKD cluster on the three HP EliteDesk 805 G8 systems. Each system is a schedulable control-plane node; there are no separate compute nodes. The existing VM-based k3s cluster remains intact as the rollback and management environment.
 
@@ -133,7 +133,11 @@ The `openshift-install version` output must identify `4.22.0-okd-scos.7` and its
 
 ## Step 3: Inventory and Prepare Each Ryzen Node
 
-Perform this step on one node at a time so chassis, NIC, and SSD identities cannot be crossed.
+Temporary Ubuntu and the HPL benchmark are part of the selected build path. Perform this step on one node at a time so chassis, NIC, and SSD identities cannot be crossed, then benchmark the three completed nodes together.
+
+::: tip Do not set a static Ubuntu address while offline
+During the disconnected Ubuntu installation, leave the onboard NIC on automatic/DHCP and choose **Continue without network**. Do not enter `.26`, `.27`, or `.28` in the installer. Before the first cabled boot, create the corresponding UniFi DHCP reservation. Ubuntu receives that reserved address by DHCP; the later OKD Agent configuration assigns the same address statically.
+:::
 
 1. Install the intended 1 TB SSD.
 2. Label the chassis with its intended `okd-cp-*` identity and keep Ethernet disconnected during the temporary Ubuntu installation.
@@ -141,7 +145,7 @@ Perform this step on one node at a time so chassis, NIC, and SSD identities cann
 4. Power on and press `F10` repeatedly to open HP Computer Setup.
 5. Record the chassis serial, firmware version, installed memory, onboard NIC MAC, SSD model, and SSD serial in the private asset inventory.
 6. Update all three systems to the same stable HP firmware before continuing.
-7. If benchmarking, install and onboard temporary Ubuntu exactly as described in [Optional 05: Top500 HPL Benchmark](../optional/hpl-benchmark.md#install-temporary-ubuntu-on-the-ryzen-nodes). The node remains offline during installation, then uses DHCP with a UniFi reservation for its future `.26`, `.27`, or `.28` address after it is connected to an access/native Servers VLAN `40` switch port.
+7. Install and onboard temporary Ubuntu exactly as described in [Temporary Ubuntu and Top500 HPL Benchmark](../optional/hpl-benchmark.md#install-temporary-ubuntu-on-the-ryzen-nodes). The node remains offline during installation, then uses DHCP with a UniFi reservation for its future `.26`, `.27`, or `.28` address after it is connected to an access/native Servers VLAN `40` switch port.
 
 Apply a consistent firmware baseline:
 
@@ -157,7 +161,7 @@ Apply a consistent firmware baseline:
 | After power loss | Power on | Returns a cluster node to service after power restoration |
 | Boot order after install | Internal SSD before USB/network | Prevents an accidental reinstall |
 
-If temporary Ubuntu is installed for the benchmark, collect the inventory with these commands. Otherwise use an Ubuntu live environment and do not install it merely for inventory:
+On each temporary Ubuntu installation, collect the inventory with these commands:
 
 ```bash
 hostnamectl
@@ -178,7 +182,7 @@ Replace `<INTERFACE>` with the wired interface, commonly `eno1`. Do not record a
 
 Confirm that each intended installation disk is at least 900 GB and that there is only one disk of that size. The later root-device hint deliberately selects a non-rotating disk of at least 900 GB; this excludes normal USB installer media but would match two installed 1 TB SSDs.
 
-If temporary Ubuntu is installed on the intended SSD, check drive health and run the same small synchronous-write test on every node:
+Check drive health and run the same small synchronous-write test on every temporary Ubuntu node:
 
 ```bash
 sudo apt update
@@ -204,7 +208,7 @@ Replace `<INSTALL_DISK>` with the recorded SSD device, such as `/dev/nvme0n1` or
 
 The published minimum for a control-plane node is 4 CPUs, 16 GB RAM, 100 GB storage, and 300 IOPS. These nodes meet the installation minimum, but 16 GB leaves little capacity for applications. Plan the documented 32 GB upgrade after acceptance.
 
-If temporary Ubuntu is installed, complete [Optional 05: Top500 HPL Benchmark](../optional/hpl-benchmark.md) now. Back up its results before continuing because OKD will erase the temporary installation. The Ubuntu DHCP reservations may remain for address continuity, but the final Agent configuration—not Ubuntu netplan—provides each node's static OKD address.
+Complete [Temporary Ubuntu and Top500 HPL Benchmark](../optional/hpl-benchmark.md) now. Back up its results before continuing because OKD will erase the temporary installations. The Ubuntu DHCP reservations may remain for address continuity, but the final Agent configuration—not Ubuntu netplan—provides each node's static OKD address.
 
 Fill in this worksheet before creating `agent-config.yaml`:
 

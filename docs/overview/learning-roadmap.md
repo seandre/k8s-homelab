@@ -12,7 +12,7 @@ The platform baseline is working. New work should now teach day-2 operations rat
 4. ☑ Standalone `pve-02` is active with [Build 03: `pve-02` and `bastion-01`](../build/pve-02-and-bastion.md).
 5. ☑ `bastion-01` runs `dnsmasq`, HAProxy, Nexus, and Glances on `pve-02`; the OKD DNS records remain intentionally inactive.
 6. ☑ [`pbs-01` on `pve-01`](../operations/proxmox-backup-server.md) protects `bastion-01`; the H2 task, stopped backup, PBS verification, protected snapshot, and isolated Nexus artifact restore all passed.
-7. ☐ Prepare the three Ryzen systems and install [Build 04: Connected Compact OKD](../build/compact-okd.md).
+7. ◐ Install temporary Ubuntu on the three Ryzen systems, complete the selected [Top500 HPL benchmark](../optional/hpl-benchmark.md), preserve the results, and then install [Build 04: Connected Compact OKD](../build/compact-okd.md).
 8. ☐ Wait for every ClusterOperator to stabilize, then add trusted wildcard ingress and named API certificates. Never replace `api-int` TLS.
 9. ☐ Retain the tested Nexus backup, then add a narrowly scoped OKD release and Operator mirror.
 10. ☐ Upgrade Ryzen-node memory to 32 GB one node at a time with drain and health checks.

@@ -1,14 +1,28 @@
-# Top500 HPL Benchmark Before OKD
+# Temporary Ubuntu and Top500 HPL Benchmark Before OKD
 
-This optional benchmark compares the three running k3s VMs with the three Ryzen systems before OKD overwrites the Ryzen disks. The homelab code is a thin wrapper around the current [`geerlingguy/top500-benchmark`](https://github.com/geerlingguy/top500-benchmark) playbook.
+This is the selected preparation path for the three Ryzen systems. Install temporary Ubuntu on all three nodes, validate their hardware and storage, compare them with the running k3s VMs, preserve the results, and only then allow OKD to overwrite their disks. The homelab code is a thin wrapper around the current [`geerlingguy/top500-benchmark`](https://github.com/geerlingguy/top500-benchmark) playbook.
 
-The wrapper updates upstream only when explicitly requested. It records the exact `master` commit and uses that same revision for both profiles, so a later upstream change cannot silently alter one side of the comparison. Skipping this benchmark does not block the OKD build.
+The wrapper updates upstream only when explicitly requested. It records the exact `master` commit and uses that same revision for both profiles, so a later upstream change cannot silently alter one side of the comparison.
+
+::: tip IP-address decision
+Do **not** enter `192.168.40.26`, `.27`, or `.28` in the offline Ubuntu installer. Leave the onboard NIC set to automatic/DHCP, accept that it has no lease while the cable is disconnected, and choose **Continue without network**.
+
+After Ubuntu is installed and the MAC address is known, create the matching UniFi DHCP reservation while the node is still powered off. Connect the cable and boot; Ubuntu then receives its reserved address by DHCP. Much later, the OKD Agent configuration replaces Ubuntu and assigns the same address statically.
+:::
+
+| Stage | Cable | Node network configuration | Address owner |
+|---|---|---|---|
+| Offline Ubuntu installer | Disconnected | Automatic/DHCP selected, but no lease; no static IPv4 values entered | None yet |
+| Temporary Ubuntu benchmark | Connected to an access/native Servers VLAN `40` port | DHCP in Ubuntu netplan | UniFi reservation supplies `.26`, `.27`, or `.28` |
+| Final OKD installation | Connected to Servers VLAN `40` | Static NMState data embedded in `agent-config.yaml` | OKD Agent configuration assigns `.26`, `.27`, or `.28` |
+
+This separation is intentional. It avoids an untestable static configuration during the offline installer, keeps one source of truth for temporary Ubuntu, and still proves that each recorded MAC maps to the address it will use under OKD.
 
 ## Install Temporary Ubuntu on the Ryzen Nodes
 
 Install the nodes one at a time, but benchmark all three together. Use the same verified Ubuntu Server 26.04 amd64 ISO, installer choices, firmware baseline, and package-update pass on every system. These installations are disposable: the OKD Agent installer will overwrite them later.
 
-The initial Ubuntu installation may remain completely offline. Keep Ethernet unplugged until the installer finishes, the system shuts down, and the installer USB has been removed. The onboard NIC should still be configured for DHCP so it can receive its reserved Servers-VLAN address on the first network-connected boot.
+The initial Ubuntu installation remains completely offline. Keep Ethernet unplugged until the installer finishes, the system shuts down, and the installer USB has been removed. The onboard NIC remains configured for DHCP so it can receive its reserved Servers-VLAN address on the first network-connected boot.
 
 ### Temporary Identity Plan
 
@@ -45,7 +59,7 @@ Choose the normal Ubuntu Server installation, not Ubuntu Desktop and not the min
 | Language and keyboard | Use the same preferred English locale and keyboard layout on all three nodes. |
 | Installer update | Skip it while offline. All nodes receive the same package-update pass after network onboarding. |
 | Installation type | Full Ubuntu Server; do not select minimized. |
-| Network | Leave the onboard Ethernet interface on automatic/DHCP and continue without network. Do not create the final OKD static configuration in Ubuntu. |
+| Network | Leave the onboard Ethernet interface on automatic/DHCP. It will show no address because the cable is disconnected; choose **Continue without network**. Do not select manual IPv4 and do not enter `.26`, `.27`, or `.28`. |
 | Proxy | Blank. |
 | Ubuntu archive mirror | Accept the offline-media path; do not invent a proxy or mirror to bypass the connectivity check. |
 | Storage | Guided use of the entire internal 1 TB SSD with the default LVM layout. No encryption, ZFS, or firmware RAID. |
@@ -85,7 +99,7 @@ While the node is powered off:
 4. Do not activate `okd.lab.seandre.dev`, its host records, or the UniFi Forward Domain yet. Use the reserved IP for temporary Ubuntu SSH.
 5. Connect the onboard Ethernet port to the prepared switch port and boot the node.
 
-Reusing `.26-.28` for temporary Ubuntu makes the existing benchmark inventory work without changing the final OKD address plan. DHCP remains the temporary Ubuntu source of truth; the later Agent installer supplies the final static OKD network configuration.
+Reusing `.26-.28` for temporary Ubuntu makes the existing benchmark inventory work without changing the final OKD address plan. Do not add those values to Ubuntu's installer or write them as static netplan addresses. DHCP remains the temporary Ubuntu source of truth; the later Agent installer supplies the final static OKD network configuration.
 
 ### 4. Verify the First Network-Connected Boot
 

@@ -20,4 +20,4 @@ Read the [complete documentation order](overview/documentation-order.md) for opt
 - `pve-02` is an active standalone Proxmox VE host, and `bastion-01` runs DNS forwarding, HAProxy, Nexus, and Glances on it.
 - `pbs-01` runs on the separate physical host `pve-01`; the stopped `bastion-01` backup, automatic verification, and isolated Nexus artifact restore test have passed.
 - The six current k3s applications use private `lab.seandre.dev` names with ready publicly trusted certificates.
-- Compact OKD remains planned. Its three Ryzen systems are on hand, but the storage preparation and installation have not started.
+- Compact OKD remains planned. Its three Ryzen systems are on hand, and the selected next phase is identical offline temporary-Ubuntu installations followed by the three-node HPL benchmark; OKD will overwrite those installations afterward.

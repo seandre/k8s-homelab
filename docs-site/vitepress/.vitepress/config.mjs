@@ -66,7 +66,7 @@ export default defineConfig({
           {text: '02 · KOReader Sync Runbook', link: '/optional/koreader-sync-runbook'},
           {text: '03 · Sealed Secrets', link: '/optional/sealed-secrets'},
           {text: '04 · VitePress Site', link: '/optional/vitepress-site'},
-          {text: '05 · HPL Benchmark', link: '/optional/hpl-benchmark'},
+          {text: '05 · Temporary Ubuntu + HPL', link: '/optional/hpl-benchmark'},
         ],
       },
       {
