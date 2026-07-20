@@ -8,6 +8,7 @@ Use the explicit VitePress sidebar and the numbered entries below as the navigat
 2. [Network Topology and UniFi Policy](network-topology.md) records the live VLANs, firewall zones, physical uplinks, remote access, and hardening backlog.
 3. [Learning Roadmap](learning-roadmap.md) tracks the broader project backlog.
 4. [Architecture Decisions](architecture-decisions.md) records durable design choices and rationale.
+5. [Homelab Homepage Architecture](homepage-architecture.md) defines the approved product, telemetry, security, deployment, and migration design for the custom btop-inspired homepage. **Approved; implementation has not started.**
 
 ## Required Build Sequence
 

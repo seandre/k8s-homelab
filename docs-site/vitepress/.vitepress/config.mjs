@@ -46,6 +46,7 @@ export default defineConfig({
           {text: 'Network Topology', link: '/overview/network-topology'},
           {text: 'Learning Roadmap', link: '/overview/learning-roadmap'},
           {text: 'Architecture Decisions', link: '/overview/architecture-decisions'},
+          {text: 'Homepage Architecture', link: '/overview/homepage-architecture'},
         ],
       },
       {
