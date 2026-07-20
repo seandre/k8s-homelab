@@ -21,12 +21,12 @@ type RawSnapshot = { nodes: z.infer<typeof NodeListSchema>; deployments: z.infer
 function nodeReady(conditions: Array<{ type: string; status: string }>) { return conditions.some((condition) => condition.type === 'Ready' && condition.status === 'True'); }
 function quantity(value: string | undefined, kind: 'cpu' | 'memory'): number | null {
   if (!value) return null;
-  const match = value.match(/^([0-9.]+)(Ki|Mi|Gi|Ti|K|M|G|m)?$/);
+  const match = value.match(/^([0-9.]+)(Ki|Mi|Gi|Ti|K|M|G|n|u|m)?$/);
   if (!match) return null;
   const number = Number(match[1]);
   if (!Number.isFinite(number)) return null;
   const unit = match[2] ?? '';
-  if (kind === 'cpu') return unit === 'm' ? number / 1_000 : unit === '' ? number : null;
+  if (kind === 'cpu') return unit === 'n' ? number / 1_000_000_000 : unit === 'u' ? number / 1_000_000 : unit === 'm' ? number / 1_000 : unit === '' ? number : null;
   const multiplier: Record<string, number> = { '': 1, Ki: 1024, Mi: 1024 ** 2, Gi: 1024 ** 3, Ti: 1024 ** 4, K: 1_000, M: 1_000 ** 2, G: 1_000 ** 3 };
   return multiplier[unit] === undefined ? null : number * multiplier[unit];
 }
