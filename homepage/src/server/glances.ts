@@ -2,12 +2,21 @@ import { z } from 'zod';
 import type { Host } from '../shared/contracts.js';
 import { SourceNormalizer, withTimeout, type Clock } from './normalization.js';
 
+const DiskIoEntrySchema = z.object({ read_bytes: z.number().nonnegative().optional(), write_bytes: z.number().nonnegative().optional() });
+const NetworkEntrySchema = z.object({
+  interface_name: z.string().optional(),
+  rx: z.number().nonnegative().optional(),
+  tx: z.number().nonnegative().optional(),
+  bytes_recv_rate_per_sec: z.number().nonnegative().optional(),
+  bytes_sent_rate_per_sec: z.number().nonnegative().optional(),
+});
+
 const GlancesResponseSchema = z.object({
   cpu: z.object({ total: z.number().min(0).max(100) }).optional(),
   mem: z.object({ percent: z.number().min(0).max(100), used: z.number().nonnegative().optional(), total: z.number().positive().optional() }).optional(),
   fs: z.array(z.object({ mnt_point: z.string(), used: z.number().nonnegative().optional(), size: z.number().positive().optional() })).optional(),
-  diskio: z.record(z.string(), z.object({ read_bytes: z.number().nonnegative().optional(), write_bytes: z.number().nonnegative().optional() })).optional(),
-  network: z.record(z.string(), z.object({ rx: z.number().nonnegative().optional(), tx: z.number().nonnegative().optional() })).optional(),
+  diskio: z.union([z.record(z.string(), DiskIoEntrySchema), z.array(DiskIoEntrySchema)]).optional(),
+  network: z.union([z.record(z.string(), NetworkEntrySchema), z.array(NetworkEntrySchema)]).optional(),
   sensors: z.array(z.object({ label: z.string(), value: z.number() })).optional(),
   uptime: z.number().int().nonnegative().optional(),
 });
@@ -17,6 +26,10 @@ export interface GlancesHostConfig { id: string; name: string; endpoint: string;
 
 function nullHost(config: GlancesHostConfig, metadata: Host['metadata']): Host {
   return { id: config.id, name: config.name, kind: 'PROXMOX', cpuPercent: null, memoryPercent: null, memoryUsedBytes: null, memoryTotalBytes: null, diskUsedBytes: null, diskTotalBytes: null, diskIoPercent: null, cpuModel: null, cpuCorePercentages: null, loadAverage: null, cpuClockMhz: null, powerWatts: null, swapUsedBytes: null, swapTotalBytes: null, uptimeSeconds: null, runningVmCount: null, stoppedVmCount: null, runningContainerCount: null, stoppedContainerCount: null, temperatureCelsius: null, networkIngressBitsPerSecond: null, networkEgressBitsPerSecond: null, metadata };
+}
+
+function entries<T>(value: Record<string, T> | T[] | undefined): T[] {
+  return Array.isArray(value) ? value : Object.values(value ?? {});
 }
 
 export class GlancesAdapter {
@@ -39,10 +52,13 @@ export class GlancesAdapter {
       const output = nullHost(host, normalized.metadata);
       if (!normalized.value) return output;
       const fs = normalized.value.fs?.find((entry) => entry.mnt_point === '/') ?? normalized.value.fs?.[0];
-      const disk = Object.values(normalized.value.diskio ?? {})[0];
-      const network = Object.values(normalized.value.network ?? {})[0];
+      const disk = entries(normalized.value.diskio)[0];
+      const networkEntries = entries(normalized.value.network);
+      const network = networkEntries.find((entry) => entry.interface_name === 'vmbr0') ?? networkEntries[0];
+      const networkIngressBytes = network?.bytes_recv_rate_per_sec ?? network?.rx;
+      const networkEgressBytes = network?.bytes_sent_rate_per_sec ?? network?.tx;
       const temp = normalized.value.sensors?.find((sensor) => /package|cpu temp/i.test(sensor.label))?.value ?? null;
-      return { ...output, cpuPercent: normalized.value.cpu?.total ?? null, memoryPercent: normalized.value.mem?.percent ?? null, memoryUsedBytes: normalized.value.mem?.used ?? null, memoryTotalBytes: normalized.value.mem?.total ?? null, diskUsedBytes: fs?.used ?? null, diskTotalBytes: fs?.size ?? null, diskIoPercent: disk ? null : null, temperatureCelsius: temp, uptimeSeconds: normalized.value.uptime ?? null, networkIngressBitsPerSecond: network?.rx === undefined ? null : network.rx * 8, networkEgressBitsPerSecond: network?.tx === undefined ? null : network.tx * 8 };
+      return { ...output, cpuPercent: normalized.value.cpu?.total ?? null, memoryPercent: normalized.value.mem?.percent ?? null, memoryUsedBytes: normalized.value.mem?.used ?? null, memoryTotalBytes: normalized.value.mem?.total ?? null, diskUsedBytes: fs?.used ?? null, diskTotalBytes: fs?.size ?? null, diskIoPercent: disk ? null : null, temperatureCelsius: temp, uptimeSeconds: normalized.value.uptime ?? null, networkIngressBitsPerSecond: networkIngressBytes === undefined ? null : networkIngressBytes * 8, networkEgressBitsPerSecond: networkEgressBytes === undefined ? null : networkEgressBytes * 8 };
     }));
   }
 }

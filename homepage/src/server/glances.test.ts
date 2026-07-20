@@ -13,6 +13,15 @@ describe('temporary Glances bridge', () => {
     expect(host).not.toHaveProperty('raw');
   });
 
+  it('uses Glances v4 interface rate fields when the network payload is an array', async () => {
+    const fetcher: GlancesFetch = async () => ({ ok: true, json: async () => ({
+      cpu: { total: 3 }, mem: { percent: 51 }, fs: [],
+      network: [{ interface_name: 'vmbr0', bytes_recv_rate_per_sec: 8_558, bytes_sent_rate_per_sec: 12_739 }],
+    }) });
+    const host = (await new GlancesAdapter(hosts, fetcher, true, clock).read())[0]!;
+    expect(host).toMatchObject({ networkIngressBitsPerSecond: 68_464, networkEgressBitsPerSecond: 101_912 });
+  });
+
   it('uses an explicit unsupported state when the temporary bridge is disabled', async () => {
     const fetcher: GlancesFetch = async () => { throw new Error('must not be called'); };
     const host = (await new GlancesAdapter(hosts, fetcher, false, clock).read())[0]!;
