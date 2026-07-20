@@ -35,6 +35,19 @@ spec:
                 hosts:
                   - grafana.lab.seandre.dev
 
+        # k3s exposes these control-plane components differently from the
+        # upstream kubeadm discovery model. Their default ServiceMonitor
+        # targets are absent, so keep them disabled rather than alerting on
+        # intentionally nonexistent endpoints.
+        kubeControllerManager:
+          enabled: false
+
+        kubeProxy:
+          enabled: false
+
+        kubeScheduler:
+          enabled: false
+
         prometheus:
           prometheusSpec:
             # Homepage history depends on Prometheus surviving StatefulSet

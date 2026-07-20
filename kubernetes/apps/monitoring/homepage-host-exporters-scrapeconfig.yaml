@@ -11,24 +11,7 @@ spec:
   scrapeInterval: 15s
   scrapeTimeout: 5s
   scheme: http
-  staticConfigs:
-    - targets:
-        - 192.168.40.20:9100
-      labels:
-        hostname: pve-01
-        role: proxmox
-    - targets:
-        - 192.168.40.25:9100
-      labels:
-        hostname: pve-02
-        role: proxmox
-    - targets:
-        - 192.168.40.34:9100
-      labels:
-        hostname: pbs-01
-        role: backup
-    - targets:
-        - 192.168.40.33:9100
-      labels:
-        hostname: bastion-01
-        role: infrastructure
+  # Intentionally inert until node_exporter and the host firewall are verified
+  # on every target. Replace this empty list with the Git-owned target catalog
+  # documented in homepage-observability.md as one reviewed activation change.
+  staticConfigs: []

@@ -11,8 +11,11 @@ Prometheus StatefulSet is configured for 30-day retention on a 50 GiB
 `local-path` PVC. `local-path` is node-local: it survives a pod replacement,
 but is not a backup or a host-failure solution.
 
-`homelab-monitoring-config` applies the Git-owned `ScrapeConfig` after the
-stack. It declares these fixed node_exporter targets, every 15 seconds:
+`homelab-monitoring-config` owns the Git-managed `ScrapeConfig`, but keeps its
+target list empty until all exporters and their narrow firewall rules have
+passed verification. This prevents a staged rollout from emitting a known false
+`TargetDown` alert. When activated, it declares these fixed node_exporter
+targets every 15 seconds:
 
 | Host | Target | Role |
 |---|---|---|
@@ -64,7 +67,10 @@ curl --get --data-urlencode 'query=up{job="homepage-host-exporters"}' \
 ```
 
 Every target should report `1`. A `0` means the exporter, route, or narrow
-firewall rule needs correction; do not weaken the rule to diagnose it.
+firewall rule needs correction; do not weaken the rule to diagnose it. Then
+replace the empty `staticConfigs` list in
+`homepage-host-exporters-scrapeconfig.yaml` with the reviewed target catalog
+and let Argo CD reconcile it.
 
 ## Homepage data boundary
 
