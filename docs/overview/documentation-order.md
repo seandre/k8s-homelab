@@ -8,8 +8,8 @@ Use the explicit VitePress sidebar and the numbered entries below as the navigat
 2. [Network Topology and UniFi Policy](network-topology.md) records the live VLANs, firewall zones, physical uplinks, remote access, and hardening backlog.
 3. [Learning Roadmap](learning-roadmap.md) tracks the broader project backlog.
 4. [Architecture Decisions](architecture-decisions.md) records durable design choices and rationale.
-5. [Homelab Homepage Architecture](homepage-architecture.md) defines the approved product, telemetry, security, deployment, and migration design for the custom btop-inspired homepage. **Implemented as an isolated preview; the owner-approved shortened Gate D technical soak passed and production is unchanged.**
-6. [Homelab Homepage Rework Build Plan](../build/homepage-rework.md) divides the implementation into bounded agent-sized tasks with prerequisites, start and end states, acceptance criteria, human approval gates, preview deployment, cutover, and rollback. **Preview Gate D technical closeout passed; production cutover remains a separate HP-029 approval.**
+5. [Homelab Homepage Architecture](homepage-architecture.md) defines the approved product, telemetry, security, deployment, and migration design for the custom btop-inspired homepage. **Implemented on k3s and serving production after the approved HP-029 cutover; the stock deployment remains the rollback target.**
+6. [Homelab Homepage Rework Build Plan](../build/homepage-rework.md) divides the implementation into bounded agent-sized tasks with prerequisites, start and end states, acceptance criteria, human approval gates, preview deployment, cutover, and rollback. **HP-029 production cutover passed; HP-030 rollback and forward-recovery drill remains.**
 
 ## Required Build Sequence
 

@@ -1,6 +1,6 @@
 # Overview 04: Homelab Homepage Architecture
 
-> Status: implemented as an isolated k3s preview. Live read-only PDU telemetry is enabled at Git revision `c3d8968`; the owner-approved shortened Gate D technical soak passed at `2026-07-20T21:37:34Z`. The existing Homepage deployment remains production and the rollback target until a separately approved cutover.
+> Status: implemented on k3s and serving `home.lab.seandre.dev` after the approved HP-029 cutover. Live read-only PDU telemetry is enabled at Git revision `c3d8968`; the owner-approved shortened Gate D technical soak passed at `2026-07-20T21:37:34Z`. The existing Homepage deployment remains deployed as the rollback target until HP-030 completes.
 
 This document defines the product, application, telemetry, security, and deployment architecture for a custom homelab homepage inspired by the default [btop](https://github.com/aristocratos/btop) interface.
 

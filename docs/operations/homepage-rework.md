@@ -1,10 +1,10 @@
-# Custom Homepage Preview and Rollback Runbook
+# Custom Homepage Preview, Production Cutover, and Rollback Runbook
 
-This runbook operates the custom Homepage preview without changing the stock
-`homepage` workload or `home.lab.seandre.dev`. The preview manifests in
-`kubernetes/apps/homepage-custom-preview/` are deployed through Argo CD. The
-owner-approved shortened observability/PDU soak passed technical closeout on
-2026-07-20; production traffic remains unchanged.
+This runbook operates the custom Homepage preview and the approved production
+cutover. The preview manifests in `kubernetes/apps/homepage-custom-preview/`
+are deployed through Argo CD. The stock `homepage` workload and its Service,
+ConfigMap, TLS Secret, and Ingress identity remain available as the Git-only
+rollback target.
 
 ## Current immutable preview artifact
 
@@ -223,8 +223,48 @@ minutes). The final technical checks passed:
 | Public bootstrap | Schema `2`, PDU freshness `CURRENT`, total and both PVE watt values non-null |
 | Public redaction | No PDU name, outlet label, controller endpoint, API-key, token, Secret, password, or credential marker; the existing generic `network.unifi.controller` status label is `UniFi Site Manager` and is not a PDU identifier |
 
-Gate D preview technical closeout is recorded. Production cutover remains
-prohibited until HP-029 receives its separate owner approval.
+Gate D preview technical closeout is recorded. HP-029 production cutover is
+recorded below.
+
+## HP-029 production cutover — 2026-07-20
+
+The owner approved the production change window during this run. Cutover was
+published in Git commit `73097848df0618126127a8f66667b716c26add15` and
+reconciled by Argo CD at `2026-07-20T21:54:00Z` (verification through
+`2026-07-20T21:58:30Z`). The production Ingress keeps its existing name,
+hostname, TLS Secret, and Traefik settings, but now targets the separately
+named `homepage-custom-production` Service. That Service selects only the
+custom labels. The stock `Service/homepage` still selects only
+`app.kubernetes.io/name=homepage` and retained the sole stock endpoint.
+
+The stock `Deployment/homepage`, `ConfigMap/homepage`, `Service/homepage`,
+`Ingress/homepage`, `Secret/homepage-public-tls`, ServiceAccount, and RBAC
+remain present as the rollback target; the Ingress identity, hostname, and TLS
+configuration are unchanged while its Git-managed backend now points to the
+custom Service. Rollback is a Git revert
+of the cutover commit followed by Argo CD reconciliation; no imperative
+production apply was used.
+
+| Check | Result |
+|---|---|
+| Argo CD | `homelab-apps` `Synced` / `Healthy` at `7309784`; parent `homelab` `Synced` / `Healthy` |
+| Production HTTPS/TLS | `/` returned 200; strict TLS verification returned `ssl_verify=0` through `192.168.40.30` |
+| Health and API | `/api/health/live`, `/api/health/ready`, and schema-v2 bootstrap returned 200; PDU freshness was `CURRENT` |
+| SSE | `/api/v1/events` returned 200 with `text/event-stream; charset=utf-8` |
+| Routes | `/`, `/compute`, `/network`, `/storage-backups`, `/kubernetes`, `/okd`, `/services`, and `/weather` returned 200 |
+| Published links | Nine links returned 200; `nexus.lab.seandre.dev` returned expected 403 while remaining reachable over strict TLS |
+| Selector ownership | Stock Service endpoint was only the stock pod; production Service endpoints were the two custom pods |
+| Runtime stability | Custom Homepage 2/2 Ready, zero restarts; UnPoller 1/1 Ready, zero restarts; no recent Homepage failure markers |
+| Resource use | Custom pods used 25m/46Mi and 28m/42Mi at the observation check |
+| Adapter/monitoring state | PVE, k3s, PBS, PDU, and weather adapters were `CURRENT`/`OK`; UnPoller target was up, only the approved family was retained, both PVE series were present, and no related alert was firing |
+| Redaction | HTML and normalized bootstrap contained no credential-shaped markers |
+
+The local E2E run passed keyboard navigation, layout controls, and serious or
+critical accessibility checks. Six screenshot comparisons failed because the
+local actual page heights differed from the checked-in baselines by 15–50 px;
+the cutover introduced no application source change. Treat visual baseline
+review as follow-up evidence rather than regenerating snapshots during the
+production window.
 
 ## Credential provisioning and rotation
 
@@ -257,8 +297,9 @@ from `kubernetes/clusters/homelab/apps/kustomization.yaml` and letting Argo CD
 prune the separately named preview resources. The stock Deployment, ConfigMap,
 Service, Ingress, ServiceAccount, and hostname remain untouched.
 
-After a future HP-029 cutover, revert the reviewed Git commit that changes
-production Service/Ingress ownership, sync through Argo CD, and verify
-`homepage`, `homepage-public-tls`, and `home.lab.seandre.dev` are healthy.
-Never depend on rebuilding an image or deleting the stock ConfigMap to roll
-back.
+After HP-029, revert commit `7309784` (or the reviewed descendant that owns
+the same cutover), sync through Argo CD, and verify `homepage`,
+`homepage-public-tls`, and `home.lab.seandre.dev` are healthy. To restore the
+custom app, apply a reviewed forward commit that restores the custom Ingress
+backend and Service, then repeat the same checks. Never depend on rebuilding
+an image or deleting the stock ConfigMap to roll back.

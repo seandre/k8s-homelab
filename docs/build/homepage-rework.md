@@ -12,12 +12,13 @@ target. Do not replace it, rename it, or change its production ingress until the
 cutover task explicitly says to do so.
 
 Current status (2026-07-20): the custom application is deployed at its isolated
-preview hostname. The validated PDU mapping is enabled at Git revision
+preview hostname and now serves production through the Git-managed
+`homepage-custom-production` Service. The validated PDU mapping is enabled at Git revision
 `c3d8968` with image digest
 `sha256:d75558ed538c832d9f51259d022511619e44aac1af5d7c6c059d85ef97297dc5`.
 The owner-approved shortened replacement Gate D soak passed its technical
-closeout at `2026-07-20T21:37:34Z`; production remains unchanged and is still
-the rollback target.
+closeout at `2026-07-20T21:37:34Z`. HP-029 production cutover completed at
+commit `7309784`; the stock deployment remains the rollback target.
 
 ## Source of Truth and Fixed Scope
 
@@ -934,6 +935,9 @@ one pod replacement. Run for an owner-approved soak period. Record results in th
 runbook and stop until the owner approves cutover.
 
 #### HP-029: Cut over production traffic
+
+**Status:** Completed 2026-07-20 in Git commit `7309784`; production smoke and
+stability evidence is recorded in the [Homepage rework runbook](../operations/homepage-rework.md#hp-029-production-cutover--2026-07-20).
 
 **Prerequisites:** Gate D; a confirmed stock rollback procedure and owner approval
 for a production change window.
