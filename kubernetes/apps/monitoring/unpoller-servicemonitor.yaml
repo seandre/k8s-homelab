@@ -19,4 +19,4 @@ spec:
         - sourceLabels:
             - __name__
           action: keep
-          regex: unpoller_device_outlet_power
+          regex: unpoller_device_outlet_outlet_power

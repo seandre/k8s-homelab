@@ -44,7 +44,7 @@ function promqlString(value: string) {
 // come from the Git-owned runtime configuration, never from the browser.
 export function buildPduPowerQueries(deviceName: string) {
   const name = promqlString(deviceName);
-  const selector = `unpoller_device_outlet_power{name="${name}"}`;
+  const selector = `unpoller_device_outlet_outlet_power{name="${name}"}`;
   return {
     totalWatts: `sum(${selector})`,
     pve01Watts: `sum(${selector.replace('}', ',outlet_name="pve-01"}')})`,

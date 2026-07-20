@@ -189,13 +189,13 @@ curl --get --data-urlencode 'query={__name__=~"unpoller_.*"}' http://127.0.0.1:9
 ```
 
 The target must be `1`; the second response may contain only
-`unpoller_device_outlet_power`. Then require exactly one PDU `name` label and
+`unpoller_device_outlet_outlet_power`. Then require exactly one PDU `name` label and
 one returned series for each required outlet:
 
 ```bash
-curl --get --data-urlencode 'query=count(count by (name) (unpoller_device_outlet_power))' http://127.0.0.1:9090/api/v1/query
-curl --get --data-urlencode 'query=count by (name) (unpoller_device_outlet_power{outlet_name="pve-01"})' http://127.0.0.1:9090/api/v1/query
-curl --get --data-urlencode 'query=count by (name) (unpoller_device_outlet_power{outlet_name="pve-02"})' http://127.0.0.1:9090/api/v1/query
+curl --get --data-urlencode 'query=count(count by (name) (unpoller_device_outlet_outlet_power))' http://127.0.0.1:9090/api/v1/query
+curl --get --data-urlencode 'query=count by (name) (unpoller_device_outlet_outlet_power{outlet_name="pve-01"})' http://127.0.0.1:9090/api/v1/query
+curl --get --data-urlencode 'query=count by (name) (unpoller_device_outlet_outlet_power{outlet_name="pve-02"})' http://127.0.0.1:9090/api/v1/query
 ```
 
 Record the one discovered `name` label in
@@ -209,9 +209,9 @@ After deployment, query the three fixed expressions and compare the outlet and
 total watts with the UniFi dashboard within one 30-second collection interval:
 
 ```bash
-curl --get --data-urlencode 'query=sum(unpoller_device_outlet_power{name="RECORDED_PDU_NAME"})' http://127.0.0.1:9090/api/v1/query
-curl --get --data-urlencode 'query=sum(unpoller_device_outlet_power{name="RECORDED_PDU_NAME",outlet_name="pve-01"})' http://127.0.0.1:9090/api/v1/query
-curl --get --data-urlencode 'query=sum(unpoller_device_outlet_power{name="RECORDED_PDU_NAME",outlet_name="pve-02"})' http://127.0.0.1:9090/api/v1/query
+curl --get --data-urlencode 'query=sum(unpoller_device_outlet_outlet_power{name="RECORDED_PDU_NAME"})' http://127.0.0.1:9090/api/v1/query
+curl --get --data-urlencode 'query=sum(unpoller_device_outlet_outlet_power{name="RECORDED_PDU_NAME",outlet_name="pve-01"})' http://127.0.0.1:9090/api/v1/query
+curl --get --data-urlencode 'query=sum(unpoller_device_outlet_outlet_power{name="RECORDED_PDU_NAME",outlet_name="pve-02"})' http://127.0.0.1:9090/api/v1/query
 ```
 
 Only after those results and an API-key/certificate/mapping review may PDU

@@ -28,15 +28,15 @@ describe('Prometheus adapter', () => {
       urls.push(url);
       const query = new URL(url).searchParams.get('query');
       const values: Record<string, string> = {
-        'sum(unpoller_device_outlet_power{name="USP-PDU-Pro"})': '82',
-        'sum(unpoller_device_outlet_power{name="USP-PDU-Pro",outlet_name="pve-01"})': '82',
-        'sum(unpoller_device_outlet_power{name="USP-PDU-Pro",outlet_name="pve-02"})': '0',
+        'sum(unpoller_device_outlet_outlet_power{name="USP-PDU-Pro"})': '82',
+        'sum(unpoller_device_outlet_outlet_power{name="USP-PDU-Pro",outlet_name="pve-01"})': '82',
+        'sum(unpoller_device_outlet_outlet_power{name="USP-PDU-Pro",outlet_name="pve-02"})': '0',
       };
       return { ok: true, json: async () => ({ status: 'success', data: { resultType: 'vector', result: [{ value: [0, values[query ?? '']!] }] } }) };
     });
     expect(result).toMatchObject({ totalWatts: 82, pve01Watts: 82, pve02Watts: 0, metadata: { freshness: 'CURRENT', severity: 'OK' } });
     expect(urls).toHaveLength(3);
-    expect(buildPduPowerQueries('PDU "A"').totalWatts).toBe('sum(unpoller_device_outlet_power{name="PDU \\"A\\""})');
+    expect(buildPduPowerQueries('PDU "A"').totalWatts).toBe('sum(unpoller_device_outlet_outlet_power{name="PDU \\"A\\""})');
   });
 
   it('returns INFO/NO_DATA when any validated PDU outlet is missing or Prometheus fails', async () => {
