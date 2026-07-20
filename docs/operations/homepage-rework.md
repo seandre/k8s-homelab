@@ -165,6 +165,21 @@ bootstrap contract then showed `CURRENT` samples for `pve-01` and `pve-02`:
 - No fixture values were used for these Proxmox cards. The public response
   contained normalized metrics only; credentials were not read or logged.
 
+## Gate D soak — in progress
+
+The owner approved a 24-hour preview soak beginning at `2026-07-20T17:09:32Z`
+after the SSE crash-loop fix. The planned end is `2026-07-21T17:09:32Z`.
+Production traffic remains unchanged and HP-029 remains unapproved.
+
+Opening checks passed at the start of the window:
+
+- Preview `/` and `/api/health/ready` returned HTTP 200.
+- Argo CD application `homelab-apps` was `Synced/Healthy` at revision
+  `5a664323764546f19f52a6e9f29984d60724c97b`.
+- The isolated preview pods were Ready with zero restarts, spread across
+  `k8s-worker-01` and `k8s-worker-02`, using pinned digest
+  `sha256:0943363a7225dffa42475bd8184fd994be4dfd6ddafa401f358f374337abe066`.
+
 ## Credential provisioning and rotation
 
 The integration credential names and expected keys are defined in
