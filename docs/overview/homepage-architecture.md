@@ -60,6 +60,7 @@ The interface must remain modern, simple, readable, and resistant to information
 The compact terminal-style header displays:
 
 - `Homelab`;
+- a `Homepage`/`Docs` product switcher reciprocal to the documentation site's selector;
 - active hosting cluster, `k3s` or `OKD`;
 - global `OK`, `INFO`, `WARN`, or `CRIT` state;
 - search;

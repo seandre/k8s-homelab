@@ -7,7 +7,7 @@ The private endpoint is `https://docs.lab.seandre.dev`. UniFi resolves it to the
 ## Architecture
 
 - `docs/` contains the Markdown source.
-- `docs-site/vitepress/` contains the VitePress configuration, sidebar, theme, and pinned dependency tree.
+- `docs-site/vitepress/` contains the VitePress configuration, sidebar, theme, Docs/Homepage product switcher, and pinned dependency tree.
 - `docs-site/Dockerfile` builds the site and copies only the static output into the runtime image.
 - `docs-site/nginx.conf` serves clean URLs such as `/build/public-domain-tls` and redirects the former `/optional/docusaurus-site` route.
 - `.github/workflows/docs-image.yaml` builds and deploys each documentation commit.
