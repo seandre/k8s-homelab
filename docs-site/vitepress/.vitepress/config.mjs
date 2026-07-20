@@ -47,6 +47,7 @@ export default defineConfig({
           {text: 'Learning Roadmap', link: '/overview/learning-roadmap'},
           {text: 'Architecture Decisions', link: '/overview/architecture-decisions'},
           {text: 'Homepage Architecture', link: '/overview/homepage-architecture'},
+          {text: 'Homepage Build Plan', link: '/build/homepage-rework'},
         ],
       },
       {

@@ -11,7 +11,7 @@ This site is the readable view of the Markdown documentation stored in the homel
 
 Read the [complete documentation order](overview/documentation-order.md) for optional projects and operations references. The [infrastructure reference](overview/infrastructure-reference.md) is the canonical source for hardware, addresses, storage, and DNS; the [network topology](overview/network-topology.md) records the live UniFi VLANs, zones, uplinks, and policy boundaries.
 
-The approved [Homelab Homepage Architecture](overview/homepage-architecture.md) defines the planned btop-inspired replacement for the current Homepage application, including its views, telemetry sources, security boundary, k3s rollout, OKD migration, and rollback gates.
+The approved [Homelab Homepage Architecture](overview/homepage-architecture.md) defines the planned btop-inspired replacement for the current Homepage application, including its views, telemetry sources, security boundary, k3s rollout, OKD migration, and rollback gates. Follow the [Homepage Rework Build Plan](build/homepage-rework.md) to implement it as bounded, acceptance-tested tasks while preserving the existing deployment as the rollback target.
 
 ## Current Platform
 

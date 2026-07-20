@@ -13,7 +13,7 @@ Kubernetes homelab built on Proxmox VE.
 - Active standalone virtualization host: HP EliteDesk 800 G6 Mini (`pve-02`) with Intel Core i5-10500T, 32 GB RAM, and 512 GB storage
 - Bare-metal cluster hardware received: three matching HP EliteDesk 805 G8 Minis, each with an AMD Ryzen 5 PRO 5650GE, 16 GB RAM, and a 1 TB Patriot Memory P400 Lite SSD waiting to be installed
 
-Start with the [Documentation Order](docs/overview/documentation-order.md). The [Infrastructure Reference](docs/overview/infrastructure-reference.md) contains the complete hardware, storage, VM, network, and DNS layout, and the [Network Topology and UniFi Policy](docs/overview/network-topology.md) explains the live VLAN and security boundaries.
+Start with the [Documentation Order](docs/overview/documentation-order.md). The [Infrastructure Reference](docs/overview/infrastructure-reference.md) contains the complete hardware, storage, VM, network, and DNS layout, and the [Network Topology and UniFi Policy](docs/overview/network-topology.md) explains the live VLAN and security boundaries. The custom homepage implementation is sequenced in the [Homepage Rework Build Plan](docs/build/homepage-rework.md).
 
 ## Goal
 

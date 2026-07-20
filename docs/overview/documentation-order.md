@@ -9,6 +9,7 @@ Use the explicit VitePress sidebar and the numbered entries below as the navigat
 3. [Learning Roadmap](learning-roadmap.md) tracks the broader project backlog.
 4. [Architecture Decisions](architecture-decisions.md) records durable design choices and rationale.
 5. [Homelab Homepage Architecture](homepage-architecture.md) defines the approved product, telemetry, security, deployment, and migration design for the custom btop-inspired homepage. **Approved; implementation has not started.**
+6. [Homelab Homepage Rework Build Plan](../build/homepage-rework.md) divides the implementation into bounded agent-sized tasks with prerequisites, start and end states, acceptance criteria, human approval gates, preview deployment, cutover, and rollback. **Ready for implementation.**
 
 ## Required Build Sequence
 
