@@ -13,7 +13,7 @@ describe('Proxmox read-only adapter', () => {
       seen.push({ url, authorization: init.headers.authorization });
       if (url.endsWith('/status')) return { ok: true, json: async () => ({ data: { cpu: 0.42, memory: { used: 58, total: 100 }, swap: { used: 3, total: 10 }, uptime: 600, status: 'online' } }) };
       if (url.endsWith('/storage')) return { ok: true, json: async () => ({ data: [{ total: 1_000, used: 400 }] }) };
-      return { ok: true, json: async () => ({ data: [{ type: 'qemu', node: 'pve01', status: 'running', name: 'never-exposed' }, { type: 'qemu', node: 'pve01', status: 'stopped' }, { type: 'lxc', node: 'pve01', status: 'running' }] }) };
+      return { ok: true, json: async () => ({ data: [{ type: 'node', node: 'pve01', status: 'online' }, { type: 'storage', storage: 'local' }, { type: 'qemu', node: 'pve01', status: 'running', name: 'never-exposed' }, { type: 'qemu', node: 'pve01', status: 'stopped' }, { type: 'lxc', node: 'pve01', status: 'running' }] }) };
     };
     const result = (await new ProxmoxAdapter([host], true, clock).read(fetcher))[0]!;
     expect(seen).toEqual(expect.arrayContaining([
@@ -32,7 +32,7 @@ describe('Proxmox read-only adapter', () => {
       return { ok: false, json: async () => ({}) };
     };
     const result = (await new ProxmoxAdapter([host], true, clock).read(fetcher))[0]!;
-    expect(result).toMatchObject({ cpuPercent: 10, diskTotalBytes: null, runningVmCount: 0, metadata: { freshness: 'CURRENT', message: 'Some approved Proxmox metrics are unavailable.' } });
+    expect(result).toMatchObject({ cpuPercent: 10, diskTotalBytes: null, runningVmCount: null, metadata: { freshness: 'CURRENT', message: 'Some approved Proxmox metrics are unavailable.' } });
   });
 
   it('does not infer an offline state when the optional node status is absent', async () => {

@@ -13,8 +13,11 @@ const NodeResponseSchema = z.object({ data: z.object({
   status: z.string().optional(),
 }) });
 const ResourcesResponseSchema = z.object({ data: z.array(z.object({
-  type: z.enum(['qemu', 'lxc']),
-  node: z.string().min(1),
+  // /cluster/resources is intentionally a mixed inventory response: it also
+  // contains node and storage rows.  Validate the common fields, then select
+  // the two guest kinds below rather than rejecting the entire response.
+  type: z.string().min(1),
+  node: z.string().min(1).optional(),
   status: z.string().optional(),
 })) });
 const StorageResponseSchema = z.object({ data: z.array(z.object({
@@ -83,6 +86,7 @@ export class ProxmoxAdapter {
       const output = emptyHost(host, snapshot.metadata);
       if (!snapshot.value) return output;
       const { node, resources = [], storage = [], partial } = snapshot.value;
+      const hasGuestInventory = snapshot.value.resources !== undefined;
       const guests = resources.filter((resource) => resource.node === host.node);
       const vm = guests.filter((resource) => resource.type === 'qemu');
       const container = guests.filter((resource) => resource.type === 'lxc');
@@ -106,10 +110,10 @@ export class ProxmoxAdapter {
         swapUsedBytes: node.swap?.used ?? null,
         swapTotalBytes: node.swap?.total ?? null,
         uptimeSeconds: node.uptime ?? null,
-        runningVmCount: count(vm, 'running'),
-        stoppedVmCount: count(vm, 'stopped'),
-        runningContainerCount: count(container, 'running'),
-        stoppedContainerCount: count(container, 'stopped'),
+        runningVmCount: hasGuestInventory ? count(vm, 'running') : null,
+        stoppedVmCount: hasGuestInventory ? count(vm, 'stopped') : null,
+        runningContainerCount: hasGuestInventory ? count(container, 'running') : null,
+        stoppedContainerCount: hasGuestInventory ? count(container, 'stopped') : null,
         metadata,
       };
     }));
