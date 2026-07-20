@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: homepage-custom-production
+  namespace: homepage
+  labels:
+    app.kubernetes.io/name: homepage-custom
+    app.kubernetes.io/instance: production
+    app.kubernetes.io/component: dashboard
+spec:
+  selector:
+    app.kubernetes.io/name: homepage-custom
+    app.kubernetes.io/instance: preview
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http
+      protocol: TCP

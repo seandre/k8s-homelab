@@ -9,4 +9,4 @@ metadata:
     app.kubernetes.io/component: dashboard
 data:
   runtime-mode.json: |
-    {"mode":"preview","dataMode":"fixture-backed","integrations":"disabled-until-approved"}
+    {"mode":"production","dataMode":"live","integrations":"approved-read-only"}
