@@ -229,10 +229,11 @@ export class LiveTelemetry {
   }
 
   async refresh(recordGraphSample = true) {
-    const [proxmox, glances, k3s, prometheus, pduPower, alerts, argocd, pbs, unifi, weather, probes] = await Promise.all([
+    const [proxmox, glances, k3s, prometheus, pduPower, udm, alerts, argocd, pbs, unifi, weather, probes] = await Promise.all([
       this.proxmoxHosts(), this.glancesHosts(), this.k3sSnapshot(),
       this.prometheus.readCluster((url) => this.httpFetch(url)),
       this.prometheus.readPduPower((url) => this.httpFetch(url)),
+      this.prometheus.readUdm((url) => this.httpFetch(url)),
       this.alertmanager.read((url) => this.httpFetch(url)),
       this.argocdApplications(), this.pbsSnapshot(), this.unifiSnapshot(), this.weather.read(), this.probes.runConfigured(),
     ]);
@@ -264,7 +265,7 @@ export class LiveTelemetry {
     base.alerts = alerts;
     base.timeSeries = this.timeSeries(proxmoxHosts);
     if (pbs) { base.storage = pbs.storage; base.storageBackups = pbs.backups; }
-    base.network = { ...base.network, pduPower: { totalWatts: pduPower.totalWatts, metadata: pduPower.metadata } };
+    base.network = { ...base.network, udm, pduPower: { totalWatts: pduPower.totalWatts, metadata: pduPower.metadata } };
     if (unifi) base.network = { ...base.network, ...unifi, metadata: unifi.unifi.metadata };
     base.weather = weather;
     base.services = this.liveServices(probes, argocd);
@@ -313,7 +314,7 @@ export class LiveTelemetry {
     base.timeSeries = [];
     const observedAt = new Date().toISOString();
     const unavailable: SourceMetadata = { source: 'live-telemetry', observedAt, freshness: 'NO_DATA', severity: 'INFO', message: 'No successful live sample is available.' };
-    base.network = { ...base.network, gatewayLatencyMs: null, gatewayLatencyProtocol: null, internetLatencyMs: null, internetLatencyProtocol: null, unifi: { controller: null, status: null, metadata: unavailable }, pduPower: { totalWatts: null, metadata: unavailable }, lastSpeedTest: { downloadMbps: null, uploadMbps: null, latencyMs: null, observedAt: null, metadata: unavailable }, metadata: unavailable };
+    base.network = { ...base.network, gatewayLatencyMs: null, gatewayLatencyProtocol: null, internetLatencyMs: null, internetLatencyProtocol: null, unifi: { controller: null, status: null, metadata: unavailable }, udm: { wanDownloadMbps: null, wanUploadMbps: null, wanTotalBytes: null, latencyMs: null, cpuPercent: null, memoryPercent: null, temperatureCelsius: null, uptimeSeconds: null, clientCount: null, metadata: unavailable }, pduPower: { totalWatts: null, metadata: unavailable }, lastSpeedTest: { downloadMbps: null, uploadMbps: null, latencyMs: null, observedAt: null, metadata: unavailable }, metadata: unavailable };
     base.storage = { ...base.storage, pbs: { ...base.storage.pbs, reachable: null, metadata: unavailable } };
     base.storageBackups = [];
     base.services = [];

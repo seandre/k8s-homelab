@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PrometheusAdapter, buildPduPowerQueries } from './prometheus.js';
+import { PrometheusAdapter, buildPduPowerQueries, buildUdmQueries } from './prometheus.js';
 
 describe('Prometheus adapter', () => {
   it('uses its fixed aggregate catalog and returns only normalized values', async () => {
@@ -51,5 +51,28 @@ describe('Prometheus adapter', () => {
     const adapter = new PrometheusAdapter('http://prometheus.monitoring.svc:9090', true, { enabled: false, deviceName: 'USP-PDU-Pro' });
     const result = await adapter.readPduPower(async () => { throw new Error('disabled PDU must not query Prometheus'); });
     expect(result).toMatchObject({ totalWatts: null, metadata: { freshness: 'NOT_SUPPORTED', severity: 'INFO' } });
+  });
+
+  it('reads fixed UDM Pro appliance and WAN telemetry without browser-supplied PromQL', async () => {
+    const adapter = new PrometheusAdapter('http://prometheus.monitoring.svc:9090', true);
+    const catalog = buildUdmQueries();
+    const samples = new Map<string, string>(Object.values(catalog).map((query, index) => [query, ['5.152', '3.021', '227785056756', '17448129705', '11', '8.2', '74.5', '43.5', '530660', '19'][index]!]));
+    const result = await adapter.readUdm(async (url) => {
+      const query = new URL(url).searchParams.get('query') ?? '';
+      return { ok: true, json: async () => ({ status: 'success', data: { resultType: 'vector', result: [{ value: [0, samples.get(query)!] }] } }) };
+    });
+
+    expect(result).toMatchObject({
+      wanDownloadMbps: 5.152,
+      wanUploadMbps: 3.021,
+      wanTotalBytes: 245_233_186_461,
+      latencyMs: 11,
+      cpuPercent: 8.2,
+      memoryPercent: 74.5,
+      temperatureCelsius: 43.5,
+      uptimeSeconds: 530_660,
+      clientCount: 19,
+      metadata: { source: 'unpoller-udm', freshness: 'CURRENT', severity: 'OK' },
+    });
   });
 });

@@ -130,6 +130,20 @@ export const PduPowerSchema = z.object({
 });
 export type PduPower = z.infer<typeof PduPowerSchema>;
 
+export const UdmTelemetrySchema = z.object({
+  wanDownloadMbps: z.number().nonnegative().nullable(),
+  wanUploadMbps: z.number().nonnegative().nullable(),
+  wanTotalBytes: z.number().nonnegative().nullable(),
+  latencyMs: z.number().nonnegative().nullable(),
+  cpuPercent: z.number().min(0).max(100).nullable(),
+  memoryPercent: z.number().min(0).max(100).nullable(),
+  temperatureCelsius: z.number().finite().nullable(),
+  uptimeSeconds: z.number().nonnegative().nullable(),
+  clientCount: z.number().int().nonnegative().nullable(),
+  metadata: SourceMetadataSchema,
+});
+export type UdmTelemetry = z.infer<typeof UdmTelemetrySchema>;
+
 export const NetworkSummarySchema = z.object({
   gatewayLatencyMs: z.number().nonnegative().nullable(),
   gatewayLatencyProtocol: LatencyProtocolSchema.nullable(),
@@ -138,6 +152,7 @@ export const NetworkSummarySchema = z.object({
   ingressVip: z.string().ip().nullable(),
   ingressVips: z.array(z.string().ip()).min(1),
   unifi: UniFiStateSchema,
+  udm: UdmTelemetrySchema,
   pduPower: PduPowerSchema,
   lastSpeedTest: SpeedTestResultSchema,
   metadata: SourceMetadataSchema,

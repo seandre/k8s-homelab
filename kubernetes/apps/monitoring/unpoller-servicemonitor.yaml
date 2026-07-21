@@ -14,9 +14,9 @@ spec:
       interval: 30s
       scrapeTimeout: 10s
       metricRelabelings:
-        # `up` is retained by Prometheus as scrape health. Every collected
-        # UniFi metric other than outlet power is dropped at ingestion.
+        # Retain only the fixed UDM Pro dashboard catalog and PDU outlet power;
+        # high-cardinality client and radio series are dropped at ingestion.
         - sourceLabels:
             - __name__
           action: keep
-          regex: unpoller_device_outlet_outlet_power
+          regex: unpoller_device_(outlet_outlet_power|wan_(receive_rate_bytes|transmit_rate_bytes|receive_bytes_total|transmit_bytes_total)|uplink_latency_seconds|cpu_utilization_ratio|memory_utilization_ratio|temperature_celsius|uptime_seconds|stations)

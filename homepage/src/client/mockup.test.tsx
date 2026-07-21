@@ -21,10 +21,14 @@ describe('overview network tile', () => {
     const markup = renderToStaticMarkup(<OverviewScreen search="" bootstrap={bootstrap} />);
 
     expect(markup).toContain('UDM Pro');
-    expect(markup).toContain('NETWORK / UNIFI');
+    expect(markup).toContain('NETWORK / UNPOLLER');
     expect(markup).toContain('WAN LATENCY');
     expect(markup).toContain('WAN DOWN');
     expect(markup).toContain('WAN UP');
+    expect(markup).toContain('42.8');
+    expect(markup).toContain('7.3');
+    expect(markup).toContain('TOTAL TRANSFER');
+    expect(markup).toContain('CLIENTS');
     expect(markup).not.toContain('PVE-01 / GLANCES');
   });
 });

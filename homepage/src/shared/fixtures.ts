@@ -299,6 +299,18 @@ export const fixtureNetwork: NetworkSummary = {
     status: null,
     metadata: metadata('fixture-unifi', 'NOT_SUPPORTED', 'INFO', 'Local UniFi read-only API capability has not been verified.'),
   },
+  udm: {
+    wanDownloadMbps: 42.8,
+    wanUploadMbps: 7.3,
+    wanTotalBytes: 245_233_186_461,
+    latencyMs: 11,
+    cpuPercent: 8.2,
+    memoryPercent: 74.5,
+    temperatureCelsius: 43.5,
+    uptimeSeconds: 530_660,
+    clientCount: 19,
+    metadata: metadata('fixture-unpoller-udm', 'CURRENT', 'OK'),
+  },
   pduPower: {
     totalWatts: 143,
     metadata: metadata('fixture-unpoller-pdu-power', 'CURRENT', 'OK'),
