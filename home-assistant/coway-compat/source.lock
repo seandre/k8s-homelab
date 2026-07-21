@@ -1,0 +1,8 @@
+# IE-002 immutable compatibility inputs. Keep values shell-safe: verify-source.sh
+# sources this file without eval.
+COWAY_VERSION=0.6.1
+COWAY_COMMIT=e0f29953f650b09c8d994aafba5c27634e0bb705
+COWAY_ARCHIVE_URL=https://github.com/RobertD502/home-assistant-iocare/archive/e0f29953f650b09c8d994aafba5c27634e0bb705.tar.gz
+COWAY_ARCHIVE_SHA256=0a36be24d7294319880d1aa0cc6b6fcd9a66b8f2d08192bfd04b92c42204aaf5
+HOME_ASSISTANT_VERSION=2026.7.2
+COWAYAIO_VERSION=0.2.4

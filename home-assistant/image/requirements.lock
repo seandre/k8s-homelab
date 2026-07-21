@@ -1,0 +1,4 @@
+# The component manifest requires this exact release. PyPI publishes only this
+# source distribution for 0.2.4; the artifact hash prevents substitution.
+cowayaio==0.2.4 \
+    --hash=sha256:05d49002fc9005159ff865f2429a13339d61975636c4c66077d90e2ee29891c8

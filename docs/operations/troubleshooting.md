@@ -27,6 +27,103 @@ Work through failures in this order:
 5. TLS certificate readiness and client trust.
 6. Application logs and configuration.
 
+## `pve-01` Intel NIC Transmit-Hang Incident (`2026-07-20` to `2026-07-21`)
+
+`pve-01` did not suffer a whole-host crash during this incident. Its operating
+system continued running, but the Intel I219-LM physical uplink stopped
+transmitting. Because `nic0` is the physical member of `vmbr0`, the failure
+removed network connectivity from both the Proxmox host and every bridged VM.
+
+The previous-boot journal repeatedly reported:
+
+```text
+e1000e 0000:00:1f.6 nic0: Detected Hardware Unit Hang
+```
+
+The three observed occurrences were:
+
+| Boot | First NIC hang | Last NIC hang | Hang messages | Shutdown trigger |
+|---|---|---|---:|---|
+| `-3` | `2026-07-20 17:08:18` | `2026-07-20 17:14:56` | 200 | Short physical power-button press at `17:14:17` |
+| `-2` | `2026-07-20 19:09:24` | `2026-07-20 20:09:12` | 1,795 | Short physical power-button press at `20:08:44` |
+| `-1` | `2026-07-20 23:31:26` | `2026-07-21 07:06:58` | 13,667 | Short physical power-button press at `07:06:17` |
+
+The final occurrence repeated approximately every two seconds for more than
+seven hours. DNS and PBS status-query errors appeared after the transmit queue
+had wedged and were consequences of the network failure, not its cause.
+`systemd-logind` recognized each short power-button press and completed an
+orderly guest and host shutdown. The logs contain no kernel panic, OOM kill,
+NVMe error, thermal trip, machine-check error, watchdog lockup, or pstore crash
+record. They also contain no physical link-down event. Treat the Intel
+NIC/`e1000e` transmit path as the immediate cause with high confidence; the
+lower-level trigger remains unproven.
+
+At the time of diagnosis, the relevant state was:
+
+- Proxmox VE `9.2.0`, running kernel `7.0.2-6-pve`;
+- repository kernel candidate `7.0.14-5`;
+- Intel I219-LM (`8086:0d4c`) using the in-kernel `e1000e` driver and NIC
+  firmware `0.4-4`;
+- HP BIOS `S21 02.18.00`, dated `2023-12-14`;
+- 1 Gbps full-duplex link with Rx/Tx flow control;
+- Energy Efficient Ethernet, TSO, GSO, and GRO enabled.
+
+After the `2026-07-21 07:44` restart, all five production VMs and the core
+Proxmox services were active, and the new boot had recorded no additional NIC
+hangs as of `07:49`. Same-VLAN checks from `pve-02` reached `pve-01` with no
+packet loss and found TCP/22 open. Direct access from the Trusted Mac still
+failed while `pve-02` remained directly reachable. The Proxmox firewall was
+disabled, so track that routed-access behavior as a separate UniFi policy or
+client-tracking issue rather than as evidence that the NIC remained hung.
+
+### Capture and Recovery
+
+When the symptom returns, use a local console or a same-VLAN host such as
+`pve-02` to preserve evidence before restarting:
+
+```bash
+journalctl --list-boots --no-pager
+journalctl -k -b 0 --no-pager \
+  | grep -E 'e1000e.*(Hardware Unit Hang|NIC Link|Reset adapter|NETDEV WATCHDOG)'
+ethtool -i nic0
+ethtool nic0
+ethtool --show-eee nic0
+ethtool -k nic0
+ip -s link show nic0
+```
+
+If routed SSH is unavailable but `pve-02` is reachable, use it as the network
+vantage point. Do not remove power immediately. A short power-button press was
+handled cleanly during this incident and allowed Proxmox to stop its guests and
+sync its filesystems. Use a forced power removal only if the host also stops
+responding to its local console and cannot complete an orderly shutdown.
+
+### Pending Remediation
+
+Apply and validate these changes one stage at a time so the effective change
+is identifiable:
+
+1. During a maintenance window, update Proxmox packages and move from kernel
+   `7.0.2-6-pve` to the current repository kernel before adding driver
+   workarounds.
+2. Review and, if applicable, update the HP EliteDesk 800 G6 BIOS from the
+   [official HP support page](https://support.hp.com/us-en/product/setup-user-guides/hp-elitedesk-800-g6-desktop-mini-pc/34658463).
+3. Monitor the new kernel for the first `Detected Hardware Unit Hang` event.
+4. If the fault recurs, test disabling EEE first. If necessary, test TSO/GSO/GRO
+   and Tx flow control separately rather than disabling every offload at once.
+5. Persist only the setting that proves effective, and add an alert for the
+   first matching kernel message. The relevant implementation is the upstream
+   Linux [`e1000e` driver](https://github.com/torvalds/linux/blob/master/drivers/net/ethernet/intel/e1000e/netdev.c).
+
+The following `ethtool` changes are runtime diagnostics and reset at reboot
+unless explicitly persisted. Run them only during a controlled recurrence:
+
+```bash
+ethtool --set-eee nic0 eee off
+ethtool -K nic0 tso off gso off gro off
+ethtool -A nic0 tx off
+```
+
 ## `pve-02`, `bastion-01`, and PBS Fast Triage
 
 The implemented path is `bastion-01` VM `200` on standalone `pve-02`, backed up to `pbs-01.lab.seandre.dev` on `pve-01`. Start with non-secret checks:

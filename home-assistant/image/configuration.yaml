@@ -1,0 +1,11 @@
+# CI-only configuration-check input. IE-004 owns the Git/PVC runtime bootstrap.
+homeassistant:
+  name: IE-003 Configuration Check
+  latitude: 0
+  longitude: 0
+  elevation: 0
+  unit_system: metric
+  time_zone: UTC
+  country: US
+  currency: USD
+

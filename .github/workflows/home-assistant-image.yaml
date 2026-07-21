@@ -1,0 +1,116 @@
+name: Verify and publish Home Assistant image
+
+on:
+  pull_request:
+    paths:
+      - home-assistant/**
+      - .github/workflows/home-assistant-image.yaml
+  push:
+    branches: [main]
+    paths:
+      - home-assistant/**
+      - .github/workflows/home-assistant-image.yaml
+  workflow_dispatch:
+
+concurrency:
+  group: home-assistant-image-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/k8s-homelab-home-assistant
+  VERIFY_IMAGE: homelab/home-assistant:ie003-verify
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download and checksum-verify Coway source
+        run: home-assistant/image/fetch-source.sh "${RUNNER_TEMP}/coway.tar.gz"
+
+      - name: Test source verifier and production context
+        run: |
+          home-assistant/coway-compat/test-verifier.sh "${RUNNER_TEMP}/coway.tar.gz"
+          home-assistant/image/test-context.sh "${RUNNER_TEMP}/coway.tar.gz"
+          home-assistant/image/prepare-context.sh \
+            "${RUNNER_TEMP}/coway.tar.gz" \
+            "${RUNNER_TEMP}/home-assistant-context"
+
+      - name: Check shell and Python test syntax
+        run: |
+          shellcheck \
+            home-assistant/coway-compat/*.sh \
+            home-assistant/image/*.sh
+          python3 -m py_compile \
+            home-assistant/coway-compat/tests/test_compatibility.py
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build production image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ runner.temp }}/home-assistant-context
+          push: false
+          load: true
+          tags: ${{ env.VERIFY_IMAGE }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Check HA configuration and Coway imports/entities
+        run: |
+          docker run --rm \
+            --entrypoint /usr/local/bin/verify-home-assistant-image \
+            "${VERIFY_IMAGE}"
+
+      - name: Scan production image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.VERIFY_IMAGE }}
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
+
+  publish:
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download and checksum-verify Coway source
+        run: home-assistant/image/fetch-source.sh "${RUNNER_TEMP}/coway.tar.gz"
+
+      - name: Generate production build context
+        run: |
+          home-assistant/image/prepare-context.sh \
+            "${RUNNER_TEMP}/coway.tar.gz" \
+            "${RUNNER_TEMP}/home-assistant-context"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish immutable full-SHA image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ runner.temp }}/home-assistant-context
+          push: true
+          tags: ${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          sbom: true
+          provenance: mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

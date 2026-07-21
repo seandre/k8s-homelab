@@ -1,0 +1,37 @@
+{
+  "fixture": "airmega_250s_redacted",
+  "purifier_key": "purifier-redacted",
+  "device_attr": {
+    "device_id": "device-redacted",
+    "name": "Test Room Coway",
+    "model": "Airmega 250S",
+    "model_code": "model-code-redacted",
+    "product_name": "AIRMEGA 250S",
+    "code": "code-redacted"
+  },
+  "state": {
+    "network_status": true,
+    "is_on": true,
+    "fan_speed": 2,
+    "auto_mode": false,
+    "auto_eco_mode": false,
+    "eco_mode": false,
+    "night_mode": false,
+    "rapid_mode": false,
+    "light_on": true,
+    "light_mode": 1,
+    "button_lock": 0,
+    "timer": "0",
+    "timer_remaining": "0",
+    "smart_mode_sensitivity": 2,
+    "pre_filter_change_frequency": null,
+    "air_quality_index": 42.0,
+    "particulate_matter_2_5": 4,
+    "particulate_matter_10": 7,
+    "aq_grade": 1,
+    "lux_sensor": 900,
+    "pre_filter_pct": 91,
+    "odor_filter_pct": 0,
+    "max2_pct": 83
+  }
+}

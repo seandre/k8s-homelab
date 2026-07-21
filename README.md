@@ -32,7 +32,7 @@ Target stack:
 
 ## Current Status
 
-Last verified: 2026-07-20.
+Last verified: 2026-07-21.
 
 - Proxmox VE installed on the 256 GB NVMe in the HP EliteDesk mini PC
 - 2 TB NVMe configured as Proxmox LVM-thin storage `vmdata`
@@ -65,9 +65,10 @@ Last verified: 2026-07-20.
 - Standalone `pve-02` is active at `192.168.40.25` and runs VM `200` (`bastion-01`)
 - `bastion-01` owns `.33`, `.29`, and `.31` and runs DNS forwarding, HAProxy, Nexus, and Glances; the OKD DNS records remain inactive
 - `pbs-01.lab.seandre.dev` runs on `pve-01` and holds a verified, protected stopped backup of `bastion-01`; the isolated Nexus artifact restore test passed
+- `pve-01` experienced three recurring Intel I219-LM/`e1000e` transmit-queue hangs on 2026-07-20 and 2026-07-21; the host remained alive but its physical bridge uplink stopped transmitting. The [incident evidence and pending kernel, firmware, and staged NIC remediation](docs/operations/troubleshooting.md#pve-01-intel-nic-transmit-hang-incident-2026-07-20-to-2026-07-21) are documented; no workaround has been applied yet
 - UniFi UDM Pro Intrusion Prevention was identified as the cause of intermittent SSH/TCP timeouts and adjusted
 - UniFi segmentation hardening is active: `pve-01` uses an access-only Servers port, Trusted administrative paths are MacBook-scoped, broad Management-initiated rules are removed, Teleport is the sole remote-user VPN, and DHCP/IPv6 drift is resolved
-- Next sequence: repair and dry-run the Nexus Certbot deployment hook, install the missing OKD clients on `utility-01`, then prepare and install connected compact OKD on the three Ryzen systems
+- Next sequence: update and validate `pve-01`'s kernel and firmware path, repair and dry-run the Nexus Certbot deployment hook, install the missing OKD clients on `utility-01`, then prepare and install connected compact OKD on the three Ryzen systems
 
 ## Repo Map
 
