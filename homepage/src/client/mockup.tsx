@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
-import { ComponentGallery, DetailDrawer, FreshnessLabel, Metric, MirroredTrafficGraph, Panel, StateBadge } from './components.js';
+import { ComponentGallery, Metric, MirroredTrafficGraph, Panel, StateBadge } from './components.js';
 import { healthyBootstrapFixture } from '../shared/fixtures.js';
 import { buildOverviewModel } from './overview.js';
 import { ProxmoxPanel } from './proxmox.js';
 import type { Bootstrap } from '../shared/contracts.js';
 
 export function OverviewScreen({ search, bootstrap = healthyBootstrapFixture }: { search: string; bootstrap?: Bootstrap }) {
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [expandedHosts, setExpandedHosts] = useState<string[]>([]);
+  const toggleExpandedHost = (hostId: string) => setExpandedHosts((current) => current.includes(hostId) ? current.filter((id) => id !== hostId) : [...current, hostId]);
   const data = bootstrap;
   const overview = buildOverviewModel(data);
   const primaryCluster = overview.k3s!;
@@ -21,7 +22,7 @@ export function OverviewScreen({ search, bootstrap = healthyBootstrapFixture }: 
         <section className="hero-row"><div><span className="panel-eyebrow">OVERVIEW / READ-ONLY TELEMETRY</span><h1>Operations at a glance</h1></div><div className="hero-state"><StateBadge severity={overview.globalSeverity} label={`${overview.globalSeverity} · ${overview.alerts.length} alert`} /><span>Last refresh {data.generatedAt.slice(11, 19)} UTC</span></div></section>
         {alert ? <section className="alert-strip" aria-label="Active alerts"><StateBadge severity={alert.severity} /><strong>{overview.alerts.length} active alert{overview.alerts.length === 1 ? '' : 's'}</strong><span>{alert.summary}</span><a href="/kubernetes">View Kubernetes ↗</a></section> : null}
         <div className="pve-overview">
-          {overview.proxmoxHosts.map((host) => <ProxmoxPanel key={host.id} host={host} timeSeries={data.timeSeries} expanded={expanded === host.id} onExpand={() => setExpanded(expanded === host.id ? null : host.id)} />)}
+          {overview.proxmoxHosts.map((host) => <ProxmoxPanel key={host.id} host={host} timeSeries={data.timeSeries} expanded={expandedHosts.includes(host.id)} onExpand={() => toggleExpandedHost(host.id)} />)}
           <Panel className="process-box" title="Services" eyebrow="PROCESS / REACHABILITY" severity="WARN"><div className="service-columns" aria-hidden="true"><span>SERVICE</span><span>SOURCE</span><span>STATE</span></div><div className="service-list">{filteredServices.map((service) => <a href={service.href} target="_blank" rel="noreferrer" key={service.id}><strong>{service.name}</strong><small>{service.metadata.source.replace('fixture-', '')}</small><StateBadge severity={service.metadata.severity} label={service.status} /></a>)}</div>{filteredServices.length === 0 ? <div className="empty-state">No local matches. Try a different search.</div> : null}</Panel>
           <div className="pve-workload-row">
             <Panel className="network-box" title="Network" eyebrow="PVE-01 / GLANCES" severity={overview.network.metadata.severity} freshness={overview.network.metadata.freshness}><div className="metric-grid"><Metric label="GATEWAY" value={overview.network.gatewayLatencyMs ?? '—'} unit="ms" /><Metric label="INTERNET" value={overview.network.internetLatencyMs ?? '—'} unit="ms" /><Metric label="INGRESS VIP" value=".30" detail={overview.network.ingressVip ?? '—'} /></div><MirroredTrafficGraph upload={pveTx} download={pveRx} unit="Mb/s" /></Panel>
@@ -32,7 +33,6 @@ export function OverviewScreen({ search, bootstrap = healthyBootstrapFixture }: 
         </div>
         <ComponentGallery />
       </main>
-      {expanded ? <DetailDrawer title={`${expanded} detail`} onClose={() => setExpanded(null)}><p>Keyboard and pointer expansion preserve the same normalized telemetry data.</p><FreshnessLabel freshness="STALE" ageSeconds={42} /></DetailDrawer> : null}
     </>
   );
 }

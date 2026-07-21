@@ -37,6 +37,30 @@ test('persists accessible theme and layout controls without a mouse', async ({ p
   await expect(page.locator('.app-frame')).toHaveClass(/layout-density-comfortable/);
 });
 
+test('expands Proxmox cards independently without opening an overlay', async ({ page }) => {
+  const pve01 = page.locator('.pve-card').filter({ has: page.getByRole('heading', { name: 'pve-01', exact: true }) });
+  const pve02 = page.locator('.pve-card').filter({ has: page.getByRole('heading', { name: 'pve-02', exact: true }) });
+  const pve02Height = await pve02.evaluate((element) => element.getBoundingClientRect().height);
+
+  await pve01.getByRole('button', { name: 'Expand details' }).click();
+
+  await expect(pve01).toHaveClass(/panel-expanded/);
+  await expect(pve01.getByText('HOST DRILL-DOWN')).toBeVisible();
+  await expect(pve01.getByRole('region', { name: 'Per-core CPU utilization' })).toBeVisible();
+  await expect(pve01).toHaveScreenshot('pve-expanded-core-monitor.png', { animations: 'disabled' });
+  await expect(pve02).not.toHaveClass(/panel-expanded/);
+  await expect(pve02.getByText('HOST DRILL-DOWN')).toHaveCount(0);
+  await expect(page.locator('.drawer')).toHaveCount(0);
+  await expect.poll(() => pve02.evaluate((element) => element.getBoundingClientRect().height)).toBe(pve02Height);
+
+  await pve02.getByRole('button', { name: 'Expand details' }).click();
+
+  await expect(pve01).toHaveClass(/panel-expanded/);
+  await expect(pve02).toHaveClass(/panel-expanded/);
+  await expect(pve01.getByText('HOST DRILL-DOWN')).toBeVisible();
+  await expect(pve02.getByText('HOST DRILL-DOWN')).toBeVisible();
+});
+
 test('has no serious or critical automated accessibility violations', async ({ page }) => {
   const results = await new AxeBuilder({ page }).analyze();
   const serious = results.violations.filter(({ impact }) => impact === 'serious' || impact === 'critical');

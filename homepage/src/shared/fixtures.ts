@@ -26,6 +26,17 @@ const metadata = (
   ...(message ? { message } : {}),
 });
 
+function fixtureCoreSeries(host: string, cores: number[], freshness: 'CURRENT' | 'STALE', severity: 'OK' | 'WARN'): TimeSeries[] {
+  const timestamps = ['2026-07-19T11:45:00.000Z', '2026-07-19T11:50:00.000Z', '2026-07-19T11:55:00.000Z', FIXTURE_TIME];
+  return cores.map((current, coreIndex) => ({
+    metric: `${host} CORE ${coreIndex}`,
+    unit: '%',
+    window: '15m',
+    points: timestamps.map((timestamp, sampleIndex) => ({ timestamp, value: sampleIndex === timestamps.length - 1 ? current : Math.max(0, current + ((sampleIndex - 1) * 5) + ((coreIndex % 3) - 1) * 3) })),
+    metadata: metadata('fixture-glances', freshness, severity),
+  }));
+}
+
 export const fixtureAlerts: Alert[] = [
   {
     id: 'alert-k3s-worker-warning',
@@ -51,6 +62,8 @@ export const fixtureTimeSeries: TimeSeries[] = [
     ],
     metadata: metadata('fixture-prometheus', 'CURRENT', 'OK'),
   },
+  ...fixtureCoreSeries('pve-01', [38, 42, 35, 47, 39, 43, 41, 45], 'CURRENT', 'OK'),
+  ...fixtureCoreSeries('pve-02', [62, 71, 64, 69, 66, 73, 61, 70], 'STALE', 'WARN'),
 ];
 
 export const fixtureHosts: Host[] = [
@@ -80,6 +93,7 @@ export const fixtureHosts: Host[] = [
     temperatureCelsius: 47,
     networkIngressBitsPerSecond: 120_000_000,
     networkEgressBitsPerSecond: 80_000_000,
+    networkTotalBytes: 1_374_389_534_720,
     metadata: metadata('fixture-prometheus', 'CURRENT', 'OK'),
   },
   {
@@ -108,6 +122,7 @@ export const fixtureHosts: Host[] = [
     temperatureCelsius: 59,
     networkIngressBitsPerSecond: 90_000_000,
     networkEgressBitsPerSecond: 45_000_000,
+    networkTotalBytes: 824_633_720_832,
     metadata: metadata('fixture-prometheus', 'STALE', 'WARN', 'Last sample is 42 seconds old.'),
   },
   {
@@ -136,6 +151,7 @@ export const fixtureHosts: Host[] = [
     temperatureCelsius: null,
     networkIngressBitsPerSecond: null,
     networkEgressBitsPerSecond: null,
+    networkTotalBytes: null,
     metadata: metadata('fixture-k3s-api', 'CURRENT', 'OK'),
   },
   {
@@ -164,6 +180,7 @@ export const fixtureHosts: Host[] = [
     temperatureCelsius: null,
     networkIngressBitsPerSecond: null,
     networkEgressBitsPerSecond: null,
+    networkTotalBytes: null,
     metadata: metadata('fixture-k3s-api', 'CURRENT', 'OK'),
   },
   {
@@ -192,6 +209,7 @@ export const fixtureHosts: Host[] = [
     temperatureCelsius: null,
     networkIngressBitsPerSecond: null,
     networkEgressBitsPerSecond: null,
+    networkTotalBytes: null,
     metadata: metadata('fixture-k3s-api', 'CURRENT', 'WARN', 'Memory pressure warning.'),
   },
   ...(['okd-cp-01', 'okd-cp-02', 'okd-cp-03'] as const).map((name) => ({
@@ -220,6 +238,7 @@ export const fixtureHosts: Host[] = [
     temperatureCelsius: null,
     networkIngressBitsPerSecond: null,
     networkEgressBitsPerSecond: null,
+    networkTotalBytes: null,
     metadata: metadata('fixture-okd-api', 'NOT_PROVISIONED', 'INFO', 'OKD is not provisioned.'),
   })),
 ];

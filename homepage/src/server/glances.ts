@@ -9,6 +9,12 @@ const NetworkEntrySchema = z.object({
   tx: z.number().nonnegative().optional(),
   bytes_recv_rate_per_sec: z.number().nonnegative().optional(),
   bytes_sent_rate_per_sec: z.number().nonnegative().optional(),
+  bytes_all_gauge: z.number().nonnegative().optional(),
+  bytes_recv_gauge: z.number().nonnegative().optional(),
+  bytes_sent_gauge: z.number().nonnegative().optional(),
+  cumulative_cx: z.number().nonnegative().optional(),
+  cumulative_rx: z.number().nonnegative().optional(),
+  cumulative_tx: z.number().nonnegative().optional(),
 });
 
 const GlancesResponseSchema = z.object({
@@ -28,7 +34,7 @@ export interface GlancesHostConfig { id: string; name: string; endpoint: string;
 export const GLANCES_TIMEOUT_MS = 1_500;
 
 function nullHost(config: GlancesHostConfig, metadata: Host['metadata']): Host {
-  return { id: config.id, name: config.name, kind: 'PROXMOX', cpuPercent: null, memoryPercent: null, memoryUsedBytes: null, memoryTotalBytes: null, diskUsedBytes: null, diskTotalBytes: null, diskIoPercent: null, cpuModel: null, cpuCorePercentages: null, loadAverage: null, cpuClockMhz: null, powerWatts: null, swapUsedBytes: null, swapTotalBytes: null, uptimeSeconds: null, runningVmCount: null, stoppedVmCount: null, runningContainerCount: null, stoppedContainerCount: null, temperatureCelsius: null, networkIngressBitsPerSecond: null, networkEgressBitsPerSecond: null, metadata };
+  return { id: config.id, name: config.name, kind: 'PROXMOX', cpuPercent: null, memoryPercent: null, memoryUsedBytes: null, memoryTotalBytes: null, diskUsedBytes: null, diskTotalBytes: null, diskIoPercent: null, cpuModel: null, cpuCorePercentages: null, loadAverage: null, cpuClockMhz: null, powerWatts: null, swapUsedBytes: null, swapTotalBytes: null, uptimeSeconds: null, runningVmCount: null, stoppedVmCount: null, runningContainerCount: null, stoppedContainerCount: null, temperatureCelsius: null, networkIngressBitsPerSecond: null, networkEgressBitsPerSecond: null, networkTotalBytes: null, metadata };
 }
 
 function entries<T>(value: Record<string, T> | T[] | undefined): T[] {
@@ -60,8 +66,9 @@ export class GlancesAdapter {
       const network = networkEntries.find((entry) => entry.interface_name === 'vmbr0') ?? networkEntries[0];
       const networkIngressBytes = network?.bytes_recv_rate_per_sec ?? network?.rx;
       const networkEgressBytes = network?.bytes_sent_rate_per_sec ?? network?.tx;
+      const networkTotalBytes = network?.bytes_all_gauge ?? network?.cumulative_cx ?? (network?.bytes_recv_gauge !== undefined && network?.bytes_sent_gauge !== undefined ? network.bytes_recv_gauge + network.bytes_sent_gauge : network?.cumulative_rx !== undefined && network?.cumulative_tx !== undefined ? network.cumulative_rx + network.cumulative_tx : null);
       const temp = normalized.value.sensors?.find((sensor) => /package|cpu temp/i.test(sensor.label))?.value ?? null;
-      return { ...output, cpuPercent: normalized.value.cpu?.total ?? null, cpuCorePercentages: normalized.value.percpu?.map((cpu) => cpu.total) ?? null, memoryPercent: normalized.value.mem?.percent ?? null, memoryUsedBytes: normalized.value.mem?.used ?? null, memoryTotalBytes: normalized.value.mem?.total ?? null, swapUsedBytes: normalized.value.memswap?.used ?? null, swapTotalBytes: normalized.value.memswap?.total ?? null, diskUsedBytes: fs?.used ?? null, diskTotalBytes: fs?.size ?? null, diskIoPercent: disk ? null : null, temperatureCelsius: temp, uptimeSeconds: typeof normalized.value.uptime === 'number' ? normalized.value.uptime : null, networkIngressBitsPerSecond: networkIngressBytes === undefined ? null : networkIngressBytes * 8, networkEgressBitsPerSecond: networkEgressBytes === undefined ? null : networkEgressBytes * 8 };
+      return { ...output, cpuPercent: normalized.value.cpu?.total ?? null, cpuCorePercentages: normalized.value.percpu?.map((cpu) => cpu.total) ?? null, memoryPercent: normalized.value.mem?.percent ?? null, memoryUsedBytes: normalized.value.mem?.used ?? null, memoryTotalBytes: normalized.value.mem?.total ?? null, swapUsedBytes: normalized.value.memswap?.used ?? null, swapTotalBytes: normalized.value.memswap?.total ?? null, diskUsedBytes: fs?.used ?? null, diskTotalBytes: fs?.size ?? null, diskIoPercent: disk ? null : null, temperatureCelsius: temp, uptimeSeconds: typeof normalized.value.uptime === 'number' ? normalized.value.uptime : null, networkIngressBitsPerSecond: networkIngressBytes === undefined ? null : networkIngressBytes * 8, networkEgressBitsPerSecond: networkEgressBytes === undefined ? null : networkEgressBytes * 8, networkTotalBytes };
     }));
   }
 }

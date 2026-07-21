@@ -73,6 +73,7 @@ export const HostSchema = z.object({
   temperatureCelsius: z.number().finite().nullable(),
   networkIngressBitsPerSecond: z.number().nonnegative().nullable(),
   networkEgressBitsPerSecond: z.number().nonnegative().nullable(),
+  networkTotalBytes: z.number().nonnegative().nullable(),
   metadata: SourceMetadataSchema,
 });
 export type Host = z.infer<typeof HostSchema>;

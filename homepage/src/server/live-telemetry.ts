@@ -39,7 +39,7 @@ function dynamicHost(id: string, name: string, metadata: SourceMetadata): Host {
     loadAverage: null, cpuClockMhz: null, powerWatts: null, swapUsedBytes: null, swapTotalBytes: null,
     uptimeSeconds: null, runningVmCount: null, stoppedVmCount: null, runningContainerCount: null,
     stoppedContainerCount: null, temperatureCelsius: null, networkIngressBitsPerSecond: null,
-    networkEgressBitsPerSecond: null, metadata,
+    networkEgressBitsPerSecond: null, networkTotalBytes: null, metadata,
   };
 }
 
@@ -77,6 +77,7 @@ function mergedHost(id: string, name: string, proxmox: Host | undefined, glances
     temperatureCelsius: glances?.temperatureCelsius ?? null,
     networkIngressBitsPerSecond: glances?.networkIngressBitsPerSecond ?? null,
     networkEgressBitsPerSecond: glances?.networkEgressBitsPerSecond ?? null,
+    networkTotalBytes: glances?.networkTotalBytes ?? null,
   };
 }
 
@@ -336,6 +337,7 @@ export class LiveTelemetry {
       [`${host.name} DISK`, host.diskUsedBytes !== null && host.diskTotalBytes ? host.diskUsedBytes / host.diskTotalBytes * 100 : null],
       [`${host.name} RX`, host.networkIngressBitsPerSecond === null ? null : host.networkIngressBitsPerSecond / 1_000_000],
       [`${host.name} TX`, host.networkEgressBitsPerSecond === null ? null : host.networkEgressBitsPerSecond / 1_000_000],
+      ...(host.cpuCorePercentages?.map((value, index): [string, number] => [`${host.name} CORE ${index}`, value]) ?? []),
     ];
     for (const [metric, sample] of metrics) {
       if (sample === null || !Number.isFinite(sample)) continue;
