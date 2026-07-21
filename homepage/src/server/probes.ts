@@ -3,7 +3,7 @@ import { SourceNormalizer, withTimeout, type Clock } from './normalization.js';
 import type { RuntimeConfig } from './runtime-config.js';
 
 export interface ProbeFetchResponse { ok: boolean; status: number; }
-export type ProbeFetch = (url: string, init: { method: 'HEAD'; redirect: 'manual'; signal?: AbortSignal }) => Promise<ProbeFetchResponse>;
+export type ProbeFetch = (url: string, init: { method: 'HEAD' | 'GET'; redirect: 'manual'; signal?: AbortSignal }) => Promise<ProbeFetchResponse>;
 
 export interface ProbeResult {
   id: string;
@@ -40,7 +40,8 @@ export class AllowlistedProbeRunner {
     if (state.enabled && state.normalizer.canAttempt()) {
       const started = this.clock.now().getTime();
       try {
-        const response = await withTimeout(this.fetcher(state.target, { method: 'HEAD', redirect: 'manual' }), this.timeoutMs);
+        let response = await withTimeout(this.fetcher(state.target, { method: 'HEAD', redirect: 'manual' }), this.timeoutMs);
+        if (response.status === 405 || response.status === 501) response = await withTimeout(this.fetcher(state.target, { method: 'GET', redirect: 'manual' }), this.timeoutMs);
         // Any 2xx-4xx response proves that the configured service endpoint is
         // reachable. Redirects are deliberately not followed beyond the
         // Git-owned target, and auth failures remain distinct from downtime.

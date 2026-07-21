@@ -48,7 +48,7 @@ export function loadRuntimeConfig(input: unknown): RuntimeConfig {
 }
 
 export const gitOwnedRuntimeConfig: RuntimeConfig = loadRuntimeConfig({
-  allowedHosts: ['argocd.lab.seandre.dev', 'grafana.lab.seandre.dev', 'unifi.ui.com', 'api.ui.com', 'pve-01.lab.seandre.dev', 'pve-02.lab.seandre.dev', 'pbs-01.lab.seandre.dev', 'nexus.lab.seandre.dev', 'docs.lab.seandre.dev', 'nginx-test.lab.seandre.dev', 'github.com', 'api.open-meteo.com', 'kube-prometheus-stack-prometheus.monitoring.svc', 'kube-prometheus-stack-alertmanager.monitoring.svc'],
+  allowedHosts: ['argocd.lab.seandre.dev', 'grafana.lab.seandre.dev', 'unifi.ui.com', 'api.ui.com', 'pve-01.lab.seandre.dev', 'pve-02.lab.seandre.dev', 'pbs-01.lab.seandre.dev', 'nexus.lab.seandre.dev', 'docs.lab.seandre.dev', 'nginx-test.lab.seandre.dev', 'github.com', 'api.open-meteo.com', 'argocd-server.argocd.svc', 'kube-prometheus-stack-grafana.monitoring.svc', 'homelab-docs.homelab-docs.svc', 'nginx-test.nginx-test.svc', 'kube-prometheus-stack-prometheus.monitoring.svc', 'kube-prometheus-stack-alertmanager.monitoring.svc'],
   views: ['overview', 'compute', 'network', 'storage-backups', 'kubernetes', 'okd', 'services', 'weather'].map((id) => ({ id, enabled: true })),
   defaultLayout: { navigation: 'expanded', density: 'compact', overview: 'balanced' },
   serviceLinks: [
@@ -67,17 +67,17 @@ export const gitOwnedRuntimeConfig: RuntimeConfig = loadRuntimeConfig({
     { id: 'unifi-source', enabled: true, endpoint: 'https://api.ui.com/v1', timeoutMs: 5_000, stateWhenDisabled: 'NOT_SUPPORTED' },
   ],
   probes: [
-    ['argocd-probe', 'https://argocd.lab.seandre.dev'],
-    ['grafana-probe', 'https://grafana.lab.seandre.dev'],
+    ['argocd-probe', 'http://argocd-server.argocd.svc'],
+    ['grafana-probe', 'http://kube-prometheus-stack-grafana.monitoring.svc'],
     ['unifi-probe', 'https://unifi.ui.com'],
     ['pve-01-link-probe', 'https://pve-01.lab.seandre.dev:8006'],
     ['pve-02-link-probe', 'https://pve-02.lab.seandre.dev:8006'],
     ['bastion-01-probe', 'https://nexus.lab.seandre.dev'],
-    ['homelab-docs-probe', 'https://docs.lab.seandre.dev'],
-    ['nginx-test-probe', 'https://nginx-test.lab.seandre.dev'],
+    ['homelab-docs-probe', 'http://homelab-docs.homelab-docs.svc:8080'],
+    ['nginx-test-probe', 'http://nginx-test.nginx-test.svc'],
     ['repository-probe', 'https://github.com/seandre/k8s-homelab'],
     ['homepage-github-probe', 'https://github.com/gethomepage/homepage'],
-  ].map(([id, target]) => ({ id, sourceId: 'service-probes', target, protocol: 'HTTPS' as const, intervalMs: 30_000 })),
+  ].map(([id, target]) => ({ id: id!, sourceId: 'service-probes', target: target!, protocol: target!.startsWith('https:') ? 'HTTPS' as const : 'TCP' as const, intervalMs: 30_000 })),
   credentialReferences: [
     { id: 'argocd-readonly', namespace: 'homepage', secretName: 'homepage-argocd-readonly', keys: ['server', 'token'] },
     { id: 'proxmox-pve01-readonly', namespace: 'homepage', secretName: 'homepage-proxmox-pve01', keys: ['server', 'token-id', 'token-secret'] },

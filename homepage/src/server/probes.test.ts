@@ -16,7 +16,7 @@ describe('allowlisted reachability probes', () => {
     expect((await runner.run('argocd-probe')).status).toBe('DEGRADED');
     healthy = true; clock.advance(15_000); expect((await runner.run('argocd-probe')).status).toBe('DEGRADED');
     expect((await runner.run('argocd-probe')).status).toBe('UP');
-    expect(requests).toEqual(expect.arrayContaining([{ url: 'https://argocd.lab.seandre.dev', method: 'HEAD', redirect: 'manual' }]));
+    expect(requests).toEqual(expect.arrayContaining([{ url: 'http://argocd-server.argocd.svc', method: 'HEAD', redirect: 'manual' }]));
     await expect(runner.run('https://example.com')).rejects.toBeInstanceOf(ProbeTargetNotAllowedError);
   });
 
@@ -25,6 +25,17 @@ describe('allowlisted reachability probes', () => {
       const runner = new AllowlistedProbeRunner(enabledConfig(), async () => ({ ok: false, status }), fakeClock());
       await expect(runner.run('argocd-probe')).resolves.toMatchObject({ status: 'UP', latencyMs: 0 });
     }
+  });
+
+  it('falls back to GET when an endpoint does not implement HEAD', async () => {
+    const methods: string[] = [];
+    const runner = new AllowlistedProbeRunner(enabledConfig(), async (_url, init) => {
+      methods.push(init.method);
+      return init.method === 'HEAD' ? { ok: false, status: 501 } : { ok: true, status: 200 };
+    }, fakeClock());
+
+    await expect(runner.run('pve-01-link-probe')).resolves.toMatchObject({ status: 'UP' });
+    expect(methods).toEqual(['HEAD', 'GET']);
   });
 
   it('does not issue requests while the probe feature is disabled', async () => {
