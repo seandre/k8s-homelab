@@ -2,9 +2,10 @@
 
 Date: 2026-07-21
 
-Result: **IMPLEMENTED; LIVE ACCEPTANCE PENDING**. IE-003 is complete and the
-foundation renders locally with its published immutable image. Live evidence is
-recorded only after the Git revision is on `main` and Argo reconciles it.
+Result: **LIVE WITH TWO ACCEPTANCE ITEMS PENDING**. The foundation is deployed
+from `main`, Argo is healthy, and pod-replacement persistence is proven. Private
+split DNS and a literal prior-image rollback remain outstanding as described
+below.
 
 ## Fixed deployment contract
 
@@ -50,13 +51,24 @@ used by the ingress NetworkPolicy.
 
 ## Live acceptance evidence
 
-Pending after merge:
-
-- Argo revision and Synced/Healthy state;
-- bound PVC/PV identity and running image ID;
-- private trusted-TLS onboarding response;
-- same PVC UID and harmless HA state after pod replacement;
-- Git-based prior-image rollback and forward recovery.
+- Git commit: `ab40f68` on `main` (Argo observed the subsequent docs revision
+  `d023ef01f7d8d9ed45e0fc85862fea4b6067818c`).
+- Argo `homelab-apps`: `Synced` / `Healthy`.
+- Running image ID:
+  `ghcr.io/seandre/k8s-homelab-home-assistant@sha256:9f0c4eb2c42db67d70c12ff6ca3ed9c1fcd314d9f66929a0de61064654610803`.
+- PVC UID `997d5a98-3d46-4d55-832c-4f65f77b9605` is `Bound` to
+  `pvc-997d5a98-3d46-4d55-832c-4f65f77b9605`.
+- A non-sensitive marker written under `/config` survived replacement of pod
+  UID `5c12d47c-835d-4cbf-8c80-74a1bbdea9d4` by pod UID
+  `d34b988d-5fbc-4dc9-9a0e-9ae73f2398d8`; the PVC UID was unchanged and the
+  marker was removed after verification.
+- `home-assistant-tls` is Ready, its ACME order is valid, and a strict-TLS
+  request forced through ingress VIP `192.168.40.30` returned HTTP 302 to the
+  onboarding flow with certificate verification result 0.
+- `ha.lab.seandre.dev` does not yet resolve through private split DNS. Add a
+  UniFi CNAME to `ingress.lab.seandre.dev` (or an A record to
+  `192.168.40.30`) before calling onboarding reachable by canonical name.
+- Git-based prior-image rollback and forward recovery remain pending.
 
 No previous accepted production Home Assistant image exists before IE-004. The
 first deployment can prove Git rollback mechanics and persistence, but the
