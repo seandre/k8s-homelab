@@ -15,7 +15,8 @@ import { requestJson } from './request-json.js';
 import type { RuntimeConfig } from './runtime-config.js';
 import { UniFiAdapter } from './unifi.js';
 
-const POLL_INTERVAL_MS = 5_000;
+export const POLL_INTERVAL_MS = 2_000;
+const FULL_REFRESH_INTERVAL_MS = 6_000;
 const HISTORY_LIMIT = 104;
 const SECRET_ROOT = '/var/run/homepage-secrets';
 
@@ -82,7 +83,12 @@ function mergedHost(id: string, name: string, proxmox: Host | undefined, glances
 export class LiveTelemetry {
   private readonly history = new Map<string, Array<{ timestamp: string; value: number }>>();
   private latest: Bootstrap | undefined;
-  private timer: ReturnType<typeof setInterval> | undefined;
+  private graphTimer: ReturnType<typeof setInterval> | undefined;
+  private fullTimer: ReturnType<typeof setInterval> | undefined;
+  private graphPollInFlight = false;
+  private fullPollInFlight = false;
+  private lastSampleTimestampMs = 0;
+  private glancesReadInFlight: Promise<Host[]> | undefined;
   private proxmox: ProxmoxAdapter | undefined;
   private k3s: K3sAdapter | undefined;
   private argocd: ArgoCdAdapter | undefined;
@@ -110,9 +116,38 @@ export class LiveTelemetry {
     this.probes = new AllowlistedProbeRunner(runtimeConfig, (url, init) => fetch(url, init), { now: () => new Date() });
   }
 
-  async start() { await this.refresh(); this.timer = setInterval(() => { void this.refresh(); }, POLL_INTERVAL_MS); this.timer.unref(); }
-  stop() { if (this.timer) clearInterval(this.timer); }
+  async start() {
+    await this.refresh();
+    this.graphTimer = setInterval(() => { void this.pollGraph().catch(() => undefined); }, POLL_INTERVAL_MS);
+    this.fullTimer = setInterval(() => { void this.pollFull().catch(() => undefined); }, FULL_REFRESH_INTERVAL_MS);
+    this.graphTimer.unref();
+    this.fullTimer.unref();
+  }
+  stop() {
+    if (this.graphTimer) clearInterval(this.graphTimer);
+    if (this.fullTimer) clearInterval(this.fullTimer);
+  }
   bootstrap = () => this.latest ?? this.emptyBootstrap();
+
+  private async pollGraph() {
+    if (this.graphPollInFlight) return;
+    this.graphPollInFlight = true;
+    try {
+      await this.refreshGraphTelemetry();
+    } finally {
+      this.graphPollInFlight = false;
+    }
+  }
+
+  private async pollFull() {
+    if (this.fullPollInFlight) return;
+    this.fullPollInFlight = true;
+    try {
+      await this.refresh(false);
+    } finally {
+      this.fullPollInFlight = false;
+    }
+  }
 
   private async proxmoxHosts() {
     const configured = await Promise.all([
@@ -131,7 +166,8 @@ export class LiveTelemetry {
   }
 
   private async glancesHosts() {
-    return this.glances.read();
+    this.glancesReadInFlight ??= this.glances.read().finally(() => { this.glancesReadInFlight = undefined; });
+    return this.glancesReadInFlight;
   }
 
   private sourceEndpoint(id: string) {
@@ -191,7 +227,7 @@ export class LiveTelemetry {
     return this.unifi.read((url, init) => this.httpFetch(url, init) as ReturnType<Parameters<UniFiAdapter['read']>[0]>);
   }
 
-  async refresh() {
+  async refresh(recordGraphSample = true) {
     const [proxmox, glances, k3s, prometheus, pduPower, alerts, argocd, pbs, unifi, weather, probes] = await Promise.all([
       this.proxmoxHosts(), this.glancesHosts(), this.k3sSnapshot(),
       this.prometheus.readCluster((url) => this.httpFetch(url)),
@@ -205,7 +241,10 @@ export class LiveTelemetry {
     const glancesById = byId(glances);
     const pduWatts: Record<string, number | null> = { 'pve-01': pduPower.pve01Watts, 'pve-02': pduPower.pve02Watts };
     const proxmoxHosts = ['pve-01', 'pve-02'].map((id) => ({ ...mergedHost(id, id, proxmoxById.get(id), glancesById.get(id), now), powerWatts: pduWatts[id] ?? null }));
-    for (const host of proxmoxHosts) this.recordHost(host, now);
+    if (recordGraphSample) {
+      const sampleTimestamp = this.nextSampleTimestamp(now);
+      for (const host of proxmoxHosts) this.recordHost(host, sampleTimestamp);
+    }
     const base = this.emptyBootstrap();
     base.generatedAt = now;
     base.hosts = [...proxmoxHosts, ...(k3s?.hosts ?? []) , ...base.hosts.filter((host) => host.kind === 'OKD_NODE')];
@@ -228,6 +267,34 @@ export class LiveTelemetry {
     if (unifi) base.network = { ...base.network, ...unifi, metadata: unifi.unifi.metadata };
     base.weather = weather;
     base.services = this.liveServices(probes, argocd);
+    base.globalSeverity = aggregateGlobalSeverity([
+      ...base.hosts.map((host) => ({ metadata: host.metadata })),
+      ...base.clusters.map((cluster) => ({ metadata: cluster.metadata })),
+      ...base.alerts.map((alert) => ({ metadata: alert.metadata })),
+      { metadata: base.network.metadata }, { metadata: base.storage.pbs.metadata }, { metadata: base.weather.metadata },
+      ...base.services.map((service) => ({ metadata: service.metadata })),
+    ]);
+    this.latest = base;
+    this.publish(base);
+  }
+
+  private async refreshGraphTelemetry() {
+    if (!this.latest) return this.refresh();
+    const glances = await this.glancesHosts();
+    const now = new Date().toISOString();
+    const previousById = new Map(this.latest.hosts.filter((host) => host.kind === 'PROXMOX').map((host) => [host.id, host]));
+    const glancesById = new Map(glances.map((host) => [host.id, host]));
+    const proxmoxHosts = ['pve-01', 'pve-02'].map((id) => {
+      const previous = previousById.get(id);
+      return { ...mergedHost(id, id, previous, glancesById.get(id), now), powerWatts: previous?.powerWatts ?? null };
+    });
+    const sampleTimestamp = this.nextSampleTimestamp(now);
+    for (const host of proxmoxHosts) this.recordHost(host, sampleTimestamp);
+
+    const base = structuredClone(this.latest);
+    base.generatedAt = now;
+    base.hosts = [...proxmoxHosts, ...base.hosts.filter((host) => host.kind !== 'PROXMOX')];
+    base.timeSeries = this.timeSeries(proxmoxHosts);
     base.globalSeverity = aggregateGlobalSeverity([
       ...base.hosts.map((host) => ({ metadata: host.metadata })),
       ...base.clusters.map((cluster) => ({ metadata: cluster.metadata })),
@@ -276,6 +343,12 @@ export class LiveTelemetry {
       points.push({ timestamp, value: Number(sample.toFixed(2)) });
       this.history.set(metric, points.slice(-HISTORY_LIMIT));
     }
+  }
+
+  private nextSampleTimestamp(observedAt: string) {
+    const timestampMs = Math.max(Date.parse(observedAt), this.lastSampleTimestampMs + 1);
+    this.lastSampleTimestampMs = timestampMs;
+    return new Date(timestampMs).toISOString();
   }
 
   private timeSeries(hosts: Host[]): TimeSeries[] {

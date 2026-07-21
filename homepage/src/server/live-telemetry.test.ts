@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { LiveTelemetry } from './live-telemetry.js';
+import { GLANCES_TIMEOUT_MS } from './glances.js';
+import { LiveTelemetry, POLL_INTERVAL_MS } from './live-telemetry.js';
 import { gitOwnedRuntimeConfig } from './runtime-config.js';
 
 const runtimeConfig = {
@@ -8,6 +9,11 @@ const runtimeConfig = {
 };
 
 describe('live telemetry', () => {
+  it('uses a two-second graph polling cadence', () => {
+    expect(POLL_INTERVAL_MS).toBe(2_000);
+    expect(GLANCES_TIMEOUT_MS).toBeLessThan(POLL_INTERVAL_MS);
+  });
+
   it('replaces fixture host identity and graph samples with normalized Proxmox and Glances values', async () => {
     const published: unknown[] = [];
     const secrets: Record<string, string> = {
@@ -36,5 +42,24 @@ describe('live telemetry', () => {
     expect(host).toMatchObject({ cpuPercent: 42, memoryPercent: 58, cpuModel: 'Intel(R) Core(TM) i5-10500T · 12T', cpuClockMhz: 3539.2 });
     expect(bootstrap.timeSeries.find((series) => series.metric === 'pve-01 CPU')?.points).toHaveLength(1);
     expect(published).toHaveLength(1);
+  });
+
+  it('records a new graph sample when consecutive polls return the same value', async () => {
+    const telemetry = new LiveTelemetry(
+      runtimeConfig,
+      () => undefined,
+      async () => null,
+      async (url) => url.includes('192.168.40')
+        ? { ok: true, json: async () => ({ cpu: { total: 42 }, mem: { percent: 58, used: 58, total: 100 } }) }
+        : { ok: true, json: async () => ({ data: [] }) },
+    );
+
+    await telemetry.refresh();
+    await telemetry.refresh();
+
+    const points = telemetry.bootstrap().timeSeries.find((series) => series.metric === 'pve-01 CPU')?.points;
+    expect(points).toHaveLength(2);
+    expect(points?.map((point) => point.value)).toEqual([42, 42]);
+    expect(points?.[0]?.timestamp).not.toBe(points?.[1]?.timestamp);
   });
 });

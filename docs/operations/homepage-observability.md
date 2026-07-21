@@ -248,9 +248,11 @@ This is preview Gate D technical closeout only; it is not production cutover.
 
 ## Homepage data boundary
 
-The preview backend polls on its existing five-second refresh loop and sends a
-normalized bootstrap/SSE contract to the browser. It reads only fixed,
-Git-owned endpoints and queries:
+The preview backend samples lightweight Glances graph telemetry on an
+independent two-second timer with a 1.5-second request bound. The broader source
+refresh remains on a separate six-second timer, so a slow inventory source
+cannot block graph samples. It sends a normalized bootstrap/SSE contract to the
+browser and reads only fixed, Git-owned endpoints and queries:
 
 - Proxmox: node CPU identity/clock/load, memory, swap, storage, uptime, guest
   totals, plus Glances CPU-core, sensor, filesystem, disk, and network fields.

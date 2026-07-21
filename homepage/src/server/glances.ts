@@ -25,6 +25,7 @@ const GlancesResponseSchema = z.object({
 export interface GlancesFetchResponse { ok: boolean; json(): Promise<unknown>; }
 export type GlancesFetch = (url: string) => Promise<GlancesFetchResponse>;
 export interface GlancesHostConfig { id: string; name: string; endpoint: string; }
+export const GLANCES_TIMEOUT_MS = 1_500;
 
 function nullHost(config: GlancesHostConfig, metadata: Host['metadata']): Host {
   return { id: config.id, name: config.name, kind: 'PROXMOX', cpuPercent: null, memoryPercent: null, memoryUsedBytes: null, memoryTotalBytes: null, diskUsedBytes: null, diskTotalBytes: null, diskIoPercent: null, cpuModel: null, cpuCorePercentages: null, loadAverage: null, cpuClockMhz: null, powerWatts: null, swapUsedBytes: null, swapTotalBytes: null, uptimeSeconds: null, runningVmCount: null, stoppedVmCount: null, runningContainerCount: null, stoppedContainerCount: null, temperatureCelsius: null, networkIngressBitsPerSecond: null, networkEgressBitsPerSecond: null, metadata };
@@ -45,7 +46,7 @@ export class GlancesAdapter {
       const normalizer = this.normalizers.get(host.id)!;
       if (this.enabled && normalizer.canAttempt()) {
         try {
-          const response = await withTimeout(this.fetcher(`${host.endpoint}/api/4/all`), 3_000);
+          const response = await withTimeout(this.fetcher(`${host.endpoint}/api/4/all`), GLANCES_TIMEOUT_MS);
           if (!response.ok) throw new Error('Glances request failed.');
           normalizer.recordSuccess(GlancesResponseSchema.parse(await response.json()));
         } catch { normalizer.recordFailure(); }

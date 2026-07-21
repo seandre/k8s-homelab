@@ -142,8 +142,11 @@ cutover remains prohibited until a separate HP-029 approval.
 
 ### Preview live Proxmox telemetry
 
-The preview Deployment enables `LIVE_TELEMETRY=true`. At a five-second
-interval, it reads the mounted Proxmox read-only credentials for current node
+The preview Deployment enables `LIVE_TELEMETRY=true`. Graph telemetry is
+sampled from Glances on an independent two-second timer, while the broader
+inventory refresh remains on a six-second timer. The graph request has a
+1.5-second bound and does not wait for the broader refresh. That refresh reads
+the mounted Proxmox read-only credentials for current node
 identity, CPU model, clock, load, memory, storage, uptime, and guest counts,
 then combines those values with approved Glances CPU, temperature, and network
 samples. The browser receives only normalized values; no upstream credential
