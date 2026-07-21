@@ -225,7 +225,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .metric-value small { color: var(--muted); font-size: 0.6rem; font-weight: 400; margin-left: 0.2rem; }
 .metric-detail { letter-spacing: 0; text-transform: none; }
 .resource-graphs { display: grid; gap: 0.05rem; margin-top: 0.45rem; }
-.dot-graph { display: flex; align-items: end; gap: 0.45rem; margin-top: 0; overflow: hidden; color: var(--graph-color, var(--focus)); }
+.dot-graph { display: grid; grid-template-columns: minmax(0, 1fr) max-content; align-items: end; gap: 0.45rem; margin-top: 0; overflow: hidden; color: var(--graph-color, var(--focus)); }
 .dot-graph-trace { display: grid; flex: 1 1 auto; min-width: 0; overflow: hidden; }
 .dot-graph-row { display: block; overflow: hidden; font-size: 0.82rem; letter-spacing: 0.02rem; line-height: 0.85; white-space: nowrap; }
 .dot-graph small { align-self: end; }
@@ -329,12 +329,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; } }
+@media (max-width: 900px) {
+  .pve-card { grid-column: span 12; }
+  .proxmox-detail-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
 @media (max-width: 800px) {
   .global-header { flex-wrap: wrap; gap: 0.6rem; }
   .header-status { order: 3; flex-basis: 100%; justify-content: start; overflow: hidden; }
   .header-actions { margin-left: auto; }
   .overview-grid > .panel:nth-child(n) { grid-column: span 6; }
-  .pve-card { grid-column: span 12; }
   .process-box, .pve-workload-row { grid-column: span 12; grid-row: auto; }
   .pve-workload-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .compute-node-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -357,6 +360,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .alert-strip a { flex-basis: 100%; margin-left: 0; }
   .overview-grid > .panel:nth-child(n) { grid-column: 1 / -1; }
   .pve-cpu-region { grid-template-columns: 1fr; }
+  .proxmox-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .pve-cpu-summary { grid-template-columns: repeat(4, minmax(0, 1fr)); border-left: 0; border-top: 1px dotted var(--divider); padding: 0.35rem 0 0; }
   .pve-cpu-summary > strong { grid-column: 1 / -1; }
   .pve-resource-grid { grid-template-columns: 1fr; }
