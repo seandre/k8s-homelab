@@ -1,8 +1,9 @@
 #!/bin/sh
 set -eu
 
-SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 # shellcheck source=../coway-compat/source.lock
+# shellcheck disable=SC1091
 . "$SCRIPT_DIR/../coway-compat/source.lock"
 
 if [ "$#" -ne 1 ]; then
@@ -30,4 +31,3 @@ curl --proto '=https' --tlsv1.2 --fail --show-error --silent --location \
 mv "$PARTIAL_ARCHIVE" "$OUTPUT_ARCHIVE"
 
 echo "downloaded verified Coway archive: $OUTPUT_ARCHIVE"
-

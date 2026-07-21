@@ -1,8 +1,9 @@
 #!/bin/sh
 set -eu
 
-SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 # shellcheck source=image.lock
+# shellcheck disable=SC1091
 . "$SCRIPT_DIR/image.lock"
 
 if [ "$#" -ne 1 ]; then

@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 WORK_DIRECTORY=$(mktemp -d "${TMPDIR:-/tmp}/coway-verifier.XXXXXX")
 cleanup() {
   rm -rf "$WORK_DIRECTORY"
