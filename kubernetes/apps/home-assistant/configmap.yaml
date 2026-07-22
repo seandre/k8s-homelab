@@ -16,10 +16,10 @@ data:
       time_zone: America/Los_Angeles
       country: US
       currency: USD
+      packages: !include_dir_named packages
 
     http:
       use_x_forwarded_for: true
       trusted_proxies:
         # k3s default pod CIDR; NetworkPolicy separately limits ingress to Traefik.
         - 10.42.0.0/16
-

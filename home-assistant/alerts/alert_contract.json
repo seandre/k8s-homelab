@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "notification_path": "/indoor",
+  "automatic_equipment_control": false,
+  "freshness_seconds": {
+    "aranet_living_room": 180,
+    "nest_living_room": 300,
+    "coway_living_room": 300,
+    "coway_bedroom": 300
+  },
+  "incidents": {
+    "co2": {"warning": ">=1000/10m", "critical": ">=1500/5m", "recovery": "<900/10m"},
+    "temperature": {"warning": "outside 60-80F/15m", "critical": "outside 55-85F/10m", "recovery": "62-78F/15m"},
+    "humidity": {"warning": "outside 30-60%/30m", "critical": "outside 20-70%/15m", "recovery": "32-58%/30m"},
+    "pm25": {"warning": ">=15/15m", "critical": ">=35/10m", "recovery": "<10/15m"},
+    "battery": {"warning": "<=20%/30m", "critical": "<=10%/15m", "recovery": ">=25%/30m"},
+    "filter_life": {"warning": "<=10%/1h", "critical": "<=2%/1h", "recovery": ">=15%/1h"},
+    "source": {"warning": "unavailable/5m", "critical": "unavailable/30m", "recovery": "current/5m"},
+    "backup": {"warning": "failed once per run", "critical": "no success/36h", "recovery": "next success"}
+  }
+}

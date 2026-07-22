@@ -1,0 +1,967 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: home-assistant-alerts
+  namespace: home-assistant
+  labels:
+    app.kubernetes.io/name: home-assistant
+data:
+  indoor_alerts.yaml: |
+    # IE-009 package. Runtime-only mappings are entered in these helpers through HA;
+    # no raw device entity ID, vendor ID, or notifier identifier belongs in Git.
+    input_text:
+      indoor_alert_mobile_notifier:
+        name: Indoor alert mobile notifier
+        max: 255
+      indoor_map_aranet_temperature:
+        name: Indoor map - Aranet temperature
+        max: 255
+      indoor_map_aranet_humidity:
+        name: Indoor map - Aranet humidity
+        max: 255
+      indoor_map_aranet_co2:
+        name: Indoor map - Aranet CO2
+        max: 255
+      indoor_map_aranet_battery:
+        name: Indoor map - Aranet battery
+        max: 255
+      indoor_map_nest_temperature:
+        name: Indoor map - Nest temperature
+        max: 255
+      indoor_map_nest_humidity:
+        name: Indoor map - Nest humidity
+        max: 255
+      indoor_map_coway_living_room_pm25:
+        name: Indoor map - Living Room Coway PM2.5
+        max: 255
+      indoor_map_coway_living_room_filter_a:
+        name: Indoor map - Living Room Coway filter A
+        max: 255
+      indoor_map_coway_living_room_filter_b:
+        name: Indoor map - Living Room Coway filter B
+        max: 255
+      indoor_map_coway_bedroom_pm25:
+        name: Indoor map - Bedroom Coway PM2.5
+        max: 255
+      indoor_map_coway_bedroom_filter_a:
+        name: Indoor map - Bedroom Coway filter A
+        max: 255
+      indoor_map_coway_bedroom_filter_b:
+        name: Indoor map - Bedroom Coway filter B
+        max: 255
+    
+    input_select:
+      indoor_alert_co2:
+        options: [ok, warning, critical]
+      indoor_alert_temperature:
+        options: [ok, warning, critical]
+      indoor_alert_humidity:
+        options: [ok, warning, critical]
+      indoor_alert_pm25_living_room:
+        options: [ok, warning, critical]
+      indoor_alert_pm25_bedroom:
+        options: [ok, warning, critical]
+      indoor_alert_battery:
+        options: [ok, warning, critical]
+      indoor_alert_filter_living_room:
+        options: [ok, warning, critical]
+      indoor_alert_filter_bedroom:
+        options: [ok, warning, critical]
+      indoor_alert_source_aranet:
+        options: [ok, warning, critical]
+      indoor_alert_source_nest:
+        options: [ok, warning, critical]
+      indoor_alert_source_coway_living_room:
+        options: [ok, warning, critical]
+      indoor_alert_source_coway_bedroom:
+        options: [ok, warning, critical]
+      indoor_alert_backup_local:
+        options: [ok, warning, critical]
+      indoor_alert_backup_pbs:
+        options: [ok, warning, critical]
+    
+    input_datetime:
+      indoor_backup_local_last_success:
+        has_date: true
+        has_time: true
+      indoor_backup_pbs_last_success:
+        has_date: true
+        has_time: true
+    
+    # Source sensors are deliberately clock-triggered. Cloud integrations can retain
+    # numeric states indefinitely after connectivity fails, so state alone is never
+    # proof of freshness. Mapped entity IDs live only in HA's writable runtime state.
+    template:
+      - trigger:
+          - platform: time_pattern
+            minutes: "/1"
+          - platform: homeassistant
+            event: start
+        sensor:
+          - name: Indoor Aranet CO2
+            unique_id: indoor_aranet_co2
+            state: >-
+              {% set mapped = states('input_text.indoor_map_aranet_co2') %}
+              {% set obj = states.get(mapped) %}
+              {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
+              {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and
+                 (as_timestamp(now()) - as_timestamp(reported)) <= 180 else none }}
+            attributes:
+              freshness: >-
+                {% set mapped = states('input_text.indoor_map_aranet_co2') %}
+                {% set obj = states.get(mapped) %}
+                {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
+                {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and
+                   (as_timestamp(now()) - as_timestamp(reported)) <= 180 else 'UNAVAILABLE' }}
+          - name: Indoor Aranet temperature
+            unique_id: indoor_aranet_temperature
+            unit_of_measurement: "°F"
+            state: >-
+              {% set mapped = states('input_text.indoor_map_aranet_temperature') %}
+              {% set obj = states.get(mapped) %}
+              {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
+              {% if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 180 %}
+                {{ ((obj.state | float) * 9 / 5 + 32) if obj.attributes.get('unit_of_measurement') == '°C' else (obj.state | float) }}
+              {% else %}{{ none }}{% endif %}
+            attributes:
+              freshness: >-
+                {% set obj = states.get(states('input_text.indoor_map_aranet_temperature')) %}
+                {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
+                {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 180 else 'UNAVAILABLE' }}
+          - name: Indoor Aranet humidity
+            unique_id: indoor_aranet_humidity
+            state: >-
+              {% set obj = states.get(states('input_text.indoor_map_aranet_humidity')) %}
+              {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
+              {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 180 else none }}
+            attributes:
+              freshness: >-
+                {% set obj = states.get(states('input_text.indoor_map_aranet_humidity')) %}
+                {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
+                {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 180 else 'UNAVAILABLE' }}
+          - name: Indoor Aranet battery
+            unique_id: indoor_aranet_battery
+            state: >-
+              {% set obj = states.get(states('input_text.indoor_map_aranet_battery')) %}
+              {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
+              {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 180 else none }}
+            attributes:
+              freshness: >-
+                {% set obj = states.get(states('input_text.indoor_map_aranet_battery')) %}
+                {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
+                {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 180 else 'UNAVAILABLE' }}
+          - name: Indoor Coway Living Room PM25
+            unique_id: indoor_coway_living_room_pm25
+            state: >-
+              {% set obj = states.get(states('input_text.indoor_map_coway_living_room_pm25')) %}
+              {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
+              {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
+            attributes:
+              freshness: >-
+                {% set obj = states.get(states('input_text.indoor_map_coway_living_room_pm25')) %}
+                {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
+                {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
+          - name: Indoor Coway Bedroom PM25
+            unique_id: indoor_coway_bedroom_pm25
+            state: >-
+              {% set obj = states.get(states('input_text.indoor_map_coway_bedroom_pm25')) %}
+              {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
+              {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
+            attributes:
+              freshness: >-
+                {% set obj = states.get(states('input_text.indoor_map_coway_bedroom_pm25')) %}
+                {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
+                {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
+          - name: Indoor Coway Living Room filter life
+            unique_id: indoor_coway_living_room_filter_life
+            state: >-
+              {% set a = states.get(states('input_text.indoor_map_coway_living_room_filter_a')) %}
+              {% set b = states.get(states('input_text.indoor_map_coway_living_room_filter_b')) %}
+              {% set ar = a.last_reported | default(a.last_updated, true) if a else none %}
+              {% set br = b.last_reported | default(b.last_updated, true) if b else none %}
+              {{ [a.state | float, b.state | float] | min if a and b and a.state not in ['unknown','unavailable'] and b.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(ar)) <= 300 and (as_timestamp(now()) - as_timestamp(br)) <= 300 else none }}
+            attributes:
+              freshness: >-
+                {% set a = states.get(states('input_text.indoor_map_coway_living_room_filter_a')) %}
+                {% set b = states.get(states('input_text.indoor_map_coway_living_room_filter_b')) %}
+                {% set ar = a.last_reported | default(a.last_updated, true) if a else none %}
+                {% set br = b.last_reported | default(b.last_updated, true) if b else none %}
+                {{ 'CURRENT' if a and b and a.state not in ['unknown','unavailable'] and b.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(ar)) <= 300 and (as_timestamp(now()) - as_timestamp(br)) <= 300 else 'UNAVAILABLE' }}
+          - name: Indoor Coway Bedroom filter life
+            unique_id: indoor_coway_bedroom_filter_life
+            state: >-
+              {% set a = states.get(states('input_text.indoor_map_coway_bedroom_filter_a')) %}
+              {% set b = states.get(states('input_text.indoor_map_coway_bedroom_filter_b')) %}
+              {% set ar = a.last_reported | default(a.last_updated, true) if a else none %}
+              {% set br = b.last_reported | default(b.last_updated, true) if b else none %}
+              {{ [a.state | float, b.state | float] | min if a and b and a.state not in ['unknown','unavailable'] and b.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(ar)) <= 300 and (as_timestamp(now()) - as_timestamp(br)) <= 300 else none }}
+            attributes:
+              freshness: >-
+                {% set a = states.get(states('input_text.indoor_map_coway_bedroom_filter_a')) %}
+                {% set b = states.get(states('input_text.indoor_map_coway_bedroom_filter_b')) %}
+                {% set ar = a.last_reported | default(a.last_updated, true) if a else none %}
+                {% set br = b.last_reported | default(b.last_updated, true) if b else none %}
+                {{ 'CURRENT' if a and b and a.state not in ['unknown','unavailable'] and b.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(ar)) <= 300 and (as_timestamp(now()) - as_timestamp(br)) <= 300 else 'UNAVAILABLE' }}
+    
+    # IE-014 calls these events after a completed archive/copy. No credentials or
+    # storage endpoints cross this interface.
+    automation:
+      - id: indoor_alert_backup_events
+        alias: Indoor alerts - backup result events
+        mode: queued
+        trigger:
+          - platform: event
+            event_type: indoor_backup_result
+        condition:
+          - condition: template
+            value_template: >-
+              {{ trigger.event.data.target in ['local', 'pbs'] and
+                 trigger.event.data.result in ['success', 'failed'] }}
+        action:
+          - variables:
+              helper: "input_select.indoor_alert_backup_{{ trigger.event.data.target }}"
+              prior: "{{ states(helper) }}"
+              result: "{{ trigger.event.data.result }}"
+          - choose:
+              - conditions: "{{ result == 'failed' and prior == 'ok' }}"
+                sequence:
+                  - if: "{{ prior == 'ok' }}"
+                    then:
+                      - service: input_select.select_option
+                        target: {entity_id: "{{ helper }}"}
+                        data: {option: warning}
+                  - event: indoor_alert_notification
+                    event_data:
+                      incident: "backup_{{ trigger.event.data.target }}"
+                      level: warning
+                      path: /indoor
+              - conditions: "{{ result == 'success' }}"
+                sequence:
+                  - service: input_datetime.set_datetime
+                    target: {entity_id: "input_datetime.indoor_backup_{{ trigger.event.data.target }}_last_success"}
+                    data: {timestamp: "{{ as_timestamp(now()) }}"}
+                  - if: "{{ prior != 'ok' }}"
+                    then:
+                      - service: input_select.select_option
+                        target: {entity_id: "{{ helper }}"}
+                        data: {option: ok}
+                      - event: indoor_alert_notification
+                        event_data:
+                          incident: "backup_{{ trigger.event.data.target }}"
+                          level: recovery
+                          path: /indoor
+    
+      - id: indoor_alert_backup_age
+        alias: Indoor alerts - backup age escalation
+        mode: queued
+        trigger:
+          - platform: time_pattern
+            minutes: "/5"
+        action:
+          - repeat:
+              for_each: [local, pbs]
+              sequence:
+                - variables:
+                    helper: "input_select.indoor_alert_backup_{{ repeat.item }}"
+                    last_success: "input_datetime.indoor_backup_{{ repeat.item }}_last_success"
+                - if: >-
+                    {{ states(helper) != 'critical' and
+                       (as_timestamp(now()) - as_timestamp(states(last_success), 0)) >= 129600 }}
+                  then:
+                    - service: input_select.select_option
+                      target: {entity_id: "{{ helper }}"}
+                      data: {option: critical}
+                    - event: indoor_alert_notification
+                      event_data:
+                        incident: "backup_{{ repeat.item }}"
+                        level: critical
+                        path: /indoor
+    
+      # A single delivery boundary makes notifier configuration runtime-only. The
+      # event cannot control equipment; its sole mobile action is a URI to /indoor.
+      - id: indoor_alert_mobile_delivery
+        alias: Indoor alerts - Companion App delivery
+        mode: queued
+        trigger:
+          - platform: event
+            event_type: indoor_alert_notification
+        condition:
+          - condition: template
+            value_template: >-
+              {{ states('input_text.indoor_alert_mobile_notifier')
+                 | regex_match('^notify\\.mobile_app_[a-z0-9_]+$') }}
+          - condition: template
+            value_template: "{{ trigger.event.data.path == '/indoor' }}"
+        action:
+          - service: "{{ states('input_text.indoor_alert_mobile_notifier') }}"
+            data:
+              title: "Indoor {{ trigger.event.data.level | upper }}"
+              message: "{{ trigger.event.data.incident | replace('_', ' ') }}"
+              data:
+                url: /indoor
+                clickAction: /indoor
+                actions:
+                  - action: URI
+                    title: Open indoor dashboard
+                    uri: /indoor
+    
+    # BEGIN GENERATED INCIDENTS
+      - id: indoor_alert_co2_warning
+        alias: Indoor alerts - co2 warning
+        mode: single
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set entity = 'sensor.indoor_aranet_co2' %}
+              {% set value = states(entity) | float(none) %}
+              {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (value >= 1000) }}
+            for: "00:10:00"
+        condition: "{{ states('input_select.indoor_alert_co2') == 'ok' }}"
+        action:
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_co2}
+            data: {option: warning}
+          - event: indoor_alert_notification
+            event_data: {incident: co2, level: warning, path: /indoor}
+    
+      - id: indoor_alert_co2_critical
+        alias: Indoor alerts - co2 critical
+        mode: single
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set entity = 'sensor.indoor_aranet_co2' %}
+              {% set value = states(entity) | float(none) %}
+              {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (value >= 1500) }}
+            for: "00:05:00"
+        condition: "{{ states('input_select.indoor_alert_co2') != 'critical' }}"
+        action:
+          - if: "{{ states('input_select.indoor_alert_co2') == 'ok' }}"
+            then:
+              - event: indoor_alert_notification
+                event_data: {incident: co2, level: warning, path: /indoor}
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_co2}
+            data: {option: critical}
+          - event: indoor_alert_notification
+            event_data: {incident: co2, level: critical, path: /indoor}
+    
+      - id: indoor_alert_co2_recovery
+        alias: Indoor alerts - co2 recovery
+        mode: single
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set entity = 'sensor.indoor_aranet_co2' %}
+              {% set value = states(entity) | float(none) %}
+              {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (value < 900) }}
+            for: "00:10:00"
+        condition: "{{ states('input_select.indoor_alert_co2') != 'ok' }}"
+        action:
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_co2}
+            data: {option: ok}
+          - event: indoor_alert_notification
+            event_data: {incident: co2, level: recovery, path: /indoor}
+    
+      - id: indoor_alert_temperature_warning
+        alias: Indoor alerts - temperature warning
+        mode: single
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set entity = 'sensor.indoor_aranet_temperature' %}
+              {% set value = states(entity) | float(none) %}
+              {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (value < 60 or value > 80) }}
+            for: "00:15:00"
+        condition: "{{ states('input_select.indoor_alert_temperature') == 'ok' }}"
+        action:
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_temperature}
+            data: {option: warning}
+          - event: indoor_alert_notification
+            event_data: {incident: temperature, level: warning, path: /indoor}
+    
+      - id: indoor_alert_temperature_critical
+        alias: Indoor alerts - temperature critical
+        mode: single
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set entity = 'sensor.indoor_aranet_temperature' %}
+              {% set value = states(entity) | float(none) %}
+              {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (value < 55 or value > 85) }}
+            for: "00:10:00"
+        condition: "{{ states('input_select.indoor_alert_temperature') != 'critical' }}"
+        action:
+          - if: "{{ states('input_select.indoor_alert_temperature') == 'ok' }}"
+            then:
+              - event: indoor_alert_notification
+                event_data: {incident: temperature, level: warning, path: /indoor}
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_temperature}
+            data: {option: critical}
+          - event: indoor_alert_notification
+            event_data: {incident: temperature, level: critical, path: /indoor}
+    
+      - id: indoor_alert_temperature_recovery
+        alias: Indoor alerts - temperature recovery
+        mode: single
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set entity = 'sensor.indoor_aranet_temperature' %}
+              {% set value = states(entity) | float(none) %}
+              {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (62 <= value <= 78) }}
+            for: "00:15:00"
+        condition: "{{ states('input_select.indoor_alert_temperature') != 'ok' }}"
+        action:
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_temperature}
+            data: {option: ok}
+          - event: indoor_alert_notification
+            event_data: {incident: temperature, level: recovery, path: /indoor}
+    
+      - id: indoor_alert_humidity_warning
+        alias: Indoor alerts - humidity warning
+        mode: single
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set entity = 'sensor.indoor_aranet_humidity' %}
+              {% set value = states(entity) | float(none) %}
+              {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (value < 30 or value > 60) }}
+            for: "00:30:00"
+        condition: "{{ states('input_select.indoor_alert_humidity') == 'ok' }}"
+        action:
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_humidity}
+            data: {option: warning}
+          - event: indoor_alert_notification
+            event_data: {incident: humidity, level: warning, path: /indoor}
+    
+      - id: indoor_alert_humidity_critical
+        alias: Indoor alerts - humidity critical
+        mode: single
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set entity = 'sensor.indoor_aranet_humidity' %}
+              {% set value = states(entity) | float(none) %}
+              {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (value < 20 or value > 70) }}
+            for: "00:15:00"
+        condition: "{{ states('input_select.indoor_alert_humidity') != 'critical' }}"
+        action:
+          - if: "{{ states('input_select.indoor_alert_humidity') == 'ok' }}"
+            then:
+              - event: indoor_alert_notification
+                event_data: {incident: humidity, level: warning, path: /indoor}
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_humidity}
+            data: {option: critical}
+          - event: indoor_alert_notification
+            event_data: {incident: humidity, level: critical, path: /indoor}
+    
+      - id: indoor_alert_humidity_recovery
+        alias: Indoor alerts - humidity recovery
+        mode: single
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set entity = 'sensor.indoor_aranet_humidity' %}
+              {% set value = states(entity) | float(none) %}
+              {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (32 <= value <= 58) }}
+            for: "00:30:00"
+        condition: "{{ states('input_select.indoor_alert_humidity') != 'ok' }}"
+        action:
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_humidity}
+            data: {option: ok}
+          - event: indoor_alert_notification
+            event_data: {incident: humidity, level: recovery, path: /indoor}
+    
+      - id: indoor_alert_pm25_living_room_warning
+        alias: Indoor alerts - pm25_living_room warning
+        mode: single
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set entity = 'sensor.indoor_coway_living_room_pm25' %}
+              {% set value = states(entity) | float(none) %}
+              {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (value >= 15) }}
+            for: "00:15:00"
+        condition: "{{ states('input_select.indoor_alert_pm25_living_room') == 'ok' }}"
+        action:
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_pm25_living_room}
+            data: {option: warning}
+          - event: indoor_alert_notification
+            event_data: {incident: pm25_living_room, level: warning, path: /indoor}
+    
+      - id: indoor_alert_pm25_living_room_critical
+        alias: Indoor alerts - pm25_living_room critical
+        mode: single
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set entity = 'sensor.indoor_coway_living_room_pm25' %}
+              {% set value = states(entity) | float(none) %}
+              {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (value >= 35) }}
+            for: "00:10:00"
+        condition: "{{ states('input_select.indoor_alert_pm25_living_room') != 'critical' }}"
+        action:
+          - if: "{{ states('input_select.indoor_alert_pm25_living_room') == 'ok' }}"
+            then:
+              - event: indoor_alert_notification
+                event_data: {incident: pm25_living_room, level: warning, path: /indoor}
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_pm25_living_room}
+            data: {option: critical}
+          - event: indoor_alert_notification
+            event_data: {incident: pm25_living_room, level: critical, path: /indoor}
+    
+      - id: indoor_alert_pm25_living_room_recovery
+        alias: Indoor alerts - pm25_living_room recovery
+        mode: single
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set entity = 'sensor.indoor_coway_living_room_pm25' %}
+              {% set value = states(entity) | float(none) %}
+              {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (value < 10) }}
+            for: "00:15:00"
+        condition: "{{ states('input_select.indoor_alert_pm25_living_room') != 'ok' }}"
+        action:
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_pm25_living_room}
+            data: {option: ok}
+          - event: indoor_alert_notification
+            event_data: {incident: pm25_living_room, level: recovery, path: /indoor}
+    
+      - id: indoor_alert_pm25_bedroom_warning
+        alias: Indoor alerts - pm25_bedroom warning
+        mode: single
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set entity = 'sensor.indoor_coway_bedroom_pm25' %}
+              {% set value = states(entity) | float(none) %}
+              {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (value >= 15) }}
+            for: "00:15:00"
+        condition: "{{ states('input_select.indoor_alert_pm25_bedroom') == 'ok' }}"
+        action:
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_pm25_bedroom}
+            data: {option: warning}
+          - event: indoor_alert_notification
+            event_data: {incident: pm25_bedroom, level: warning, path: /indoor}
+    
+      - id: indoor_alert_pm25_bedroom_critical
+        alias: Indoor alerts - pm25_bedroom critical
+        mode: single
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set entity = 'sensor.indoor_coway_bedroom_pm25' %}
+              {% set value = states(entity) | float(none) %}
+              {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (value >= 35) }}
+            for: "00:10:00"
+        condition: "{{ states('input_select.indoor_alert_pm25_bedroom') != 'critical' }}"
+        action:
+          - if: "{{ states('input_select.indoor_alert_pm25_bedroom') == 'ok' }}"
+            then:
+              - event: indoor_alert_notification
+                event_data: {incident: pm25_bedroom, level: warning, path: /indoor}
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_pm25_bedroom}
+            data: {option: critical}
+          - event: indoor_alert_notification
+            event_data: {incident: pm25_bedroom, level: critical, path: /indoor}
+    
+      - id: indoor_alert_pm25_bedroom_recovery
+        alias: Indoor alerts - pm25_bedroom recovery
+        mode: single
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set entity = 'sensor.indoor_coway_bedroom_pm25' %}
+              {% set value = states(entity) | float(none) %}
+              {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (value < 10) }}
+            for: "00:15:00"
+        condition: "{{ states('input_select.indoor_alert_pm25_bedroom') != 'ok' }}"
+        action:
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_pm25_bedroom}
+            data: {option: ok}
+          - event: indoor_alert_notification
+            event_data: {incident: pm25_bedroom, level: recovery, path: /indoor}
+    
+      - id: indoor_alert_battery_warning
+        alias: Indoor alerts - battery warning
+        mode: single
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set entity = 'sensor.indoor_aranet_battery' %}
+              {% set value = states(entity) | float(none) %}
+              {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (value <= 20) }}
+            for: "00:30:00"
+        condition: "{{ states('input_select.indoor_alert_battery') == 'ok' }}"
+        action:
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_battery}
+            data: {option: warning}
+          - event: indoor_alert_notification
+            event_data: {incident: battery, level: warning, path: /indoor}
+    
+      - id: indoor_alert_battery_critical
+        alias: Indoor alerts - battery critical
+        mode: single
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set entity = 'sensor.indoor_aranet_battery' %}
+              {% set value = states(entity) | float(none) %}
+              {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (value <= 10) }}
+            for: "00:15:00"
+        condition: "{{ states('input_select.indoor_alert_battery') != 'critical' }}"
+        action:
+          - if: "{{ states('input_select.indoor_alert_battery') == 'ok' }}"
+            then:
+              - event: indoor_alert_notification
+                event_data: {incident: battery, level: warning, path: /indoor}
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_battery}
+            data: {option: critical}
+          - event: indoor_alert_notification
+            event_data: {incident: battery, level: critical, path: /indoor}
+    
+      - id: indoor_alert_battery_recovery
+        alias: Indoor alerts - battery recovery
+        mode: single
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set entity = 'sensor.indoor_aranet_battery' %}
+              {% set value = states(entity) | float(none) %}
+              {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (value >= 25) }}
+            for: "00:30:00"
+        condition: "{{ states('input_select.indoor_alert_battery') != 'ok' }}"
+        action:
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_battery}
+            data: {option: ok}
+          - event: indoor_alert_notification
+            event_data: {incident: battery, level: recovery, path: /indoor}
+    
+      - id: indoor_alert_filter_living_room_warning
+        alias: Indoor alerts - filter_living_room warning
+        mode: single
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set entity = 'sensor.indoor_coway_living_room_filter_life' %}
+              {% set value = states(entity) | float(none) %}
+              {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (value <= 10) }}
+            for: "00:60:00"
+        condition: "{{ states('input_select.indoor_alert_filter_living_room') == 'ok' }}"
+        action:
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_filter_living_room}
+            data: {option: warning}
+          - event: indoor_alert_notification
+            event_data: {incident: filter_living_room, level: warning, path: /indoor}
+    
+      - id: indoor_alert_filter_living_room_critical
+        alias: Indoor alerts - filter_living_room critical
+        mode: single
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set entity = 'sensor.indoor_coway_living_room_filter_life' %}
+              {% set value = states(entity) | float(none) %}
+              {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (value <= 2) }}
+            for: "00:60:00"
+        condition: "{{ states('input_select.indoor_alert_filter_living_room') != 'critical' }}"
+        action:
+          - if: "{{ states('input_select.indoor_alert_filter_living_room') == 'ok' }}"
+            then:
+              - event: indoor_alert_notification
+                event_data: {incident: filter_living_room, level: warning, path: /indoor}
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_filter_living_room}
+            data: {option: critical}
+          - event: indoor_alert_notification
+            event_data: {incident: filter_living_room, level: critical, path: /indoor}
+    
+      - id: indoor_alert_filter_living_room_recovery
+        alias: Indoor alerts - filter_living_room recovery
+        mode: single
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set entity = 'sensor.indoor_coway_living_room_filter_life' %}
+              {% set value = states(entity) | float(none) %}
+              {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (value >= 15) }}
+            for: "00:60:00"
+        condition: "{{ states('input_select.indoor_alert_filter_living_room') != 'ok' }}"
+        action:
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_filter_living_room}
+            data: {option: ok}
+          - event: indoor_alert_notification
+            event_data: {incident: filter_living_room, level: recovery, path: /indoor}
+    
+      - id: indoor_alert_filter_bedroom_warning
+        alias: Indoor alerts - filter_bedroom warning
+        mode: single
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set entity = 'sensor.indoor_coway_bedroom_filter_life' %}
+              {% set value = states(entity) | float(none) %}
+              {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (value <= 10) }}
+            for: "00:60:00"
+        condition: "{{ states('input_select.indoor_alert_filter_bedroom') == 'ok' }}"
+        action:
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_filter_bedroom}
+            data: {option: warning}
+          - event: indoor_alert_notification
+            event_data: {incident: filter_bedroom, level: warning, path: /indoor}
+    
+      - id: indoor_alert_filter_bedroom_critical
+        alias: Indoor alerts - filter_bedroom critical
+        mode: single
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set entity = 'sensor.indoor_coway_bedroom_filter_life' %}
+              {% set value = states(entity) | float(none) %}
+              {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (value <= 2) }}
+            for: "00:60:00"
+        condition: "{{ states('input_select.indoor_alert_filter_bedroom') != 'critical' }}"
+        action:
+          - if: "{{ states('input_select.indoor_alert_filter_bedroom') == 'ok' }}"
+            then:
+              - event: indoor_alert_notification
+                event_data: {incident: filter_bedroom, level: warning, path: /indoor}
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_filter_bedroom}
+            data: {option: critical}
+          - event: indoor_alert_notification
+            event_data: {incident: filter_bedroom, level: critical, path: /indoor}
+    
+      - id: indoor_alert_filter_bedroom_recovery
+        alias: Indoor alerts - filter_bedroom recovery
+        mode: single
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set entity = 'sensor.indoor_coway_bedroom_filter_life' %}
+              {% set value = states(entity) | float(none) %}
+              {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (value >= 15) }}
+            for: "00:60:00"
+        condition: "{{ states('input_select.indoor_alert_filter_bedroom') != 'ok' }}"
+        action:
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_filter_bedroom}
+            data: {option: ok}
+          - event: indoor_alert_notification
+            event_data: {incident: filter_bedroom, level: recovery, path: /indoor}
+      - id: indoor_alert_source_aranet_warning
+        alias: Indoor alerts - source aranet warning
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set obj = states.get(states('input_text.indoor_map_aranet_co2')) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > 180 }}
+            for: "00:05:00"
+        condition: "{{ states('input_select.indoor_alert_source_aranet') == 'ok' }}"
+        action:
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_source_aranet}
+            data: {option: warning}
+          - event: indoor_alert_notification
+            event_data: {incident: source_aranet, level: warning, path: /indoor}
+    
+      - id: indoor_alert_source_aranet_critical
+        alias: Indoor alerts - source aranet critical
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set obj = states.get(states('input_text.indoor_map_aranet_co2')) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > 180 }}
+            for: "00:30:00"
+        condition: "{{ states('input_select.indoor_alert_source_aranet') != 'critical' }}"
+        action:
+          - if: "{{ states('input_select.indoor_alert_source_aranet') == 'ok' }}"
+            then:
+              - event: indoor_alert_notification
+                event_data: {incident: source_aranet, level: warning, path: /indoor}
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_source_aranet}
+            data: {option: critical}
+          - event: indoor_alert_notification
+            event_data: {incident: source_aranet, level: critical, path: /indoor}
+    
+      - id: indoor_alert_source_aranet_recovery
+        alias: Indoor alerts - source aranet recovery
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set obj = states.get(states('input_text.indoor_map_aranet_co2')) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 180 }}
+            for: "00:05:00"
+        condition: "{{ states('input_select.indoor_alert_source_aranet') != 'ok' }}"
+        action:
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_source_aranet}
+            data: {option: ok}
+          - event: indoor_alert_notification
+            event_data: {incident: source_aranet, level: recovery, path: /indoor}
+    
+      - id: indoor_alert_source_nest_warning
+        alias: Indoor alerts - source nest warning
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set obj = states.get(states('input_text.indoor_map_nest_temperature')) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > 300 }}
+            for: "00:05:00"
+        condition: "{{ states('input_select.indoor_alert_source_nest') == 'ok' }}"
+        action:
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_source_nest}
+            data: {option: warning}
+          - event: indoor_alert_notification
+            event_data: {incident: source_nest, level: warning, path: /indoor}
+    
+      - id: indoor_alert_source_nest_critical
+        alias: Indoor alerts - source nest critical
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set obj = states.get(states('input_text.indoor_map_nest_temperature')) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > 300 }}
+            for: "00:30:00"
+        condition: "{{ states('input_select.indoor_alert_source_nest') != 'critical' }}"
+        action:
+          - if: "{{ states('input_select.indoor_alert_source_nest') == 'ok' }}"
+            then:
+              - event: indoor_alert_notification
+                event_data: {incident: source_nest, level: warning, path: /indoor}
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_source_nest}
+            data: {option: critical}
+          - event: indoor_alert_notification
+            event_data: {incident: source_nest, level: critical, path: /indoor}
+    
+      - id: indoor_alert_source_nest_recovery
+        alias: Indoor alerts - source nest recovery
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set obj = states.get(states('input_text.indoor_map_nest_temperature')) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 }}
+            for: "00:05:00"
+        condition: "{{ states('input_select.indoor_alert_source_nest') != 'ok' }}"
+        action:
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_source_nest}
+            data: {option: ok}
+          - event: indoor_alert_notification
+            event_data: {incident: source_nest, level: recovery, path: /indoor}
+    
+      - id: indoor_alert_source_coway_living_room_warning
+        alias: Indoor alerts - source coway_living_room warning
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set obj = states.get(states('input_text.indoor_map_coway_living_room_pm25')) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > 300 }}
+            for: "00:05:00"
+        condition: "{{ states('input_select.indoor_alert_source_coway_living_room') == 'ok' }}"
+        action:
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_source_coway_living_room}
+            data: {option: warning}
+          - event: indoor_alert_notification
+            event_data: {incident: source_coway_living_room, level: warning, path: /indoor}
+    
+      - id: indoor_alert_source_coway_living_room_critical
+        alias: Indoor alerts - source coway_living_room critical
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set obj = states.get(states('input_text.indoor_map_coway_living_room_pm25')) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > 300 }}
+            for: "00:30:00"
+        condition: "{{ states('input_select.indoor_alert_source_coway_living_room') != 'critical' }}"
+        action:
+          - if: "{{ states('input_select.indoor_alert_source_coway_living_room') == 'ok' }}"
+            then:
+              - event: indoor_alert_notification
+                event_data: {incident: source_coway_living_room, level: warning, path: /indoor}
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_source_coway_living_room}
+            data: {option: critical}
+          - event: indoor_alert_notification
+            event_data: {incident: source_coway_living_room, level: critical, path: /indoor}
+    
+      - id: indoor_alert_source_coway_living_room_recovery
+        alias: Indoor alerts - source coway_living_room recovery
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set obj = states.get(states('input_text.indoor_map_coway_living_room_pm25')) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 }}
+            for: "00:05:00"
+        condition: "{{ states('input_select.indoor_alert_source_coway_living_room') != 'ok' }}"
+        action:
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_source_coway_living_room}
+            data: {option: ok}
+          - event: indoor_alert_notification
+            event_data: {incident: source_coway_living_room, level: recovery, path: /indoor}
+    
+      - id: indoor_alert_source_coway_bedroom_warning
+        alias: Indoor alerts - source coway_bedroom warning
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set obj = states.get(states('input_text.indoor_map_coway_bedroom_pm25')) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > 300 }}
+            for: "00:05:00"
+        condition: "{{ states('input_select.indoor_alert_source_coway_bedroom') == 'ok' }}"
+        action:
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_source_coway_bedroom}
+            data: {option: warning}
+          - event: indoor_alert_notification
+            event_data: {incident: source_coway_bedroom, level: warning, path: /indoor}
+    
+      - id: indoor_alert_source_coway_bedroom_critical
+        alias: Indoor alerts - source coway_bedroom critical
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set obj = states.get(states('input_text.indoor_map_coway_bedroom_pm25')) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > 300 }}
+            for: "00:30:00"
+        condition: "{{ states('input_select.indoor_alert_source_coway_bedroom') != 'critical' }}"
+        action:
+          - if: "{{ states('input_select.indoor_alert_source_coway_bedroom') == 'ok' }}"
+            then:
+              - event: indoor_alert_notification
+                event_data: {incident: source_coway_bedroom, level: warning, path: /indoor}
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_source_coway_bedroom}
+            data: {option: critical}
+          - event: indoor_alert_notification
+            event_data: {incident: source_coway_bedroom, level: critical, path: /indoor}
+    
+      - id: indoor_alert_source_coway_bedroom_recovery
+        alias: Indoor alerts - source coway_bedroom recovery
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set obj = states.get(states('input_text.indoor_map_coway_bedroom_pm25')) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 }}
+            for: "00:05:00"
+        condition: "{{ states('input_select.indoor_alert_source_coway_bedroom') != 'ok' }}"
+        action:
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_source_coway_bedroom}
+            data: {option: ok}
+          - event: indoor_alert_notification
+            event_data: {incident: source_coway_bedroom, level: recovery, path: /indoor}
+    # END GENERATED INCIDENTS

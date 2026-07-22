@@ -73,6 +73,9 @@ spec:
               mountPath: /config/configuration.yaml
               subPath: configuration.yaml
               readOnly: true
+            - name: alerts
+              mountPath: /config/packages
+              readOnly: true
       volumes:
         - name: config
           persistentVolumeClaim:
@@ -80,4 +83,6 @@ spec:
         - name: bootstrap
           configMap:
             name: home-assistant-bootstrap
-
+        - name: alerts
+          configMap:
+            name: home-assistant-alerts
