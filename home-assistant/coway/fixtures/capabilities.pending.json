@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "fixture": "coway_live_capabilities_pending",
+  "devices": {
+    "coway_living_room": {
+      "source_state": "UNAVAILABLE",
+      "observed": false,
+      "readings": [],
+      "controls": {},
+      "disabled": []
+    },
+    "coway_bedroom": {
+      "source_state": "UNAVAILABLE",
+      "observed": false,
+      "readings": [],
+      "controls": {},
+      "disabled": []
+    }
+  }
+}

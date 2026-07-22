@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "integration": "iocare",
+  "dependency": "COWAY_CLOUD",
+  "devices": {
+    "coway_living_room": {
+      "display_name": "Living Room Coway",
+      "room": "living_room"
+    },
+    "coway_bedroom": {
+      "display_name": "Bedroom Coway",
+      "room": "bedroom"
+    }
+  },
+  "read_alias_suffixes": ["aqi", "pm25", "pm10", "filter_life"],
+  "control_alias_suffixes": [
+    "power",
+    "speed",
+    "preset",
+    "timer",
+    "light",
+    "button_lock",
+    "sensitivity"
+  ],
+  "upstream_candidate_values": {
+    "speed_percent": [33, 66, 100],
+    "preset": ["AUTO", "NIGHT", "RAPID"],
+    "timer": ["OFF", "1_HOUR", "2_HOURS", "4_HOURS", "8_HOURS"],
+    "light": ["ON", "OFF", "AQI_OFF"],
+    "sensitivity": ["SENSITIVE", "NORMAL", "INSENSITIVE"]
+  },
+  "live_capabilities": {
+    "coway_living_room": {
+      "observed": false,
+      "readings": [],
+      "controls": {},
+      "disabled": []
+    },
+    "coway_bedroom": {
+      "observed": false,
+      "readings": [],
+      "controls": {},
+      "disabled": []
+    }
+  },
+  "source_states": ["AVAILABLE", "DEGRADED", "UNAVAILABLE"],
+  "value_states": ["CURRENT", "STALE", "NO_DATA", "NOT_SUPPORTED", "UNAVAILABLE"],
+  "unavailable_value": null
+}
