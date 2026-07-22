@@ -2,10 +2,11 @@
 
 Date: 2026-07-21
 
-Result: **FIXTURE ONLY; OWNER GATE PENDING**. IE-004 is live. A redacted live
-registry count found zero configured official Nest entries. No Google account,
-project, OAuth, device, Home Assistant entity, or credential identifier was
-printed or recorded.
+Result: **LIVE; CLOUD-LOSS ACCEPTANCE PENDING**. IE-004 is live. The owner
+completed Google Device Access/OAuth/Pub/Sub linking, and the official Nest
+integration is configured as `Living Room Nest` in `Living Room`. No Google
+account, project, OAuth, device, Home Assistant entity, or credential identifier
+was printed or recorded.
 
 ## Repository preparation
 
@@ -20,26 +21,28 @@ printed or recorded.
 
 ## Evidence available before authorization
 
-The official integration contract supports thermostat climate state,
-temperature, humidity, and an optional fan timer. Actual HVAC modes, setpoint
-shape/range/step, and fan timer support are device-advertised and therefore stay
-empty/unsupported in Git until live verification. No fixture claims a capability
-that has not been observed.
+The thermostat reported plausible temperature and humidity. Its registry
+advertised `heat`, `cool`, `heat_cool`, and `off`; 50–90°F limits; single and
+range setpoints; fan on/off; and Eco preset. The dashboard contract intentionally
+omits Eco because it is not an approved IE-001 command.
 
-Live Home Assistant inspection emitted only these redacted facts:
+Owner-reviewed Developer Tools tests proved every approved mode, HEAT/COOL/RANGE
+setpoint shapes with 1°F changes, and fan start/cancel. Fan on produced a
+12-hour timeout, so the only allowlisted durations are `720` (start) and `0`
+(cancel). A combined mode-and-temperature call changed mode but left the prior
+setpoint unchanged; future gateway logic must converge mode first and submit a
+separate setpoint call. Every test was confirmed from a subsequent cloud state,
+and the thermostat was restored to `heat_cool`, 66–69°F, fan off.
+
+Initial live Home Assistant inspection emitted only these redacted facts:
 
 ```text
 nest_config_entries=0
 nest_state=not_configured
 ```
 
-## Required completion evidence
+## Remaining completion evidence
 
-- Owner completion of Device Access registration, Google OAuth, Pub/Sub, and
-  official HA account linking.
-- Advancing temperature/humidity observations and source freshness timing.
-- Advertised HVAC modes, setpoint shape/range/step, and fan timer durations.
-- Read/control/restore results for every advertised capability.
 - Cloud-loss transition to unavailable/null current values, independent-source
   continuity, and fresh recovery without fabricated state.
 

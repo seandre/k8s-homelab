@@ -24,16 +24,16 @@
   },
   "capabilities": {
     "hvac_modes": {
-      "supported": false,
-      "options": []
+      "supported": true,
+      "options": ["OFF", "HEAT", "COOL", "HEAT_COOL"]
     },
-    "setpoint_shapes": [],
-    "setpoint_min_f": null,
-    "setpoint_max_f": null,
-    "setpoint_step_f": null,
+    "setpoint_shapes": ["HEAT", "COOL", "RANGE"],
+    "setpoint_min_f": 50,
+    "setpoint_max_f": 90,
+    "setpoint_step_f": 1,
     "fan_timer_minutes": {
-      "supported": false,
-      "values": []
+      "supported": true,
+      "values": [0, 720]
     }
   },
   "allowed_hvac_modes": ["OFF", "HEAT", "COOL", "HEAT_COOL"],

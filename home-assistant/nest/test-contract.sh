@@ -24,22 +24,22 @@ jq -e '
   ([.state[]] | all(startswith("nest_living_room."))) and
   .allowed_hvac_modes == ["OFF", "HEAT", "COOL", "HEAT_COOL"] and
   .allowed_setpoint_shapes == ["HEAT", "COOL", "RANGE"] and
-  .capabilities.hvac_modes == {"supported": false, "options": []} and
-  .capabilities.setpoint_shapes == [] and
-  .capabilities.setpoint_min_f == null and
-  .capabilities.setpoint_max_f == null and
-  .capabilities.setpoint_step_f == null and
-  .capabilities.fan_timer_minutes == {"supported": false, "values": []}
+  .capabilities.hvac_modes == {"supported": true, "options": ["OFF", "HEAT", "COOL", "HEAT_COOL"]} and
+  .capabilities.setpoint_shapes == ["HEAT", "COOL", "RANGE"] and
+  .capabilities.setpoint_min_f == 50 and
+  .capabilities.setpoint_max_f == 90 and
+  .capabilities.setpoint_step_f == 1 and
+  .capabilities.fan_timer_minutes == {"supported": true, "values": [0, 720]}
 ' "$contract" >/dev/null
 
 for alias in current_temperature humidity hvac_mode heat_setpoint cool_setpoint fan_timer; do
   grep -Fq "nest_living_room.$alias" "$baseline"
 done
 
-grep -Fq 'owner-operated gate' "$runbook"
+grep -Fq '## Owner gate' "$runbook"
 grep -Fq 'every current value is' "$runbook"
 grep -Fq 'does not operate equipment automatically' "$runbook"
-grep -Fq 'FIXTURE ONLY; OWNER GATE PENDING' "$evidence"
+grep -Fq 'LIVE; CLOUD-LOSS ACCEPTANCE PENDING' "$evidence"
 
 if rg -n -i \
   '(project[_ -]?id|client[_ -]?id|client[_ -]?secret|oauth[_ -]?code|refresh[_ -]?token|access[_ -]?token|device[_ -]?id|entity_id)[[:space:]]*[:=][[:space:]]*[0-9a-z_-]+' \

@@ -1,7 +1,8 @@
 # Living Room Nest
 
-Status: **prepared; owner-operated gate pending**. The official Home Assistant
-Nest integration is not configured. Never put a Google Cloud project ID, Device
+Status: **live; cloud-loss acceptance pending**. The official Home Assistant
+Nest integration is configured and its live read/control contract is verified.
+Never put a Google Cloud project ID, Device
 Access project ID, OAuth client data, authorization code, token, Google device
 ID, or raw Home Assistant entity ID in Git, chat, screenshots, fixtures, logs,
 or handoff notes.
@@ -25,10 +26,11 @@ to `Living Room`. The only public aliases are:
 | `nest_living_room.cool_setpoint` | Fahrenheit cool setpoint when advertised |
 | `nest_living_room.fan_timer` | Fan timer end time when advertised |
 
-The checked-in capability arrays are intentionally empty and every control is
-unsupported until live inspection proves the thermostat's advertised features.
-IE-007 may fill only those arrays, the supported flags, and the observed
-setpoint range/step. It must not add a new alias or expose a private mapping.
+The live thermostat advertises all four allowed HVAC modes, HEAT/COOL/RANGE
+setpoints from 50–90°F in verified 1°F increments, and fan on/off. Fan on uses
+the thermostat's observed 720-minute timer; `0` cancels it. The gateway must not
+offer any other duration. It must not add a new alias or expose a private
+mapping.
 
 ## Owner gate
 
@@ -55,6 +57,8 @@ credentials, so the owner must perform it in the Home Assistant and Google UIs:
    Room thermostat. Do not paste any identifier, code, or credential into chat.
 9. In Home Assistant, name the device `Living Room Nest`, assign it to `Living
    Room`, and report only that setup completed or the redacted error category.
+
+The owner completed this gate on 2026-07-21.
 
 The authoritative click sequence and troubleshooting guidance remain the
 official Home Assistant page. If its UI differs from this summary, stop and use
