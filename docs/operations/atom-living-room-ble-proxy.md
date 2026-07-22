@@ -1,8 +1,9 @@
 # Living Room AtomS3 Lite Bluetooth Proxy
 
-Status: **flashed; network validation in progress**. The owner reserved
-`192.168.30.239`; the Kubernetes exception is fixed to that `/32`. The matching
-UniFi rule and negative cross-VLAN tests remain required.
+Status: **live; HA and power-cycle checks pending**. The owner reserved
+`192.168.30.239`; Kubernetes and UniFi permit only the approved node `/32`s to
+that address on TCP 6053. Positive and negative routed tests and protected OTA
+passed.
 
 ## Fixed contract
 
@@ -43,14 +44,16 @@ Perform these steps on the approved MacBook; secrets remain outside Git.
      compile atom-living-room.yaml
    ```
 
-5. Find the explicit USB path with `ls /dev/cu.usb*`. Replace both occurrences
-   below; never use a wildcard:
+5. Docker Desktop cannot pass a macOS `/dev/cu.*` device into its Linux VM.
+   Create an isolated native environment with the same pinned ESPHome release,
+   then find and use the explicit USB path; never use a wildcard:
 
    ```sh
-   docker run --rm -it --device=/dev/cu.usbmodem... \
-     -v "$PWD/home-assistant/esphome:/config" \
-     ghcr.io/esphome/esphome:2026.7.0@sha256:959ef36e5ea97c8309429f0ba1405ddb2eead19019b81e6e9518e683dff5191c \
-     run atom-living-room.yaml --device /dev/cu.usbmodem...
+   python3 -m venv /private/tmp/ie005-esphome-2026.7.0
+   /private/tmp/ie005-esphome-2026.7.0/bin/python -m pip install 'esphome==2026.7.0'
+   cd home-assistant/esphome
+   /private/tmp/ie005-esphome-2026.7.0/bin/esphome run \
+     atom-living-room.yaml --device /dev/cu.usbmodem...
    ```
 
 6. Disconnect USB power, place the Atom near the Living Room Aranet4 and away
@@ -62,12 +65,12 @@ keys in the password manager for recovery.
 
 ## Narrow route after gate confirmation
 
-Add exactly two coordinated allow rules; do not permit subnet-wide access:
+The two coordinated allow rules are active; do not permit subnet-wide access:
 
-1. In UniFi, before the Servers-to-IoT block, allow sources `192.168.40.21`,
-   `.22`, and `.23` to the Atom's one reserved IPv4 address, TCP destination port
-   6053. Permit only stateful responses in reverse. Do not add ICMP, UDP, another
-   port, the Servers subnet, or the IoT subnet.
+1. UniFi policy `Allow k3s nodes to Atom ESPHome`, created through the official
+   API, allows sources `192.168.40.21`, `.22`, and `.23` to the Atom's one
+   reserved IPv4 address, TCP destination port 6053, with return traffic. It is
+   ordered before the Servers-to-IoT system block.
 2. The Home Assistant Kubernetes NetworkPolicy contains one egress item for
    `192.168.30.239/32` on TCP 6053. Preserve its current DNS and public-HTTPS
    entries.
@@ -81,6 +84,10 @@ Verify all of the following:
 - The existing Servers-to-IoT deny remains; rule counters show only this allow.
 - HA discovers `atom-living-room`, accepts its encryption key, and reconnects
   after an Atom power cycle. One OTA update completes and reconnects.
+
+The node reachability and TCP negative tests pass, an unrelated Servers host is
+blocked, and protected OTA plus the encrypted API handshake pass. HA integration
+and physical power-cycle reconnection remain the final acceptance checks.
 
 ## Rollback
 
