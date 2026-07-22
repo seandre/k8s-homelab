@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "device_alias": "aranet_living_room",
+  "display_name": "Living Room Aranet4",
+  "room": "living_room",
+  "dependency": "LOCAL_BLE",
+  "integration": "aranet",
+  "transport": "atom_living_room",
+  "readings": {
+    "temperature": { "alias": "aranet_living_room.temperature", "unit": "CELSIUS" },
+    "humidity": { "alias": "aranet_living_room.humidity", "unit": "PERCENT" },
+    "pressure": { "alias": "aranet_living_room.pressure", "unit": "HPA" },
+    "co2": { "alias": "aranet_living_room.co2", "unit": "PPM" },
+    "battery": { "alias": "aranet_living_room.battery", "unit": "PERCENT" }
+  },
+  "controls": [],
+  "source_states": ["AVAILABLE", "DEGRADED", "UNAVAILABLE"],
+  "value_states": ["CURRENT", "STALE", "NO_DATA", "NOT_SUPPORTED", "UNAVAILABLE"],
+  "unavailable_value": null
+}
