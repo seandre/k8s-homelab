@@ -2,11 +2,13 @@
 
 Date: 2026-07-21
 
-Result: **LIVE; HA AND POWER-CYCLE ACCEPTANCE PENDING**. The owner gate completed on
+Result: **COMPLETE**. The owner gate completed on
 2026-07-21: the firmware compiled, the full USB write reached 100%, its hash
 verified, and the Atom reset successfully. Its reserved IoT address is
 `192.168.30.239`. The exact Kubernetes `/32:6053` egress is implemented; the
-matching UniFi rule is active and live positive/negative tests passed.
+matching UniFi rule is active and live positive/negative tests passed. Home
+Assistant accepted the encrypted ESPHome integration, and the proxy returned
+automatically after a physical power cycle.
 
 ## Changed files
 
@@ -36,12 +38,16 @@ TCP, three source `/32`s, destination `192.168.30.239/32`, port 6053, return
 traffic enabled, ahead of the system block. All three nodes reached only the
 approved port; TCP 22/80/443, another IoT client's 6053, and unrelated Servers
 host `.24` remained blocked. Protected OTA succeeded and the Atom completed an
-encrypted API handshake after reboot.
+encrypted API handshake after reboot. A final OTA update synchronized the
+firmware with the locally retained API key. After the owner physically removed
+and restored power at the Living Room location, the reserved address returned
+with zero packet loss, TCP 6053 accepted connections, the encrypted API
+handshake completed in 0.202 seconds, and Home Assistant logged no new ESPHome
+connection errors.
 
 The local secrets file is mode 0600 and Git-ignored. No credential, hardware
 identifier, generated key, controller ID, site ID, or rule ID is recorded here.
-IE-006 remains blocked only on HA integration and physical power-cycle
-reconnection evidence.
+IE-006 is now unblocked.
 
 Before live rules, rollback is a repository revert. After activation, remove the
 Kubernetes `/32:6053` egress first and its UniFi allow second; retain broad denies.

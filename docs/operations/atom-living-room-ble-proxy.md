@@ -1,9 +1,10 @@
 # Living Room AtomS3 Lite Bluetooth Proxy
 
-Status: **live; HA and power-cycle checks pending**. The owner reserved
+Status: **complete**. The owner reserved
 `192.168.30.239`; Kubernetes and UniFi permit only the approved node `/32`s to
 that address on TCP 6053. Positive and negative routed tests and protected OTA
-passed.
+passed. Home Assistant uses the encrypted native API and the proxy reconnects
+after a physical power cycle.
 
 ## Fixed contract
 
@@ -86,8 +87,8 @@ Verify all of the following:
   after an Atom power cycle. One OTA update completes and reconnects.
 
 The node reachability and TCP negative tests pass, an unrelated Servers host is
-blocked, and protected OTA plus the encrypted API handshake pass. HA integration
-and physical power-cycle reconnection remain the final acceptance checks.
+blocked, protected OTA plus the encrypted API handshake pass, and Home Assistant
+reconnects after physical power loss and restoration.
 
 ## Rollback
 
