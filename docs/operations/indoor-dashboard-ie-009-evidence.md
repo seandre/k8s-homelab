@@ -2,7 +2,7 @@
 
 Date: 2026-07-22
 
-Result: **IMPLEMENTED; LIVE MOBILE GATE PENDING**. IE-006 is complete and the
+Result: **COMPLETE**. IE-006 is complete and the
 verified IE-007/IE-008 cloud-loss evidence is incorporated: raw Home Assistant
 retains cached Nest and Coway values, so threshold evaluation is freshness-gated
 and source-loss incidents are independent.
@@ -35,8 +35,22 @@ It additionally rejects last-updated-only age comparisons, stale numeric
 emission, and repeated backup warnings within one unresolved incident.
 
 `home-assistant/k3s/test-manifests.sh` and `git diff --check` are required in the
-handoff. Live Companion App delivery remains an owner gate because no mobile
-notifier identifier may be guessed or committed.
+handoff.
+
+## Live mobile acceptance
+
+On 2026-07-22, Home Assistant reported exactly one enabled Companion App
+registration. Its notifier was bound through the runtime-only helper and a
+synthetic `mobile_delivery_test` warning was emitted through the package's
+`indoor_alert_notification` boundary. The owner confirmed receipt on the phone.
+The notification contained only the package-defined `/indoor` URI action; it
+contained no device-control action.
+
+The temporary API token used for the runtime binding and event submission was
+deleted immediately after the test. Home Assistant reported zero matching token
+records afterward, and the local clipboard was cleared. No notifier identifier,
+token, raw entity ID, or mobile device identifier was recorded in Git or this
+evidence.
 
 The pinned production Home Assistant `2026.7.2` image also accepted the complete
 package through `python -m homeassistant --script check_config -c /config` under
