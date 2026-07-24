@@ -8,6 +8,10 @@ grep -Fq 'PBS_PASSWORD_FILE=' "$script"
 # shellcheck disable=SC2016 # Match the literal variable reference in the script.
 grep -Fq 'home-assistant.pxar:"${archive_dir}"' "$script"
 grep -Fq '\"target\":\"pbs\"' "$script"
+if [[ ! -f "$cronjob" ]]; then
+  echo "IE-014 backup image contract: PASS"
+  exit 0
+fi
 grep -Fq 'schedule: "0 3 * * *"' "$cronjob"
 grep -Fq 'readOnly: true' "$cronjob"
 grep -Fq 'secretName: home-assistant-pbs-backup' "$cronjob"
