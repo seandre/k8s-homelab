@@ -23,6 +23,19 @@ spec:
       ports:
         - protocol: TCP
           port: 8123
+    # IE-010: Prometheus is the only in-cluster caller of the authenticated
+    # exporter. It does not gain access to any other Home Assistant port.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+              operator.prometheus.io/name: kube-prometheus-stack-prometheus
+      ports:
+        - protocol: TCP
+          port: 8123
   egress:
     - to:
         - namespaceSelector:

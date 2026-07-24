@@ -1,0 +1,64 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: home-assistant-indoor-history
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: home-assistant-indoor-history
+      interval: 1m
+      rules:
+        # These records prove each supported history horizon has samples without
+        # carrying a last value forward. Dashboard graphs query only the fixed
+        # raw metric catalog in home-assistant-indoor-query-catalog.
+        - record: indoor:history_samples:count
+          expr: count_over_time({job="home-assistant-indoor",__name__=~"indoor_.+"}[1h])
+          labels:
+            window: 1h
+        - record: indoor:history_samples:count
+          expr: count_over_time({job="home-assistant-indoor",__name__=~"indoor_.+"}[24h])
+          labels:
+            window: 24h
+        - record: indoor:history_samples:count
+          expr: count_over_time({job="home-assistant-indoor",__name__=~"indoor_.+"}[7d])
+          labels:
+            window: 7d
+        - record: indoor:history_samples:count
+          expr: count_over_time({job="home-assistant-indoor",__name__=~"indoor_.+"}[30d])
+          labels:
+            window: 30d
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: home-assistant-indoor-query-catalog
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: home-assistant-indoor-history
+data:
+  catalog.yaml: |
+    # IE-011 consumes only these aliases. Browser input may select an alias and
+    # window, but can never supply PromQL, a metric name, or an entity ID.
+    metrics:
+      aranet_living_room.temperature: indoor_aranet_temperature_fahrenheit
+      aranet_living_room.humidity: indoor_aranet_humidity_percent
+      aranet_living_room.pressure: indoor_aranet_pressure_hpa
+      aranet_living_room.co2: indoor_aranet_co2_ppm
+      aranet_living_room.battery: indoor_aranet_battery_percent
+      nest_living_room.current_temperature: indoor_nest_temperature_fahrenheit
+      nest_living_room.humidity: indoor_nest_humidity_percent
+      coway_living_room.aqi: indoor_coway_living_room_aqi
+      coway_living_room.pm25: indoor_coway_living_room_pm25_micrograms_m3
+      coway_living_room.pm10: indoor_coway_living_room_pm10_micrograms_m3
+      coway_living_room.filter_life: indoor_coway_living_room_filter_life_percent
+      coway_bedroom.aqi: indoor_coway_bedroom_aqi
+      coway_bedroom.pm25: indoor_coway_bedroom_pm25_micrograms_m3
+      coway_bedroom.pm10: indoor_coway_bedroom_pm10_micrograms_m3
+      coway_bedroom.filter_life: indoor_coway_bedroom_filter_life_percent
+    windows:
+      1h: {range: 1h, step: 1m}
+      24h: {range: 24h, step: 5m}
+      7d: {range: 7d, step: 30m}
+      30d: {range: 30d, step: 2h}

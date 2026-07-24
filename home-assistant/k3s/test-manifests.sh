@@ -24,11 +24,13 @@ grep -Fq 'port: 443' "$app_output"
 grep -Fq 'port: 53' "$app_output"
 grep -Fq 'port: 8123' "$app_output"
 
-# IE-005 adds only the confirmed Atom /32. Prometheus and Homepage remain
-# deferred, and an IoT subnet-wide route remains forbidden.
+# IE-005 adds only the confirmed Atom /32. IE-010 adds Prometheus ingress only;
+# Homepage remains deferred, and an IoT subnet-wide route remains forbidden.
 grep -Fq 'cidr: 192.168.30.239/32' "$app_output"
 grep -Fq 'port: 6053' "$app_output"
-if grep -Eq 'cidr: 192\.168\.30\.0/24|port: 9090|namespace: monitoring|namespace: homepage' "$app_output"; then
+grep -Fq 'kubernetes.io/metadata.name: monitoring' "$app_output"
+grep -Fq 'operator.prometheus.io/name: kube-prometheus-stack-prometheus' "$app_output"
+if grep -Eq 'cidr: 192\.168\.30\.0/24|port: 9090|namespace: homepage' "$app_output"; then
   echo 'Home Assistant render contains a deferred or overly broad network path' >&2
   exit 1
 fi

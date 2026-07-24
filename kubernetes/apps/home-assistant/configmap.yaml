@@ -23,3 +23,57 @@ data:
       trusted_proxies:
         # k3s default pod CIDR; NetworkPolicy separately limits ingress to Traefik.
         - 10.42.0.0/16
+
+    # IE-010: authentication remains required. Only normalized, freshness-
+    # guarded aliases are exposed; raw integration entity IDs stay private.
+    prometheus:
+      namespace: indoor
+      requires_auth: true
+      filter:
+        include_entities:
+          - sensor.indoor_aranet_temperature
+          - sensor.indoor_aranet_humidity
+          - sensor.indoor_aranet_pressure
+          - sensor.indoor_aranet_co2
+          - sensor.indoor_aranet_battery
+          - sensor.indoor_nest_temperature
+          - sensor.indoor_nest_humidity
+          - sensor.indoor_coway_living_room_aqi
+          - sensor.indoor_coway_living_room_pm25
+          - sensor.indoor_coway_living_room_pm10
+          - sensor.indoor_coway_living_room_filter_life
+          - sensor.indoor_coway_bedroom_aqi
+          - sensor.indoor_coway_bedroom_pm25
+          - sensor.indoor_coway_bedroom_pm10
+          - sensor.indoor_coway_bedroom_filter_life
+      component_config:
+        sensor.indoor_aranet_temperature:
+          override_metric: aranet_temperature_fahrenheit
+        sensor.indoor_aranet_humidity:
+          override_metric: aranet_humidity_percent
+        sensor.indoor_aranet_pressure:
+          override_metric: aranet_pressure_hpa
+        sensor.indoor_aranet_co2:
+          override_metric: aranet_co2_ppm
+        sensor.indoor_aranet_battery:
+          override_metric: aranet_battery_percent
+        sensor.indoor_nest_temperature:
+          override_metric: nest_temperature_fahrenheit
+        sensor.indoor_nest_humidity:
+          override_metric: nest_humidity_percent
+        sensor.indoor_coway_living_room_aqi:
+          override_metric: coway_living_room_aqi
+        sensor.indoor_coway_living_room_pm25:
+          override_metric: coway_living_room_pm25_micrograms_m3
+        sensor.indoor_coway_living_room_pm10:
+          override_metric: coway_living_room_pm10_micrograms_m3
+        sensor.indoor_coway_living_room_filter_life:
+          override_metric: coway_living_room_filter_life_percent
+        sensor.indoor_coway_bedroom_aqi:
+          override_metric: coway_bedroom_aqi
+        sensor.indoor_coway_bedroom_pm25:
+          override_metric: coway_bedroom_pm25_micrograms_m3
+        sensor.indoor_coway_bedroom_pm10:
+          override_metric: coway_bedroom_pm10_micrograms_m3
+        sensor.indoor_coway_bedroom_filter_life:
+          override_metric: coway_bedroom_filter_life_percent

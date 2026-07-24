@@ -10,6 +10,9 @@ input_text:
   indoor_map_aranet_humidity:
     name: Indoor map - Aranet humidity
     max: 255
+  indoor_map_aranet_pressure:
+    name: Indoor map - Aranet pressure
+    max: 255
   indoor_map_aranet_co2:
     name: Indoor map - Aranet CO2
     max: 255
@@ -22,8 +25,14 @@ input_text:
   indoor_map_nest_humidity:
     name: Indoor map - Nest humidity
     max: 255
+  indoor_map_coway_living_room_aqi:
+    name: Indoor map - Living Room Coway AQI
+    max: 255
   indoor_map_coway_living_room_pm25:
     name: Indoor map - Living Room Coway PM2.5
+    max: 255
+  indoor_map_coway_living_room_pm10:
+    name: Indoor map - Living Room Coway PM10
     max: 255
   indoor_map_coway_living_room_filter_a:
     name: Indoor map - Living Room Coway filter A
@@ -33,6 +42,12 @@ input_text:
     max: 255
   indoor_map_coway_bedroom_pm25:
     name: Indoor map - Bedroom Coway PM2.5
+    max: 255
+  indoor_map_coway_bedroom_aqi:
+    name: Indoor map - Bedroom Coway AQI
+    max: 255
+  indoor_map_coway_bedroom_pm10:
+    name: Indoor map - Bedroom Coway PM10
     max: 255
   indoor_map_coway_bedroom_filter_a:
     name: Indoor map - Bedroom Coway filter A
@@ -121,6 +136,7 @@ template:
             {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 180 else 'UNAVAILABLE' }}
       - name: Indoor Aranet humidity
         unique_id: indoor_aranet_humidity
+        unit_of_measurement: "%"
         state: >-
           {% set obj = states.get(states('input_text.indoor_map_aranet_humidity')) %}
           {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
@@ -130,8 +146,21 @@ template:
             {% set obj = states.get(states('input_text.indoor_map_aranet_humidity')) %}
             {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
             {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 180 else 'UNAVAILABLE' }}
+      - name: Indoor Aranet pressure
+        unique_id: indoor_aranet_pressure
+        unit_of_measurement: "hPa"
+        state: >-
+          {% set obj = states.get(states('input_text.indoor_map_aranet_pressure')) %}
+          {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
+          {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 180 else none }}
+        attributes:
+          freshness: >-
+            {% set obj = states.get(states('input_text.indoor_map_aranet_pressure')) %}
+            {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
+            {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 180 else 'UNAVAILABLE' }}
       - name: Indoor Aranet battery
         unique_id: indoor_aranet_battery
+        unit_of_measurement: "%"
         state: >-
           {% set obj = states.get(states('input_text.indoor_map_aranet_battery')) %}
           {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
@@ -141,8 +170,46 @@ template:
             {% set obj = states.get(states('input_text.indoor_map_aranet_battery')) %}
             {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
             {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 180 else 'UNAVAILABLE' }}
+      - name: Indoor Nest temperature
+        unique_id: indoor_nest_temperature
+        unit_of_measurement: "°F"
+        state: >-
+          {% set obj = states.get(states('input_text.indoor_map_nest_temperature')) %}
+          {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
+          {% if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 %}
+            {{ ((obj.state | float) * 9 / 5 + 32) if obj.attributes.get('unit_of_measurement') == '°C' else (obj.state | float) }}
+          {% else %}{{ none }}{% endif %}
+        attributes:
+          freshness: >-
+            {% set obj = states.get(states('input_text.indoor_map_nest_temperature')) %}
+            {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
+            {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
+      - name: Indoor Nest humidity
+        unique_id: indoor_nest_humidity
+        unit_of_measurement: "%"
+        state: >-
+          {% set obj = states.get(states('input_text.indoor_map_nest_humidity')) %}
+          {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
+          {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
+        attributes:
+          freshness: >-
+            {% set obj = states.get(states('input_text.indoor_map_nest_humidity')) %}
+            {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
+            {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
+      - name: Indoor Coway Living Room AQI
+        unique_id: indoor_coway_living_room_aqi
+        state: >-
+          {% set obj = states.get(states('input_text.indoor_map_coway_living_room_aqi')) %}
+          {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
+          {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
+        attributes:
+          freshness: >-
+            {% set obj = states.get(states('input_text.indoor_map_coway_living_room_aqi')) %}
+            {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
+            {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
       - name: Indoor Coway Living Room PM25
         unique_id: indoor_coway_living_room_pm25
+        unit_of_measurement: "µg/m³"
         state: >-
           {% set obj = states.get(states('input_text.indoor_map_coway_living_room_pm25')) %}
           {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
@@ -152,8 +219,32 @@ template:
             {% set obj = states.get(states('input_text.indoor_map_coway_living_room_pm25')) %}
             {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
             {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
+      - name: Indoor Coway Living Room PM10
+        unique_id: indoor_coway_living_room_pm10
+        unit_of_measurement: "µg/m³"
+        state: >-
+          {% set obj = states.get(states('input_text.indoor_map_coway_living_room_pm10')) %}
+          {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
+          {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
+        attributes:
+          freshness: >-
+            {% set obj = states.get(states('input_text.indoor_map_coway_living_room_pm10')) %}
+            {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
+            {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
+      - name: Indoor Coway Bedroom AQI
+        unique_id: indoor_coway_bedroom_aqi
+        state: >-
+          {% set obj = states.get(states('input_text.indoor_map_coway_bedroom_aqi')) %}
+          {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
+          {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
+        attributes:
+          freshness: >-
+            {% set obj = states.get(states('input_text.indoor_map_coway_bedroom_aqi')) %}
+            {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
+            {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
       - name: Indoor Coway Bedroom PM25
         unique_id: indoor_coway_bedroom_pm25
+        unit_of_measurement: "µg/m³"
         state: >-
           {% set obj = states.get(states('input_text.indoor_map_coway_bedroom_pm25')) %}
           {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
@@ -161,6 +252,18 @@ template:
         attributes:
           freshness: >-
             {% set obj = states.get(states('input_text.indoor_map_coway_bedroom_pm25')) %}
+            {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
+            {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
+      - name: Indoor Coway Bedroom PM10
+        unique_id: indoor_coway_bedroom_pm10
+        unit_of_measurement: "µg/m³"
+        state: >-
+          {% set obj = states.get(states('input_text.indoor_map_coway_bedroom_pm10')) %}
+          {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
+          {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
+        attributes:
+          freshness: >-
+            {% set obj = states.get(states('input_text.indoor_map_coway_bedroom_pm10')) %}
             {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
             {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
       - name: Indoor Coway Living Room filter life
