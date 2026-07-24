@@ -67,6 +67,29 @@ coverage, the production image build, and the HIGH/CRITICAL vulnerability gate.
 It published `sha-5fa4ac5` with immutable OCI index digest
 `sha256:4af31ce0841a85122da9175f0705d5178a5cc70b4264fd35bf67a342f75f7c86`.
 
+## Live verification
+
+The image was deployed by Argo CD at Git revision `3d4ce1c`; the Application
+reported `Synced/Healthy` and both replicas became ready. Live checks confirmed:
+
+- bootstrap schema version 3 with two rooms, one Aranet sensor, one thermostat,
+  and two purifiers;
+- local Aranet state `AVAILABLE` with five current readings;
+- Nest and both Coways truthfully `DEGRADED` because their normalized
+  observations exceeded the cloud freshness window; their current values were
+  null rather than cached;
+- `1h`, `24h`, `7d`, and `30d` CO2 history returned validated samples;
+- a raw entity-shaped history request returned 404;
+- the bootstrap contained zero credential/entity/vendor-shaped keys;
+- recent application logs contained zero credential-shaped matches and zero
+  error-level events.
+
+The runtime Secret was copied from the existing dedicated non-admin HA identity
+and validated only by key/length metadata. The copy procedure must decode the
+Kubernetes `.data.token` field exactly once before creating the destination
+Secret; storing the encoded representation again causes fail-closed
+`UNAVAILABLE` state.
+
 ## Credential provisioning
 
 The token is runtime-only. Until the repository's Sealed Secrets key
