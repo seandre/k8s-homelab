@@ -228,7 +228,8 @@ data:
             state: >-
               {% set obj = (expand(states('input_text.indoor_map_coway_living_room_aqi')) | first | default(none)) %}
               {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
-              {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
+              {% set grades = {'Good': 1, 'Moderate': 2, 'Unhealthy': 3, 'Very Unhealthy': 4} %}
+              {{ grades[obj.state] if obj and obj.state in grades and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
             attributes:
               freshness: >-
                 {% set obj = (expand(states('input_text.indoor_map_coway_living_room_aqi')) | first | default(none)) %}
@@ -263,7 +264,8 @@ data:
             state: >-
               {% set obj = (expand(states('input_text.indoor_map_coway_bedroom_aqi')) | first | default(none)) %}
               {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
-              {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
+              {% set grades = {'Good': 1, 'Moderate': 2, 'Unhealthy': 3, 'Very Unhealthy': 4} %}
+              {{ grades[obj.state] if obj and obj.state in grades and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
             attributes:
               freshness: >-
                 {% set obj = (expand(states('input_text.indoor_map_coway_bedroom_aqi')) | first | default(none)) %}

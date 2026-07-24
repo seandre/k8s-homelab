@@ -29,6 +29,14 @@ The fixed query catalog maps the 15 public aliases to metric names and permits
 only `1h`, `24h`, `7d`, and `30d`. IE-011 must select from this catalog and must
 not accept browser-supplied PromQL, metric names, entity IDs, or URLs.
 
+Coway reports indoor air quality as the pinned integration's ordered categories:
+`Good`, `Moderate`, `Unhealthy`, and `Very Unhealthy`. The normalized history
+contract records those as levels 1 through 4 respectively. Unknown categories
+remain unavailable; they are never coerced to zero. Prometheus additionally
+stores its mandatory target/rule health metadata (`up`, scrape health, and the
+Git-owned history sample records); these are not Home Assistant entity data and
+are excluded from the 15-reading equality check.
+
 ## Credential provisioning
 
 Create a dedicated Home Assistant user named `Indoor Prometheus`. Leave
