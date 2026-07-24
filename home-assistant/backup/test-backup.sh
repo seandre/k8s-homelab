@@ -8,6 +8,12 @@ grep -Fq 'PBS_PASSWORD_FILE=' "$script"
 # shellcheck disable=SC2016 # Match the literal variable reference in the script.
 grep -Fq 'home-assistant.pxar:"${archive_dir}"' "$script"
 grep -Fq '\"target\":\"pbs\"' "$script"
+# shellcheck disable=SC2016 # Match the literal variable reference in the script.
+grep -Fq '/api/webhook/${ha_webhook_id}' "$script"
+if grep -Fq 'Authorization:' "$script"; then
+  echo "backup reporter must use its fixed webhook, not a general HA token" >&2
+  exit 1
+fi
 if [[ ! -f "$cronjob" ]]; then
   echo "IE-014 backup image contract: PASS"
   exit 0

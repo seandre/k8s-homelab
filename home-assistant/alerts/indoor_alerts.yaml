@@ -316,6 +316,27 @@ template:
 # IE-014 calls these events after a completed archive/copy. No credentials or
 # storage endpoints cross this interface.
 automation:
+  # A random, operator-owned webhook ID gives the PBS job one capability:
+  # submit a validated backup result. It is not a general Home Assistant token.
+  - id: indoor_backup_pbs_result_bridge
+    alias: Indoor backups - PBS result bridge
+    mode: queued
+    trigger:
+      - platform: webhook
+        webhook_id: !secret indoor_backup_webhook_id
+        allowed_methods: [POST]
+        local_only: true
+    condition:
+      - condition: template
+        value_template: >-
+          {{ trigger.json.target == 'pbs' and
+             trigger.json.result in ['success', 'failed'] }}
+    action:
+      - event: indoor_backup_result
+        event_data:
+          target: pbs
+          result: "{{ trigger.json.result }}"
+
   # Translate the official Backup integration's automatic-backup event into
   # the fixed local/PBS result contract consumed below. The backup manager owns
   # encryption, schedule, and retention; this package owns notification state.
