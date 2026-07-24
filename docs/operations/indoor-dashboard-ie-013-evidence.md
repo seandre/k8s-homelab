@@ -47,6 +47,21 @@ control confirmation, non-optimistic state, keyboard cancellation,
 accessibility, mobile/tablet/desktop overflow, and dark/light overview visual
 baselines.
 
+## Live evidence
+
+On 2026-07-24, GitHub Actions run `30125809562` passed verification and
+published immutable Homepage image `sha-bbd6f5b` at OCI index digest
+`sha256:7fe2db46c476f1defb9166c82a3ce8efac7a7b4fe4a74f9251a409edee604c8a`.
+Argo CD reported `Synced` and `Healthy` at revision `3faf6f4`; the preview
+Deployment was `1/1` Ready.
+
+`https://homepage-preview.lab.seandre.dev/indoor` returned HTTP 200. Its live
+schema-v3 bootstrap contained two rooms and two purifiers. Aranet was
+`AVAILABLE`; Nest and both Coways were truthfully `DEGRADED`, so their controls
+were not enabled. Home Assistant configuration validation passed before restart,
+and the synchronized Companion App destination points to the live absolute
+`/indoor` URL.
+
 ## Rollback
 
 Revert the Homepage image pin and IE-013 source commit through GitOps. The
