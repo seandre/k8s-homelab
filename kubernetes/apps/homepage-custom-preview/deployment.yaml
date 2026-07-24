@@ -43,7 +43,7 @@ spec:
               app.kubernetes.io/instance: preview
       containers:
         - name: homepage
-          image: ghcr.io/seandre/k8s-homelab-homepage:sha-2c77a10@sha256:0f6aa66c705d218162a58bcc6eda72d07d3c0152097fce9fd64a96a8f9fba495
+          image: ghcr.io/seandre/k8s-homelab-homepage:sha-bbd6f5b@sha256:7fe2db46c476f1defb9166c82a3ce8efac7a7b4fe4a74f9251a409edee604c8a
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
