@@ -13,7 +13,6 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY backup-to-pbs.sh /usr/local/bin/backup-to-pbs
-RUN chmod 0755 /usr/local/bin/backup-to-pbs \
-    && useradd --system --uid 10001 --home-dir /nonexistent --shell /usr/sbin/nologin backup
+RUN chmod 0755 /usr/local/bin/backup-to-pbs
 USER 10001:10001
 ENTRYPOINT ["/usr/local/bin/backup-to-pbs"]
