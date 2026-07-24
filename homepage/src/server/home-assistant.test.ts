@@ -4,7 +4,7 @@ import { healthyBootstrapFixture } from '../shared/fixtures.js';
 import { HomeAssistantIndoorAdapter } from './home-assistant.js';
 
 const now = () => new Date('2026-07-24T12:00:00.000Z');
-const state = (entity_id: string, value: string, last_updated = '2026-07-24T11:59:30.000Z') => ({ entity_id, state: value, last_updated, attributes: {} });
+const state = (entity_id: string, value: string, last_updated = '2026-07-24T11:59:30.000Z', last_reported?: string) => ({ entity_id, state: value, last_updated, ...(last_reported ? { last_reported } : {}), attributes: {} });
 
 describe('Home Assistant indoor adapter', () => {
   it('normalizes only fixed indoor aliases and never returns entity identifiers', async () => {
@@ -40,5 +40,16 @@ describe('Home Assistant indoor adapter', () => {
     const body = JSON.stringify(await failed.read());
     expect(body).not.toMatch(/entity_id|sensor\.private|never-return|token/);
     expect(JSON.parse(body).thermostats[0]).toMatchObject({ sourceState: 'UNAVAILABLE', currentTemperature: { value: null } });
+  });
+
+  it('uses a fresh report timestamp when an unchanged value has an older update timestamp', async () => {
+    const adapter = new HomeAssistantIndoorAdapter('http://home-assistant.test:8123', 'token', async () => ({
+      ok: true,
+      json: async () => [state('sensor.indoor_aranet_co2', '612', '2026-07-24T10:00:00.000Z', '2026-07-24T11:59:45.000Z')],
+    }), now);
+    expect((await adapter.read()).sensors[0].readings.co2).toMatchObject({
+      value: 612,
+      metadata: { observedAt: '2026-07-24T11:59:45.000Z', freshness: 'CURRENT', sourceState: 'AVAILABLE' },
+    });
   });
 });

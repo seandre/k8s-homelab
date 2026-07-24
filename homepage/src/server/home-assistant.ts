@@ -8,6 +8,7 @@ const StateSchema = z.object({
   entity_id: z.string(),
   state: z.string(),
   last_updated: z.string().datetime({ offset: true }),
+  last_reported: z.string().datetime({ offset: true }).optional(),
   attributes: z.record(z.unknown()),
 });
 const StatesSchema = z.array(StateSchema);
@@ -73,12 +74,13 @@ export class HomeAssistantIndoorAdapter {
       const [slug, unit, staleAfterSeconds] = readingCatalog[alias];
       const state = byId.get(normalizedEntityId(slug));
       const numeric = state ? Number(state.state) : Number.NaN;
-      const ageSeconds = state ? Math.max(0, (this.now().getTime() - Date.parse(state.last_updated)) / 1_000) : undefined;
+      const observedAt = state?.last_reported ?? state?.last_updated;
+      const ageSeconds = observedAt ? Math.max(0, (this.now().getTime() - Date.parse(observedAt)) / 1_000) : undefined;
       const current = state !== undefined && Number.isFinite(numeric) && state.state !== 'unavailable' && state.state !== 'unknown' && ageSeconds !== undefined && ageSeconds <= staleAfterSeconds;
       return {
         alias, value: current ? numeric : null, unit,
         metadata: {
-          source: source(alias), observedAt: state?.last_updated ?? this.now().toISOString(),
+          source: source(alias), observedAt: observedAt ?? this.now().toISOString(),
           freshness: current ? 'CURRENT' as const : state ? 'STALE' as const : 'UNAVAILABLE' as const,
           sourceState: current ? 'AVAILABLE' as const : state ? 'DEGRADED' as const : 'UNAVAILABLE' as const,
           severity: current ? 'OK' as const : 'INFO' as const,
