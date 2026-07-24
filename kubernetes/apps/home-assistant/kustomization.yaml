@@ -4,6 +4,7 @@ resources:
   - namespace.yaml
   - configmap.yaml
   - alerts-configmap.yaml
+  - backup-cronjob.yaml
   - pvc.yaml
   - deployment.yaml
   - service.yaml

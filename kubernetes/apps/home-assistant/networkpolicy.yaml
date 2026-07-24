@@ -46,6 +46,13 @@ spec:
       ports:
         - protocol: TCP
           port: 8123
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: home-assistant-backup
+      ports:
+        - protocol: TCP
+          port: 8123
   egress:
     - to:
         - namespaceSelector:
@@ -80,3 +87,45 @@ spec:
       ports:
         - protocol: TCP
           port: 6053
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: home-assistant-backup
+  namespace: home-assistant
+  labels:
+    app.kubernetes.io/name: home-assistant-backup
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: home-assistant-backup
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress: []
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: home-assistant
+      ports:
+        - protocol: TCP
+          port: 8123
+    - to:
+        - ipBlock:
+            cidr: 192.168.40.34/32
+      ports:
+        - protocol: TCP
+          port: 8007
