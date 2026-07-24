@@ -11,10 +11,11 @@ rollback target.
 The current preview image is:
 
 ```text
-ghcr.io/seandre/k8s-homelab-homepage@sha256:d75558ed538c832d9f51259d022511619e44aac1af5d7c6c059d85ef97297dc5
+ghcr.io/seandre/k8s-homelab-homepage@sha256:4af31ce0841a85122da9175f0705d5178a5cc70b4264fd35bf67a342f75f7c86
 ```
 
-It contains the validated PDU mapping enabled at Git revision `c3d8968`. The
+It contains the IE-011 schema-v3 indoor read contract and validated PDU mapping
+at Git revision `5fa4ac5`. The
 Deployment references this digest, never a mutable tag. Earlier digests in the
 dated verification records below are retained as historical evidence and are
 not the current artifact.

@@ -62,6 +62,11 @@ redaction assertions. The application manifests mount only
 `homepage-home-assistant-readonly`, allow Homepage-to-Home Assistant TCP/8123,
 and preserve all other namespace isolation.
 
+GitHub Actions run `30120902299` passed application tests, portable browser
+coverage, the production image build, and the HIGH/CRITICAL vulnerability gate.
+It published `sha-5fa4ac5` with immutable OCI index digest
+`sha256:4af31ce0841a85122da9175f0705d5178a5cc70b4264fd35bf67a342f75f7c86`.
+
 ## Credential provisioning
 
 The token is runtime-only. Until the repository's Sealed Secrets key
