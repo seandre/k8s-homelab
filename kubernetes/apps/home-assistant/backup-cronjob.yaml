@@ -31,7 +31,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: pbs-client
-              image: ghcr.io/seandre/k8s-homelab-home-assistant-backup:sha-6c8526044a7a394c6710c5aab2e099546a79bc2f
+              image: ghcr.io/seandre/k8s-homelab-home-assistant-backup:sha-26d8435e8b2f2b40466548c3ad0db4d2d38e3676
               imagePullPolicy: IfNotPresent
               resources:
                 requests:
