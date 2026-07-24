@@ -22,9 +22,10 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - run: |
-          shellcheck home-assistant/backup/*.sh
-          home-assistant/backup/test-backup.sh
+      - name: ShellCheck
+        run: shellcheck home-assistant/backup/*.sh
+      - name: Backup contract
+        run: home-assistant/backup/test-backup.sh
       - uses: docker/setup-buildx-action@v3
       - uses: docker/build-push-action@v6
         with:
