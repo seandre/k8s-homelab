@@ -9,6 +9,6 @@ trap 'rm -f "${temp_file}"' EXIT
 
 {
   sed -n '1,9p' "${target_file}"
-  sed 's/^/    /' "${source_file}"
+  sed -e 's/^/    /' -e 's/[[:space:]]*$//' "${source_file}"
 } > "${temp_file}"
 cp "${temp_file}" "${target_file}"

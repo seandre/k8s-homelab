@@ -316,6 +316,28 @@ template:
 # IE-014 calls these events after a completed archive/copy. No credentials or
 # storage endpoints cross this interface.
 automation:
+  # Translate the official Backup integration's automatic-backup event into
+  # the fixed local/PBS result contract consumed below. The backup manager owns
+  # encryption, schedule, and retention; this package owns notification state.
+  - id: indoor_backup_local_result_bridge
+    alias: Indoor backups - local automatic result bridge
+    mode: queued
+    trigger:
+      - platform: state
+        entity_id: event.backup_automatic_backup
+    condition:
+      - condition: template
+        value_template: >-
+          {{ trigger.to_state is not none and
+             trigger.to_state.attributes.get('event_type') in ['completed', 'failed'] }}
+    action:
+      - event: indoor_backup_result
+        event_data:
+          target: local
+          result: >-
+            {{ 'success' if trigger.to_state.attributes.get('event_type') == 'completed'
+               else 'failed' }}
+
   - id: indoor_alert_backup_events
     alias: Indoor alerts - backup result events
     mode: queued

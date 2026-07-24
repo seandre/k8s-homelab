@@ -81,7 +81,7 @@ data:
         name: Indoor map - Bedroom Coway filter B
         max: 255
         initial: !secret indoor_map_coway_bedroom_filter_b
-    
+
     input_select:
       indoor_alert_co2:
         options: [ok, warning, critical]
@@ -111,7 +111,7 @@ data:
         options: [ok, warning, critical]
       indoor_alert_backup_pbs:
         options: [ok, warning, critical]
-    
+
     input_datetime:
       indoor_backup_local_last_success:
         has_date: true
@@ -119,7 +119,7 @@ data:
       indoor_backup_pbs_last_success:
         has_date: true
         has_time: true
-    
+
     # Source sensors are deliberately clock-triggered. Cloud integrations can retain
     # numeric states indefinitely after connectivity fails, so state alone is never
     # proof of freshness. Mapped entity IDs live only in HA's writable private state.
@@ -321,10 +321,32 @@ data:
                 {% set ar = a.last_reported | default(a.last_updated, true) if a else none %}
                 {% set br = b.last_reported | default(b.last_updated, true) if b else none %}
                 {{ 'CURRENT' if a and b and a.state not in ['unknown','unavailable'] and b.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(ar)) <= 300 and (as_timestamp(now()) - as_timestamp(br)) <= 300 else 'UNAVAILABLE' }}
-    
+
     # IE-014 calls these events after a completed archive/copy. No credentials or
     # storage endpoints cross this interface.
     automation:
+      # Translate the official Backup integration's automatic-backup event into
+      # the fixed local/PBS result contract consumed below. The backup manager owns
+      # encryption, schedule, and retention; this package owns notification state.
+      - id: indoor_backup_local_result_bridge
+        alias: Indoor backups - local automatic result bridge
+        mode: queued
+        trigger:
+          - platform: state
+            entity_id: event.backup_automatic_backup
+        condition:
+          - condition: template
+            value_template: >-
+              {{ trigger.to_state is not none and
+                 trigger.to_state.attributes.get('event_type') in ['completed', 'failed'] }}
+        action:
+          - event: indoor_backup_result
+            event_data:
+              target: local
+              result: >-
+                {{ 'success' if trigger.to_state.attributes.get('event_type') == 'completed'
+                   else 'failed' }}
+
       - id: indoor_alert_backup_events
         alias: Indoor alerts - backup result events
         mode: queued
@@ -369,7 +391,7 @@ data:
                           incident: "backup_{{ trigger.event.data.target }}"
                           level: recovery
                           path: /indoor
-    
+
       - id: indoor_alert_backup_age
         alias: Indoor alerts - backup age escalation
         mode: queued
@@ -395,7 +417,7 @@ data:
                         incident: "backup_{{ repeat.item }}"
                         level: critical
                         path: /indoor
-    
+
       # A single delivery boundary makes notifier configuration runtime-only. The
       # event cannot control equipment; its sole mobile action opens the approved
       # private indoor dashboard.
@@ -424,7 +446,7 @@ data:
                   - action: URI
                     title: Open indoor dashboard
                     uri: https://homepage-preview.lab.seandre.dev/indoor
-    
+
     # BEGIN GENERATED INCIDENTS
       - id: indoor_alert_co2_warning
         alias: Indoor alerts - co2 warning
@@ -443,7 +465,7 @@ data:
             data: {option: warning}
           - event: indoor_alert_notification
             event_data: {incident: co2, level: warning, path: /indoor}
-    
+
       - id: indoor_alert_co2_critical
         alias: Indoor alerts - co2 critical
         mode: single
@@ -465,7 +487,7 @@ data:
             data: {option: critical}
           - event: indoor_alert_notification
             event_data: {incident: co2, level: critical, path: /indoor}
-    
+
       - id: indoor_alert_co2_recovery
         alias: Indoor alerts - co2 recovery
         mode: single
@@ -483,7 +505,7 @@ data:
             data: {option: ok}
           - event: indoor_alert_notification
             event_data: {incident: co2, level: recovery, path: /indoor}
-    
+
       - id: indoor_alert_temperature_warning
         alias: Indoor alerts - temperature warning
         mode: single
@@ -501,7 +523,7 @@ data:
             data: {option: warning}
           - event: indoor_alert_notification
             event_data: {incident: temperature, level: warning, path: /indoor}
-    
+
       - id: indoor_alert_temperature_critical
         alias: Indoor alerts - temperature critical
         mode: single
@@ -523,7 +545,7 @@ data:
             data: {option: critical}
           - event: indoor_alert_notification
             event_data: {incident: temperature, level: critical, path: /indoor}
-    
+
       - id: indoor_alert_temperature_recovery
         alias: Indoor alerts - temperature recovery
         mode: single
@@ -541,7 +563,7 @@ data:
             data: {option: ok}
           - event: indoor_alert_notification
             event_data: {incident: temperature, level: recovery, path: /indoor}
-    
+
       - id: indoor_alert_humidity_warning
         alias: Indoor alerts - humidity warning
         mode: single
@@ -559,7 +581,7 @@ data:
             data: {option: warning}
           - event: indoor_alert_notification
             event_data: {incident: humidity, level: warning, path: /indoor}
-    
+
       - id: indoor_alert_humidity_critical
         alias: Indoor alerts - humidity critical
         mode: single
@@ -581,7 +603,7 @@ data:
             data: {option: critical}
           - event: indoor_alert_notification
             event_data: {incident: humidity, level: critical, path: /indoor}
-    
+
       - id: indoor_alert_humidity_recovery
         alias: Indoor alerts - humidity recovery
         mode: single
@@ -599,7 +621,7 @@ data:
             data: {option: ok}
           - event: indoor_alert_notification
             event_data: {incident: humidity, level: recovery, path: /indoor}
-    
+
       - id: indoor_alert_pm25_living_room_warning
         alias: Indoor alerts - pm25_living_room warning
         mode: single
@@ -617,7 +639,7 @@ data:
             data: {option: warning}
           - event: indoor_alert_notification
             event_data: {incident: pm25_living_room, level: warning, path: /indoor}
-    
+
       - id: indoor_alert_pm25_living_room_critical
         alias: Indoor alerts - pm25_living_room critical
         mode: single
@@ -639,7 +661,7 @@ data:
             data: {option: critical}
           - event: indoor_alert_notification
             event_data: {incident: pm25_living_room, level: critical, path: /indoor}
-    
+
       - id: indoor_alert_pm25_living_room_recovery
         alias: Indoor alerts - pm25_living_room recovery
         mode: single
@@ -657,7 +679,7 @@ data:
             data: {option: ok}
           - event: indoor_alert_notification
             event_data: {incident: pm25_living_room, level: recovery, path: /indoor}
-    
+
       - id: indoor_alert_pm25_bedroom_warning
         alias: Indoor alerts - pm25_bedroom warning
         mode: single
@@ -675,7 +697,7 @@ data:
             data: {option: warning}
           - event: indoor_alert_notification
             event_data: {incident: pm25_bedroom, level: warning, path: /indoor}
-    
+
       - id: indoor_alert_pm25_bedroom_critical
         alias: Indoor alerts - pm25_bedroom critical
         mode: single
@@ -697,7 +719,7 @@ data:
             data: {option: critical}
           - event: indoor_alert_notification
             event_data: {incident: pm25_bedroom, level: critical, path: /indoor}
-    
+
       - id: indoor_alert_pm25_bedroom_recovery
         alias: Indoor alerts - pm25_bedroom recovery
         mode: single
@@ -715,7 +737,7 @@ data:
             data: {option: ok}
           - event: indoor_alert_notification
             event_data: {incident: pm25_bedroom, level: recovery, path: /indoor}
-    
+
       - id: indoor_alert_battery_warning
         alias: Indoor alerts - battery warning
         mode: single
@@ -733,7 +755,7 @@ data:
             data: {option: warning}
           - event: indoor_alert_notification
             event_data: {incident: battery, level: warning, path: /indoor}
-    
+
       - id: indoor_alert_battery_critical
         alias: Indoor alerts - battery critical
         mode: single
@@ -755,7 +777,7 @@ data:
             data: {option: critical}
           - event: indoor_alert_notification
             event_data: {incident: battery, level: critical, path: /indoor}
-    
+
       - id: indoor_alert_battery_recovery
         alias: Indoor alerts - battery recovery
         mode: single
@@ -773,7 +795,7 @@ data:
             data: {option: ok}
           - event: indoor_alert_notification
             event_data: {incident: battery, level: recovery, path: /indoor}
-    
+
       - id: indoor_alert_filter_living_room_warning
         alias: Indoor alerts - filter_living_room warning
         mode: single
@@ -791,7 +813,7 @@ data:
             data: {option: warning}
           - event: indoor_alert_notification
             event_data: {incident: filter_living_room, level: warning, path: /indoor}
-    
+
       - id: indoor_alert_filter_living_room_critical
         alias: Indoor alerts - filter_living_room critical
         mode: single
@@ -813,7 +835,7 @@ data:
             data: {option: critical}
           - event: indoor_alert_notification
             event_data: {incident: filter_living_room, level: critical, path: /indoor}
-    
+
       - id: indoor_alert_filter_living_room_recovery
         alias: Indoor alerts - filter_living_room recovery
         mode: single
@@ -831,7 +853,7 @@ data:
             data: {option: ok}
           - event: indoor_alert_notification
             event_data: {incident: filter_living_room, level: recovery, path: /indoor}
-    
+
       - id: indoor_alert_filter_bedroom_warning
         alias: Indoor alerts - filter_bedroom warning
         mode: single
@@ -849,7 +871,7 @@ data:
             data: {option: warning}
           - event: indoor_alert_notification
             event_data: {incident: filter_bedroom, level: warning, path: /indoor}
-    
+
       - id: indoor_alert_filter_bedroom_critical
         alias: Indoor alerts - filter_bedroom critical
         mode: single
@@ -871,7 +893,7 @@ data:
             data: {option: critical}
           - event: indoor_alert_notification
             event_data: {incident: filter_bedroom, level: critical, path: /indoor}
-    
+
       - id: indoor_alert_filter_bedroom_recovery
         alias: Indoor alerts - filter_bedroom recovery
         mode: single
@@ -903,7 +925,7 @@ data:
             data: {option: warning}
           - event: indoor_alert_notification
             event_data: {incident: source_aranet, level: warning, path: /indoor}
-    
+
       - id: indoor_alert_source_aranet_critical
         alias: Indoor alerts - source aranet critical
         trigger:
@@ -922,7 +944,7 @@ data:
             data: {option: critical}
           - event: indoor_alert_notification
             event_data: {incident: source_aranet, level: critical, path: /indoor}
-    
+
       - id: indoor_alert_source_aranet_recovery
         alias: Indoor alerts - source aranet recovery
         trigger:
@@ -937,7 +959,7 @@ data:
             data: {option: ok}
           - event: indoor_alert_notification
             event_data: {incident: source_aranet, level: recovery, path: /indoor}
-    
+
       - id: indoor_alert_source_nest_warning
         alias: Indoor alerts - source nest warning
         trigger:
@@ -952,7 +974,7 @@ data:
             data: {option: warning}
           - event: indoor_alert_notification
             event_data: {incident: source_nest, level: warning, path: /indoor}
-    
+
       - id: indoor_alert_source_nest_critical
         alias: Indoor alerts - source nest critical
         trigger:
@@ -971,7 +993,7 @@ data:
             data: {option: critical}
           - event: indoor_alert_notification
             event_data: {incident: source_nest, level: critical, path: /indoor}
-    
+
       - id: indoor_alert_source_nest_recovery
         alias: Indoor alerts - source nest recovery
         trigger:
@@ -986,7 +1008,7 @@ data:
             data: {option: ok}
           - event: indoor_alert_notification
             event_data: {incident: source_nest, level: recovery, path: /indoor}
-    
+
       - id: indoor_alert_source_coway_living_room_warning
         alias: Indoor alerts - source coway_living_room warning
         trigger:
@@ -1001,7 +1023,7 @@ data:
             data: {option: warning}
           - event: indoor_alert_notification
             event_data: {incident: source_coway_living_room, level: warning, path: /indoor}
-    
+
       - id: indoor_alert_source_coway_living_room_critical
         alias: Indoor alerts - source coway_living_room critical
         trigger:
@@ -1020,7 +1042,7 @@ data:
             data: {option: critical}
           - event: indoor_alert_notification
             event_data: {incident: source_coway_living_room, level: critical, path: /indoor}
-    
+
       - id: indoor_alert_source_coway_living_room_recovery
         alias: Indoor alerts - source coway_living_room recovery
         trigger:
@@ -1035,7 +1057,7 @@ data:
             data: {option: ok}
           - event: indoor_alert_notification
             event_data: {incident: source_coway_living_room, level: recovery, path: /indoor}
-    
+
       - id: indoor_alert_source_coway_bedroom_warning
         alias: Indoor alerts - source coway_bedroom warning
         trigger:
@@ -1050,7 +1072,7 @@ data:
             data: {option: warning}
           - event: indoor_alert_notification
             event_data: {incident: source_coway_bedroom, level: warning, path: /indoor}
-    
+
       - id: indoor_alert_source_coway_bedroom_critical
         alias: Indoor alerts - source coway_bedroom critical
         trigger:
@@ -1069,7 +1091,7 @@ data:
             data: {option: critical}
           - event: indoor_alert_notification
             event_data: {incident: source_coway_bedroom, level: critical, path: /indoor}
-    
+
       - id: indoor_alert_source_coway_bedroom_recovery
         alias: Indoor alerts - source coway_bedroom recovery
         trigger:

@@ -54,6 +54,9 @@ backup.failed_run(); backup.failed_run(); backup.failed_run()
 backup.critical(); backup.failed_run(); backup.recovery(); backup.failed_run()
 assert backup.events == ["warning", "critical", "recovery", "warning"], backup.events
 assert "result == 'failed' and prior == 'ok'" in package
+assert "entity_id: event.backup_automatic_backup" in package
+assert "trigger.to_state.attributes.get('event_type') in ['completed', 'failed']" in package
+assert "target: local" in package
 
 assert "last_reported | default(obj.last_updated, true)" in package
 assert not re.search(r"as_timestamp\((?:obj|a|b)\.last_updated\)", package)
