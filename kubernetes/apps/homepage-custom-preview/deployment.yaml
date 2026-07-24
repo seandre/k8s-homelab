@@ -108,6 +108,9 @@ spec:
             - name: unifi-credentials
               mountPath: /var/run/homepage-secrets/unifi
               readOnly: true
+            - name: home-assistant-credentials
+              mountPath: /var/run/homepage-secrets/home-assistant
+              readOnly: true
       volumes:
         - name: preview-runtime-config
           configMap:
@@ -136,4 +139,8 @@ spec:
         - name: unifi-credentials
           secret:
             secretName: homepage-unifi-readonly
+            optional: true
+        - name: home-assistant-credentials
+          secret:
+            secretName: homepage-home-assistant-readonly
             optional: true

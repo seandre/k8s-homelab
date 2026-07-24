@@ -43,6 +43,23 @@ describe('backend shell', () => {
     await app.close();
   });
 
+  it('serves indoor history through the fixed server-side adapter', async () => {
+    const app = buildApp({
+      config,
+      indoorHistory: {
+        read: async (metric, window) => ({
+          metric, window, unit: 'ppm', points: [{ timestamp: '2026-07-24T12:00:00.000Z', value: 612 }],
+          metadata: { source: 'prometheus-indoor-history', observedAt: '2026-07-24T12:00:00.000Z', freshness: 'CURRENT', severity: 'OK' },
+        }),
+      },
+    });
+    const response = await app.inject({ method: 'GET', url: '/api/v1/history?metric=aranet_living_room.co2&window=30d' });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ data: { metric: 'aranet_living_room.co2', window: '30d' } });
+    await expect(app.inject({ method: 'GET', url: '/api/v1/history?metric=sensor.indoor_aranet_co2&window=30d' })).resolves.toMatchObject({ statusCode: 404 });
+    await app.close();
+  });
+
   it('returns a safe internal error when bootstrap initialization fails', async () => {
     const app = buildApp({ config, bootstrapProvider: () => { throw new Error('token=do-not-return'); } });
     const response = await app.inject({ method: 'GET', url: '/api/v1/bootstrap' });

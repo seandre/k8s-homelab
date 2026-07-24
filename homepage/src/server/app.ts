@@ -7,6 +7,7 @@ import { healthyBootstrapFixture } from '../shared/fixtures.js';
 import { createLogger } from './logger.js';
 import { BootstrapEventBroker, type SseConnection } from './sse.js';
 import { gitOwnedRuntimeConfig, type RuntimeConfig } from './runtime-config.js';
+import { INDOOR_HISTORY_WINDOWS, isIndoorHistoryAlias, type IndoorHistoryAdapter, type IndoorHistoryWindow } from './indoor-history.js';
 
 export type BootstrapProvider = () => Bootstrap | Promise<Bootstrap>;
 
@@ -18,6 +19,7 @@ export interface AppOptions {
   eventBroker?: BootstrapEventBroker;
   keepAliveMs?: number;
   runtimeConfig?: RuntimeConfig;
+  indoorHistory?: Pick<IndoorHistoryAdapter, 'read'>;
 }
 
 export function buildApp(options: AppOptions): FastifyInstance {
@@ -69,13 +71,18 @@ export function buildApp(options: AppOptions): FastifyInstance {
 
   app.get('/api/v1/history', async (request, reply) => {
     const query = request.query as { metric?: string; window?: string };
-    if (!query.metric || !query.window || !['5m', '15m', '1h'].includes(query.window)) {
+    if (!query.metric || !query.window || !['5m', '15m', '1h', ...INDOOR_HISTORY_WINDOWS.filter((window) => window !== '1h')].includes(query.window)) {
       return reply.code(400).send({ error: { code: 'INVALID_HISTORY_QUERY', message: 'A valid metric and window are required.' }, requestId: request.id });
     }
     try {
       const bootstrap = BootstrapSchema.parse(await bootstrapProvider());
       const allowedMetric = runtimeConfig.historyMetrics.some((candidate) => candidate.metric === query.metric && candidate.windows.includes(query.window as '5m' | '15m' | '1h'));
       if (!allowedMetric) return reply.code(404).send({ error: { code: 'HISTORY_NOT_FOUND', message: 'History is not available for this metric/window.' }, requestId: request.id });
+      if (isIndoorHistoryAlias(query.metric) && INDOOR_HISTORY_WINDOWS.includes(query.window as IndoorHistoryWindow) && options.indoorHistory) {
+        const indoorSeries = await options.indoorHistory.read(query.metric, query.window as IndoorHistoryWindow);
+        if (indoorSeries) return { data: indoorSeries, requestId: request.id };
+        return reply.code(404).send({ error: { code: 'HISTORY_NOT_FOUND', message: 'History is not available for this metric/window.' }, requestId: request.id });
+      }
       const series = bootstrap.timeSeries.find((candidate) => candidate.metric === query.metric && candidate.window === query.window);
       if (!series) return reply.code(404).send({ error: { code: 'HISTORY_NOT_FOUND', message: 'History is not available for this metric/window.' }, requestId: request.id });
       return { data: series, requestId: request.id };

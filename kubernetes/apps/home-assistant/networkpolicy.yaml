@@ -36,6 +36,16 @@ spec:
       ports:
         - protocol: TCP
           port: 8123
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: homepage
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: homepage-custom
+      ports:
+        - protocol: TCP
+          port: 8123
   egress:
     - to:
         - namespaceSelector:

@@ -10,6 +10,7 @@ import type {
   Weather,
   Workload,
 } from './contracts.js';
+import { healthyIndoorFixture } from './indoor-fixtures.js';
 
 export const FIXTURE_TIME = '2026-07-19T12:00:00.000Z';
 
@@ -510,7 +511,7 @@ export const fixtureWeather: Weather = {
 };
 
 export const healthyBootstrapFixture: Bootstrap = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   generatedAt: FIXTURE_TIME,
   globalSeverity: 'WARN',
   alerts: fixtureAlerts,
@@ -523,6 +524,7 @@ export const healthyBootstrapFixture: Bootstrap = {
   storageBackups: fixtureStorageBackups,
   services: fixtureServices,
   weather: fixtureWeather,
+  indoor: healthyIndoorFixture,
 };
 
 export const stateFixtureExpectations = {

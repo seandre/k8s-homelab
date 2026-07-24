@@ -4,17 +4,24 @@ import { createLogger } from './logger.js';
 import { LiveTelemetry } from './live-telemetry.js';
 import { BootstrapEventBroker } from './sse.js';
 import { gitOwnedRuntimeConfig } from './runtime-config.js';
+import { IndoorHistoryAdapter } from './indoor-history.js';
 
 const config = loadConfig();
 const logger = createLogger();
 const eventBroker = new BootstrapEventBroker();
 const telemetry = new LiveTelemetry(gitOwnedRuntimeConfig, (bootstrap) => eventBroker.publish(bootstrap));
 const liveTelemetryEnabled = config.environment === 'production' && process.env.LIVE_TELEMETRY === 'true';
+const prometheus = gitOwnedRuntimeConfig.sources.find((source) => source.id === 'prometheus-source')!;
+const indoorHistory = new IndoorHistoryAdapter(prometheus.endpoint, async (url) => {
+  const response = await fetch(url);
+  return { ok: response.ok, json: () => response.json() };
+});
 if (liveTelemetryEnabled) void telemetry.start().catch((error: unknown) => logger.error('telemetry.start.failed', { error: error instanceof Error ? error.message : 'unknown error' }));
 const app = buildApp({
   config,
   serveClient: config.environment === 'production',
   eventBroker,
+  indoorHistory,
   ...(liveTelemetryEnabled ? { bootstrapProvider: telemetry.bootstrap } : {}),
 });
 let shuttingDown = false;

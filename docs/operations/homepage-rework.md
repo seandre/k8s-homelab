@@ -36,7 +36,8 @@ kubectl -n homepage get secret \
   homepage-proxmox-pve01 \
   homepage-proxmox-pve02 \
   homepage-pbs-readonly \
-  homepage-unifi-readonly
+  homepage-unifi-readonly \
+  homepage-home-assistant-readonly
 ```
 
 The preview hostname is `homepage-preview.lab.seandre.dev`. Its private DNS
@@ -44,7 +45,7 @@ record must resolve to ingress VIP `192.168.40.30`; the preview Ingress requests
 the existing `letsencrypt-production` issuer and stores its certificate in
 `homepage-custom-preview-tls`.
 
-All five integration Secret volumes are optional while every live adapter is
+All six integration Secret volumes are optional while every live adapter is
 disabled and fixture-backed. A missing Secret must therefore not block pod
 readiness. When an adapter is enabled later, require only that adapter's
 Secret and keep unrelated adapters isolated.

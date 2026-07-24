@@ -14,6 +14,7 @@ import { AllowlistedProbeRunner } from './probes.js';
 import { requestJson } from './request-json.js';
 import type { RuntimeConfig } from './runtime-config.js';
 import { UniFiAdapter } from './unifi.js';
+import { HomeAssistantIndoorAdapter } from './home-assistant.js';
 
 export const POLL_INTERVAL_MS = 2_000;
 const FULL_REFRESH_INTERVAL_MS = 6_000;
@@ -95,6 +96,7 @@ export class LiveTelemetry {
   private argocd: ArgoCdAdapter | undefined;
   private pbs: PbsAdapter | undefined;
   private unifi: UniFiAdapter | undefined;
+  private homeAssistant: HomeAssistantIndoorAdapter | undefined;
   private readonly prometheus: PrometheusAdapter;
   private readonly alertmanager: AlertmanagerAdapter;
   private readonly weather: OpenMeteoAdapter;
@@ -228,14 +230,26 @@ export class LiveTelemetry {
     return this.unifi.read((url, init) => this.httpFetch(url, init) as ReturnType<Parameters<UniFiAdapter['read']>[0]>);
   }
 
+  private async indoorSnapshot() {
+    if (!this.homeAssistant) {
+      const token = await this.secretReader(`${SECRET_ROOT}/home-assistant/token`);
+      this.homeAssistant = new HomeAssistantIndoorAdapter(
+        this.sourceEndpoint('home-assistant-source'),
+        token,
+        (url, init) => this.httpFetch(url, init),
+      );
+    }
+    return this.homeAssistant.read();
+  }
+
   async refresh(recordGraphSample = true) {
-    const [proxmox, glances, k3s, prometheus, pduPower, udm, alerts, argocd, pbs, unifi, weather, probes] = await Promise.all([
+    const [proxmox, glances, k3s, prometheus, pduPower, udm, alerts, argocd, pbs, unifi, weather, probes, indoor] = await Promise.all([
       this.proxmoxHosts(), this.glancesHosts(), this.k3sSnapshot(),
       this.prometheus.readCluster((url) => this.httpFetch(url)),
       this.prometheus.readPduPower((url) => this.httpFetch(url)),
       this.prometheus.readUdm((url) => this.httpFetch(url)),
       this.alertmanager.read((url) => this.httpFetch(url)),
-      this.argocdApplications(), this.pbsSnapshot(), this.unifiSnapshot(), this.weather.read(), this.probes.runConfigured(),
+      this.argocdApplications(), this.pbsSnapshot(), this.unifiSnapshot(), this.weather.read(), this.probes.runConfigured(), this.indoorSnapshot(),
     ]);
     const now = new Date().toISOString();
     const byId = <T extends { id: string }>(items: T[]) => new Map(items.map((item) => [item.id, item]));
@@ -268,6 +282,7 @@ export class LiveTelemetry {
     base.network = { ...base.network, udm, pduPower: { totalWatts: pduPower.totalWatts, metadata: pduPower.metadata } };
     if (unifi) base.network = { ...base.network, ...unifi, metadata: unifi.unifi.metadata };
     base.weather = weather;
+    base.indoor = indoor;
     base.services = this.liveServices(probes, argocd);
     base.globalSeverity = aggregateGlobalSeverity([
       ...base.hosts.map((host) => ({ metadata: host.metadata })),

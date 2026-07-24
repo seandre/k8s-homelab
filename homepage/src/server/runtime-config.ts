@@ -20,7 +20,7 @@ export const RuntimeConfigSchema = z.object({
   probes: z.array(ProbeSchema),
   credentialReferences: z.array(CredentialReferenceSchema),
   pduPower: PduPowerConfigSchema,
-  historyMetrics: z.array(z.object({ metric: z.string().min(1), windows: z.array(z.enum(['5m', '15m', '1h'])).min(1) }).strict()).min(1),
+  historyMetrics: z.array(z.object({ metric: z.string().min(1), windows: z.array(z.enum(['5m', '15m', '1h', '24h', '7d', '30d'])).min(1) }).strict()).min(1),
   thresholds: z.object({ cpuWarnPercent: z.number().min(0).max(100), cpuCritPercent: z.number().min(0).max(100), backupWarnAgeSeconds: z.number().int().positive() }).strict(),
   weatherLocation: z.object({ postalCode: z.literal('97209'), latitude: z.number().min(-90).max(90), longitude: z.number().min(-180).max(180) }).strict(),
   featureFlags: z.object({ fixtures: z.boolean(), weather: z.boolean(), probes: z.boolean(), prometheus: z.boolean(), argocd: z.boolean(), proxmox: z.boolean(), pbs: z.boolean(), unifi: z.boolean() }).strict(),
@@ -48,7 +48,7 @@ export function loadRuntimeConfig(input: unknown): RuntimeConfig {
 }
 
 export const gitOwnedRuntimeConfig: RuntimeConfig = loadRuntimeConfig({
-  allowedHosts: ['argocd.lab.seandre.dev', 'grafana.lab.seandre.dev', 'unifi.ui.com', 'api.ui.com', 'pve-01.lab.seandre.dev', 'pve-02.lab.seandre.dev', 'pbs-01.lab.seandre.dev', 'nexus.lab.seandre.dev', 'docs.lab.seandre.dev', 'nginx-test.lab.seandre.dev', 'github.com', 'api.open-meteo.com', 'argocd-server.argocd.svc', 'kube-prometheus-stack-grafana.monitoring.svc', 'homelab-docs.homelab-docs.svc', 'nginx-test.nginx-test.svc', 'kube-prometheus-stack-prometheus.monitoring.svc', 'kube-prometheus-stack-alertmanager.monitoring.svc'],
+  allowedHosts: ['argocd.lab.seandre.dev', 'grafana.lab.seandre.dev', 'unifi.ui.com', 'api.ui.com', 'pve-01.lab.seandre.dev', 'pve-02.lab.seandre.dev', 'pbs-01.lab.seandre.dev', 'ha.lab.seandre.dev', 'nexus.lab.seandre.dev', 'docs.lab.seandre.dev', 'nginx-test.lab.seandre.dev', 'github.com', 'api.open-meteo.com', 'argocd-server.argocd.svc', 'kube-prometheus-stack-grafana.monitoring.svc', 'homelab-docs.homelab-docs.svc', 'nginx-test.nginx-test.svc', 'home-assistant.home-assistant.svc', 'kube-prometheus-stack-prometheus.monitoring.svc', 'kube-prometheus-stack-alertmanager.monitoring.svc'],
   views: ['overview', 'compute', 'network', 'storage-backups', 'kubernetes', 'okd', 'services', 'weather'].map((id) => ({ id, enabled: true })),
   defaultLayout: { navigation: 'expanded', density: 'compact', overview: 'balanced' },
   serviceLinks: [
@@ -65,6 +65,7 @@ export const gitOwnedRuntimeConfig: RuntimeConfig = loadRuntimeConfig({
     { id: 'proxmox-pve02-source', enabled: true, endpoint: 'https://pve-02.lab.seandre.dev:8006/api2/json', timeoutMs: 5_000, stateWhenDisabled: 'NOT_SUPPORTED' },
     { id: 'pbs-source', enabled: true, endpoint: 'https://pbs-01.lab.seandre.dev:8007/api2/json', timeoutMs: 5_000, stateWhenDisabled: 'NOT_SUPPORTED' },
     { id: 'unifi-source', enabled: true, endpoint: 'https://api.ui.com/v1', timeoutMs: 5_000, stateWhenDisabled: 'NOT_SUPPORTED' },
+    { id: 'home-assistant-source', enabled: true, endpoint: 'http://home-assistant.home-assistant.svc:8123', timeoutMs: 5_000, stateWhenDisabled: 'NOT_SUPPORTED' },
   ],
   probes: [
     ['argocd-probe', 'http://argocd-server.argocd.svc'],
@@ -84,11 +85,20 @@ export const gitOwnedRuntimeConfig: RuntimeConfig = loadRuntimeConfig({
     { id: 'proxmox-pve02-readonly', namespace: 'homepage', secretName: 'homepage-proxmox-pve02', keys: ['server', 'token-id', 'token-secret'] },
     { id: 'pbs-readonly', namespace: 'homepage', secretName: 'homepage-pbs-readonly', keys: ['server', 'token-id', 'token-secret', 'ca'] },
     { id: 'unifi-readonly', namespace: 'homepage', secretName: 'homepage-unifi-readonly', keys: ['server', 'token'] },
+    { id: 'home-assistant-readonly', namespace: 'homepage', secretName: 'homepage-home-assistant-readonly', keys: ['token'] },
   ],
   // Validated against Prometheus: one USP-PDU-Pro device and one series for
   // each of the required pve-01 and pve-02 outlet labels.
   pduPower: { enabled: true, deviceName: 'USP-PDU-Pro' },
-  historyMetrics: ['pve-01', 'pve-02'].flatMap((host) => ['CPU', 'MEMORY', 'DISK', 'RX', 'TX'].map((metric) => ({ metric: `${host} ${metric}`, windows: ['15m'] as const }))),
+  historyMetrics: [
+    ...['pve-01', 'pve-02'].flatMap((host) => ['CPU', 'MEMORY', 'DISK', 'RX', 'TX'].map((metric) => ({ metric: `${host} ${metric}`, windows: ['15m'] as const }))),
+    ...Object.keys({
+      'aranet_living_room.temperature': 1, 'aranet_living_room.humidity': 1, 'aranet_living_room.pressure': 1, 'aranet_living_room.co2': 1, 'aranet_living_room.battery': 1,
+      'nest_living_room.current_temperature': 1, 'nest_living_room.humidity': 1,
+      'coway_living_room.aqi': 1, 'coway_living_room.pm25': 1, 'coway_living_room.pm10': 1, 'coway_living_room.filter_life': 1,
+      'coway_bedroom.aqi': 1, 'coway_bedroom.pm25': 1, 'coway_bedroom.pm10': 1, 'coway_bedroom.filter_life': 1,
+    }).map((metric) => ({ metric, windows: ['1h', '24h', '7d', '30d'] as const })),
+  ],
   thresholds: { cpuWarnPercent: 70, cpuCritPercent: 90, backupWarnAgeSeconds: 86_400 },
   weatherLocation: { postalCode: '97209', latitude: 45.527412, longitude: -122.686270 },
   featureFlags: { fixtures: false, weather: true, probes: true, prometheus: true, argocd: true, proxmox: true, pbs: true, unifi: true },
