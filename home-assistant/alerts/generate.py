@@ -50,8 +50,14 @@ def source_automations(name, mapping, freshness):
     helper = f"input_select.indoor_alert_source_{name}"
     timestamp = "obj.last_reported | default(obj.last_updated, true)"
     lookup = f"(expand(states('{mapping}')) | first | default(none))"
-    unavailable = f"{{% set obj = {lookup} %}}{{% set reported = {timestamp} if obj else none %}}{{{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > {freshness} }}}}"
-    current = f"{{% set obj = {lookup} %}}{{% set reported = {timestamp} if obj else none %}}{{{{ obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= {freshness} }}}}"
+    if name == "nest":
+        # The cloud-backed climate entity reports on change, not as a periodic
+        # heartbeat. Availability and the required attribute are authoritative.
+        unavailable = f"{{% set obj = {lookup} %}}{{{{ not obj or obj.state in ['unknown','unavailable'] or obj.attributes.get('current_temperature') is none }}}}"
+        current = f"{{% set obj = {lookup} %}}{{{{ obj and obj.state not in ['unknown','unavailable'] and obj.attributes.get('current_temperature') is not none }}}}"
+    else:
+        unavailable = f"{{% set obj = {lookup} %}}{{% set reported = {timestamp} if obj else none %}}{{{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > {freshness} }}}}"
+        current = f"{{% set obj = {lookup} %}}{{% set reported = {timestamp} if obj else none %}}{{{{ obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= {freshness} }}}}"
     return f'''  - id: indoor_alert_source_{name}_warning
     alias: Indoor alerts - source {name} warning
     trigger:

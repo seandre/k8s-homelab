@@ -39,8 +39,12 @@ for name in contract["incidents"]:
     assert incident.events == ["warning", "critical", "recovery"], (name, incident.events)
 
 assert contract["notification_path"] == "/indoor"
+assert contract["notification_url"] == "https://homepage-preview.lab.seandre.dev/"
 assert contract["automatic_equipment_control"] is False
-assert "clickAction: /indoor" in package and "uri: /indoor" in package
+assert f"clickAction: {contract['notification_url']}" in package
+assert f"uri: {contract['notification_url']}" in package
+assert "obj.attributes.get('current_temperature') is none" in package
+assert "{{ (value | float) * 9 / 5 + 32 }}" in package
 assert not re.search(r"(?:fan|climate|switch|light)\.(?:turn_|set_|toggle)", package)
 assert not re.search(r"(?:sensor|climate|fan|switch)\.[a-z0-9]+_[0-9a-f]{6,}", package)
 assert package.count("# BEGIN GENERATED INCIDENTS") == 1

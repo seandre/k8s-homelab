@@ -201,28 +201,24 @@ data:
             unit_of_measurement: "°F"
             state: >-
               {% set obj = (expand(states('input_text.indoor_map_nest_temperature')) | first | default(none)) %}
-              {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
               {% set value = obj.attributes.get('current_temperature') if obj else none %}
-              {% if value is not none and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 %}
-                {{ ((value | float) * 9 / 5 + 32) if obj.attributes.get('temperature_unit') == '°C' else (value | float) }}
+              {% if value is not none and obj.state not in ['unknown','unavailable'] %}
+                {{ (value | float) * 9 / 5 + 32 }}
               {% else %}{{ none }}{% endif %}
             attributes:
               freshness: >-
                 {% set obj = (expand(states('input_text.indoor_map_nest_temperature')) | first | default(none)) %}
-                {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
-                {{ 'CURRENT' if obj and obj.attributes.get('current_temperature') is not none and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
+                {{ 'CURRENT' if obj and obj.attributes.get('current_temperature') is not none and obj.state not in ['unknown','unavailable'] else 'UNAVAILABLE' }}
           - name: Indoor Nest humidity
             unique_id: indoor_nest_humidity
             unit_of_measurement: "%"
             state: >-
               {% set obj = (expand(states('input_text.indoor_map_nest_humidity')) | first | default(none)) %}
-              {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
-              {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
+              {{ obj.state if obj and obj.state not in ['unknown','unavailable'] else none }}
             attributes:
               freshness: >-
                 {% set obj = (expand(states('input_text.indoor_map_nest_humidity')) | first | default(none)) %}
-                {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
-                {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
+                {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] else 'UNAVAILABLE' }}
           - name: Indoor Coway Living Room AQI
             unique_id: indoor_coway_living_room_aqi
             state: >-
@@ -401,7 +397,8 @@ data:
                         path: /indoor
     
       # A single delivery boundary makes notifier configuration runtime-only. The
-      # event cannot control equipment; its sole mobile action is a URI to /indoor.
+      # event cannot control equipment; its sole mobile action opens the approved
+      # private homepage. Switch this URL to /indoor when IE-013 ships that route.
       - id: indoor_alert_mobile_delivery
         alias: Indoor alerts - Companion App delivery
         mode: queued
@@ -421,12 +418,12 @@ data:
               title: "Indoor {{ trigger.event.data.level | upper }}"
               message: "{{ trigger.event.data.incident | replace('_', ' ') }}"
               data:
-                url: /indoor
-                clickAction: /indoor
+                url: https://homepage-preview.lab.seandre.dev/
+                clickAction: https://homepage-preview.lab.seandre.dev/
                 actions:
                   - action: URI
                     title: Open indoor dashboard
-                    uri: /indoor
+                    uri: https://homepage-preview.lab.seandre.dev/
     
     # BEGIN GENERATED INCIDENTS
       - id: indoor_alert_co2_warning
@@ -946,7 +943,7 @@ data:
         trigger:
           - platform: template
             value_template: >-
-              {% set obj = (expand(states('input_text.indoor_map_nest_temperature')) | first | default(none)) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > 300 }}
+              {% set obj = (expand(states('input_text.indoor_map_nest_temperature')) | first | default(none)) %}{{ not obj or obj.state in ['unknown','unavailable'] or obj.attributes.get('current_temperature') is none }}
             for: "00:05:00"
         condition: "{{ states('input_select.indoor_alert_source_nest') == 'ok' }}"
         action:
@@ -961,7 +958,7 @@ data:
         trigger:
           - platform: template
             value_template: >-
-              {% set obj = (expand(states('input_text.indoor_map_nest_temperature')) | first | default(none)) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > 300 }}
+              {% set obj = (expand(states('input_text.indoor_map_nest_temperature')) | first | default(none)) %}{{ not obj or obj.state in ['unknown','unavailable'] or obj.attributes.get('current_temperature') is none }}
             for: "00:30:00"
         condition: "{{ states('input_select.indoor_alert_source_nest') != 'critical' }}"
         action:
@@ -980,7 +977,7 @@ data:
         trigger:
           - platform: template
             value_template: >-
-              {% set obj = (expand(states('input_text.indoor_map_nest_temperature')) | first | default(none)) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 }}
+              {% set obj = (expand(states('input_text.indoor_map_nest_temperature')) | first | default(none)) %}{{ obj and obj.state not in ['unknown','unavailable'] and obj.attributes.get('current_temperature') is not none }}
             for: "00:05:00"
         condition: "{{ states('input_select.indoor_alert_source_nest') != 'ok' }}"
         action:
