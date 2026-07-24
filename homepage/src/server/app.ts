@@ -8,6 +8,7 @@ import { createLogger } from './logger.js';
 import { BootstrapEventBroker, type SseConnection } from './sse.js';
 import { gitOwnedRuntimeConfig, type RuntimeConfig } from './runtime-config.js';
 import { INDOOR_HISTORY_WINDOWS, isIndoorHistoryAlias, type IndoorHistoryAdapter, type IndoorHistoryWindow } from './indoor-history.js';
+import { type IndoorActionGateway } from './indoor-actions.js';
 
 export type BootstrapProvider = () => Bootstrap | Promise<Bootstrap>;
 
@@ -20,6 +21,7 @@ export interface AppOptions {
   keepAliveMs?: number;
   runtimeConfig?: RuntimeConfig;
   indoorHistory?: Pick<IndoorHistoryAdapter, 'read'>;
+  indoorActions?: IndoorActionGateway;
 }
 
 export function buildApp(options: AppOptions): FastifyInstance {
@@ -27,6 +29,7 @@ export function buildApp(options: AppOptions): FastifyInstance {
     logger: false,
     requestIdHeader: 'x-request-id',
     genReqId: () => randomUUID(),
+    trustProxy: (address) => address.startsWith('10.') || address === '127.0.0.1' || address === '::1',
   });
   const logger = createLogger();
   const bootstrapProvider = options.bootstrapProvider ?? (() => healthyBootstrapFixture);
@@ -56,6 +59,7 @@ export function buildApp(options: AppOptions): FastifyInstance {
   app.get('/api/v1/bootstrap', async (request, reply) => {
     try {
       const payload = BootstrapSchema.parse(await bootstrapProvider());
+      if (options.indoorActions) payload.indoor.actions = options.indoorActions.statuses();
       return { data: payload, requestId: request.id };
     } catch (error) {
       logger.error('bootstrap.failed', {
@@ -67,6 +71,22 @@ export function buildApp(options: AppOptions): FastifyInstance {
         requestId: request.id,
       });
     }
+  });
+
+  app.post('/api/v1/indoor/actions', { bodyLimit: 8_192 }, async (request, reply) => {
+    if (!options.indoorActions) return reply.code(503).send({ error: { code: 'ACTIONS_UNAVAILABLE', message: 'Indoor controls are temporarily unavailable.' }, requestId: request.id });
+    const result = await options.indoorActions.accept(request.body, {
+      sourceIp: request.ip,
+      origin: request.headers.origin,
+      host: request.headers.host,
+      forwardedHost: typeof request.headers['x-forwarded-host'] === 'string' ? request.headers['x-forwarded-host'] : undefined,
+      forwardedProto: typeof request.headers['x-forwarded-proto'] === 'string' ? request.headers['x-forwarded-proto'] : undefined,
+      fetchSite: typeof request.headers['sec-fetch-site'] === 'string' ? request.headers['sec-fetch-site'] : undefined,
+      fetchMode: typeof request.headers['sec-fetch-mode'] === 'string' ? request.headers['sec-fetch-mode'] : undefined,
+      contentType: request.headers['content-type'],
+    });
+    if (!result.ok) return reply.code(result.statusCode).send({ error: { code: result.code, message: result.message }, requestId: request.id });
+    return reply.code(202).send({ data: result.action, requestId: request.id });
   });
 
   app.get('/api/v1/history', async (request, reply) => {

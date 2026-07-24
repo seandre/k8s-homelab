@@ -8,3 +8,4 @@ resources:
   - ingress.yaml
   - networkpolicy.yaml
   - poddisruptionbudget.yaml
+  - indoor-actions-pvc.yaml

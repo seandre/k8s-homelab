@@ -301,6 +301,7 @@ export const IndoorActionStatusSchema = z.object({
   status: z.enum(['PENDING', 'SUCCEEDED', 'FAILED', 'TIMED_OUT']), acceptedAt: z.string().datetime({ offset: true }),
   resolvedAt: z.string().datetime({ offset: true }).nullable(), message: z.string().max(240).optional(),
 }).strict();
+export type IndoorActionStatus = z.infer<typeof IndoorActionStatusSchema>;
 export const IndoorStateSchema = z.object({
   rooms: z.array(IndoorRoomSummarySchema),
   sensors: z.tuple([AranetStateSchema]),
@@ -310,6 +311,38 @@ export const IndoorStateSchema = z.object({
   actions: z.array(IndoorActionStatusSchema).max(100),
 }).strict();
 export type IndoorState = z.infer<typeof IndoorStateSchema>;
+
+export const IndoorTargetAliasSchema = z.enum(['nest_living_room', 'coway_living_room', 'coway_bedroom']);
+const NestSetpointSchema = z.discriminatedUnion('shape', [
+  z.object({ shape: z.literal('HEAT'), temperatureF: z.number().finite() }).strict(),
+  z.object({ shape: z.literal('COOL'), temperatureF: z.number().finite() }).strict(),
+  z.object({ shape: z.literal('RANGE'), heatTemperatureF: z.number().finite(), coolTemperatureF: z.number().finite() }).strict(),
+]);
+export const IndoorCommandSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('NEST_SET_HVAC_MODE'), target: z.literal('nest_living_room'), mode: z.enum(['OFF', 'HEAT', 'COOL', 'HEAT_COOL']) }).strict(),
+  z.object({ type: z.literal('NEST_SET_SETPOINT'), target: z.literal('nest_living_room'), setpoint: NestSetpointSchema }).strict(),
+  z.object({ type: z.literal('NEST_SET_FAN_TIMER'), target: z.literal('nest_living_room'), durationMinutes: z.number().int().nonnegative() }).strict(),
+  z.object({ type: z.literal('COWAY_SET_POWER'), target: PurifierAliasSchema, power: z.boolean() }).strict(),
+  z.object({ type: z.literal('COWAY_SET_PRESET'), target: PurifierAliasSchema, preset: z.string().min(1).max(32) }).strict(),
+  z.object({ type: z.literal('COWAY_SET_SPEED'), target: PurifierAliasSchema, speed: z.union([z.literal(1), z.literal(2), z.literal(3)]) }).strict(),
+  z.object({ type: z.literal('COWAY_SET_TIMER'), target: PurifierAliasSchema, durationMinutes: z.number().int().nonnegative() }).strict(),
+  z.object({ type: z.literal('COWAY_SET_LIGHT'), target: PurifierAliasSchema, light: z.string().min(1).max(32) }).strict(),
+  z.object({ type: z.literal('COWAY_SET_BUTTON_LOCK'), target: PurifierAliasSchema, locked: z.boolean() }).strict(),
+  z.object({ type: z.literal('COWAY_SET_SENSITIVITY'), target: PurifierAliasSchema, sensitivity: z.string().min(1).max(32) }).strict(),
+]);
+export const IndoorActionRequestSchema = z.object({
+  idempotencyKey: z.string().uuid(),
+  expectedStateVersion: z.string().min(1).max(128),
+  confirmed: z.literal(true),
+  command: IndoorCommandSchema,
+}).strict();
+export const IndoorActionAcceptedSchema = z.object({
+  actionId: z.string().uuid(), target: IndoorTargetAliasSchema, status: z.literal('PENDING'),
+  acceptedAt: z.string().datetime({ offset: true }),
+}).strict();
+export type IndoorCommand = z.infer<typeof IndoorCommandSchema>;
+export type IndoorActionRequest = z.infer<typeof IndoorActionRequestSchema>;
+export type IndoorActionAccepted = z.infer<typeof IndoorActionAcceptedSchema>;
 
 export const BootstrapSchema = z.object({
   schemaVersion: z.literal(3),

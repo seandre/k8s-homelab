@@ -86,6 +86,7 @@ export const gitOwnedRuntimeConfig: RuntimeConfig = loadRuntimeConfig({
     { id: 'pbs-readonly', namespace: 'homepage', secretName: 'homepage-pbs-readonly', keys: ['server', 'token-id', 'token-secret', 'ca'] },
     { id: 'unifi-readonly', namespace: 'homepage', secretName: 'homepage-unifi-readonly', keys: ['server', 'token'] },
     { id: 'home-assistant-readonly', namespace: 'homepage', secretName: 'homepage-home-assistant-readonly', keys: ['token'] },
+    { id: 'home-assistant-control', namespace: 'homepage', secretName: 'homepage-home-assistant-control', keys: ['mapping.json'] },
   ],
   // Validated against Prometheus: one USP-PDU-Pro device and one series for
   // each of the required pve-01 and pve-02 outlet labels.

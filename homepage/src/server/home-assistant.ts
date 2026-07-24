@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import type { IndoorEntityAlias, IndoorState } from '../shared/contracts.js';
 import { unavailableIndoorFixture } from '../shared/indoor-fixtures.js';
+import type { HomeAssistantControlMap } from './home-assistant-actions.js';
 
 const StateSchema = z.object({
   entity_id: z.string(),
@@ -49,6 +50,7 @@ export class HomeAssistantIndoorAdapter {
     private readonly token: string | null,
     private readonly fetcher: HomeAssistantFetch,
     private readonly now: () => Date = () => new Date(),
+    private readonly controls?: HomeAssistantControlMap,
   ) {}
 
   async read(): Promise<IndoorState> {
@@ -94,7 +96,20 @@ export class HomeAssistantIndoorAdapter {
     result.thermostats[0].currentTemperature = getReading('nest_living_room.current_temperature');
     result.thermostats[0].humidity = getReading('nest_living_room.humidity');
     result.thermostats[0].sourceState = result.thermostats[0].currentTemperature.metadata.sourceState;
-    result.thermostats[0].stateVersion = version(states, 'indoor_nest_');
+    const nestControl = this.controls ? byId.get(this.controls.nest_living_room.primary) : undefined;
+    if (nestControl && result.thermostats[0].sourceState === 'AVAILABLE') {
+      const mode = nestControl.state.toUpperCase();
+      result.thermostats[0].hvacMode = ['OFF', 'HEAT', 'COOL', 'HEAT_COOL'].includes(mode) ? mode as 'OFF' | 'HEAT' | 'COOL' | 'HEAT_COOL' : null;
+      const heat = Number(nestControl.attributes.target_temp_low ?? nestControl.attributes.temperature);
+      const cool = Number(nestControl.attributes.target_temp_high ?? nestControl.attributes.temperature);
+      result.thermostats[0].heatSetpointF = Number.isFinite(heat) ? heat : null;
+      result.thermostats[0].coolSetpointF = Number.isFinite(cool) ? cool : null;
+      const fan = String(nestControl.attributes.fan_mode ?? '').toLowerCase();
+      result.thermostats[0].fanTimerEndsAt = fan === 'on' ? new Date(this.now().getTime() + 720 * 60_000).toISOString() : null;
+    }
+    result.thermostats[0].stateVersion = this.controls
+      ? version(states.filter((state) => state.entity_id === this.controls!.nest_living_room.primary), '')
+      : version(states, 'indoor_nest_');
     for (const purifier of result.purifiers) {
       const alias = purifier.alias;
       purifier.readings = {
@@ -102,7 +117,23 @@ export class HomeAssistantIndoorAdapter {
         pm10: getReading(`${alias}.pm10`), filterLife: getReading(`${alias}.filter_life`),
       };
       purifier.sourceState = purifier.readings.pm25.metadata.sourceState;
-      purifier.stateVersion = version(states, `indoor_${alias.replace('coway_', 'coway_')}_`);
+      const controls = this.controls?.[alias];
+      if (controls && purifier.sourceState === 'AVAILABLE') {
+        const primary = byId.get(controls.primary);
+        const percentage = Number(primary?.attributes.percentage);
+        purifier.power = primary ? primary.state === 'on' : null;
+        purifier.speed = percentage >= 90 ? 3 : percentage >= 60 ? 2 : percentage > 0 ? 1 : null;
+        purifier.preset = typeof primary?.attributes.preset_mode === 'string' ? primary.attributes.preset_mode.toUpperCase() : null;
+        purifier.light = controls.light ? byId.get(controls.light)?.state.toUpperCase() ?? null : null;
+        purifier.buttonLock = controls.buttonLock ? byId.get(controls.buttonLock)?.state === 'on' : null;
+        purifier.sensitivity = controls.sensitivity ? byId.get(controls.sensitivity)?.state.toUpperCase() ?? null : null;
+        const timer = controls.timer ? Number(byId.get(controls.timer)?.state) : 0;
+        purifier.timerEndsAt = Number.isFinite(timer) && timer > 0 ? new Date(this.now().getTime() + timer * 60_000).toISOString() : null;
+        const ids = new Set(Object.values(controls));
+        purifier.stateVersion = version(states.filter((state) => ids.has(state.entity_id)), '');
+      } else {
+        purifier.stateVersion = version(states, `indoor_${alias}_`);
+      }
     }
     const aranet = result.sensors[0].readings;
     const nest = result.thermostats[0];

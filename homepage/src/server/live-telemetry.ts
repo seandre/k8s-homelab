@@ -15,6 +15,7 @@ import { requestJson } from './request-json.js';
 import type { RuntimeConfig } from './runtime-config.js';
 import { UniFiAdapter } from './unifi.js';
 import { HomeAssistantIndoorAdapter } from './home-assistant.js';
+import { HomeAssistantControlMapSchema } from './home-assistant-actions.js';
 
 export const POLL_INTERVAL_MS = 2_000;
 const FULL_REFRESH_INTERVAL_MS = 6_000;
@@ -233,10 +234,15 @@ export class LiveTelemetry {
   private async indoorSnapshot() {
     if (!this.homeAssistant) {
       const token = await this.secretReader(`${SECRET_ROOT}/home-assistant/token`);
+      const mappingJson = await this.secretReader(`${SECRET_ROOT}/home-assistant-control/mapping.json`);
+      let controls;
+      try { controls = mappingJson ? HomeAssistantControlMapSchema.parse(JSON.parse(mappingJson)) : undefined; } catch { controls = undefined; }
       this.homeAssistant = new HomeAssistantIndoorAdapter(
         this.sourceEndpoint('home-assistant-source'),
         token,
         (url, init) => this.httpFetch(url, init),
+        undefined,
+        controls,
       );
     }
     return this.homeAssistant.read();
