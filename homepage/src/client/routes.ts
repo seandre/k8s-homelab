@@ -7,6 +7,7 @@ export const appRoutes = [
   { path: '/okd', label: 'OKD', eyebrow: 'OKD' },
   { path: '/services', label: 'Services', eyebrow: 'SERVICES' },
   { path: '/weather', label: 'Weather', eyebrow: 'WEATHER' },
+  { path: '/indoor', label: 'Indoor', eyebrow: 'INDOOR' },
 ] as const;
 
 export type AppRoute = (typeof appRoutes)[number];

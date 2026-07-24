@@ -66,6 +66,54 @@ test('has no serious or critical automated accessibility violations', async ({ p
   expect(serious).toEqual([]);
 });
 
+test('renders the responsive indoor dashboard and requires review before controls', async ({ page }) => {
+  await page.route('**/api/v1/indoor/actions', async (route) => {
+    const body = route.request().postDataJSON();
+    expect(body.confirmed).toBe(true);
+    expect(body.command).toEqual({ type: 'NEST_SET_HVAC_MODE', target: 'nest_living_room', mode: 'OFF' });
+    await route.fulfill({
+      status: 202,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { actionId: crypto.randomUUID(), target: 'nest_living_room', status: 'PENDING', acceptedAt: new Date().toISOString() } }),
+    });
+  });
+  await page.goto('/indoor');
+  await expect(page.getByRole('heading', { name: 'Indoor environment' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Living Room Coway' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Bedroom Coway' })).toBeVisible();
+  await page.getByLabel('HVAC mode').selectOption('OFF');
+  const review = page.getByRole('dialog', { name: 'Review device command' });
+  await expect(review).toBeVisible();
+  await expect(review.getByText('Living Room Nest')).toBeVisible();
+  await expect(review.getByText('HEAT_COOL')).toBeVisible();
+  await expect(review.getByText('Google Nest cloud')).toBeVisible();
+  await review.getByRole('button', { name: 'Confirm command' }).click();
+  await expect(review).toBeHidden();
+  await expect(page.getByLabel('HVAC mode')).toHaveValue('HEAT_COOL');
+});
+
+test('supports indoor keyboard cancellation and has no serious accessibility violations', async ({ page }) => {
+  await page.goto('/indoor');
+  await page.getByRole('button', { name: 'Review power off' }).first().focus();
+  await page.keyboard.press('Enter');
+  const review = page.getByRole('dialog', { name: 'Review device command' });
+  await expect(review).toBeVisible();
+  await expect(review.getByRole('button', { name: 'Cancel' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(review).toBeHidden();
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations.filter(({ impact }) => impact === 'serious' || impact === 'critical')).toEqual([]);
+});
+
+for (const viewport of [{ name: 'mobile', width: 320, height: 900 }, { name: 'tablet', width: 768, height: 1024 }, { name: 'desktop', width: 1440, height: 1080 }]) {
+  test(`keeps indoor content within the ${viewport.name} viewport`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto('/indoor');
+    await expect(page.getByRole('heading', { name: 'Indoor environment' })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
+}
+
 for (const viewport of [{ name: 'mobile', width: 320, height: 900 }, { name: 'tablet', width: 768, height: 1024 }, { name: 'desktop', width: 1440, height: 1080 }]) {
   for (const appearance of ['dark', 'light'] as const) {
     test(`matches the ${appearance} overview at ${viewport.name} width`, async ({ page }) => {

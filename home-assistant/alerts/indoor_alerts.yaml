@@ -389,7 +389,7 @@ automation:
 
   # A single delivery boundary makes notifier configuration runtime-only. The
   # event cannot control equipment; its sole mobile action opens the approved
-  # private homepage. Switch this URL to /indoor when IE-013 ships that route.
+  # private indoor dashboard.
   - id: indoor_alert_mobile_delivery
     alias: Indoor alerts - Companion App delivery
     mode: queued
@@ -409,12 +409,12 @@ automation:
           title: "Indoor {{ trigger.event.data.level | upper }}"
           message: "{{ trigger.event.data.incident | replace('_', ' ') }}"
           data:
-            url: https://homepage-preview.lab.seandre.dev/
-            clickAction: https://homepage-preview.lab.seandre.dev/
+            url: https://homepage-preview.lab.seandre.dev/indoor
+            clickAction: https://homepage-preview.lab.seandre.dev/indoor
             actions:
               - action: URI
                 title: Open indoor dashboard
-                uri: https://homepage-preview.lab.seandre.dev/
+                uri: https://homepage-preview.lab.seandre.dev/indoor
 
 # BEGIN GENERATED INCIDENTS
   - id: indoor_alert_co2_warning

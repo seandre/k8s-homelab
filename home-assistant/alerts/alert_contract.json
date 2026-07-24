@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "notification_path": "/indoor",
-  "notification_url": "https://homepage-preview.lab.seandre.dev/",
+  "notification_url": "https://homepage-preview.lab.seandre.dev/indoor",
   "automatic_equipment_control": false,
   "freshness_seconds": {
     "aranet_living_room": 180,

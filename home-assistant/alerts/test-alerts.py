@@ -39,7 +39,7 @@ for name in contract["incidents"]:
     assert incident.events == ["warning", "critical", "recovery"], (name, incident.events)
 
 assert contract["notification_path"] == "/indoor"
-assert contract["notification_url"] == "https://homepage-preview.lab.seandre.dev/"
+assert contract["notification_url"] == "https://homepage-preview.lab.seandre.dev/indoor"
 assert contract["automatic_equipment_control"] is False
 assert f"clickAction: {contract['notification_url']}" in package
 assert f"uri: {contract['notification_url']}" in package
