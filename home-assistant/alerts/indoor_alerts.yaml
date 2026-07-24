@@ -125,14 +125,14 @@ template:
         unique_id: indoor_aranet_co2
         state: >-
           {% set mapped = states('input_text.indoor_map_aranet_co2') %}
-          {% set obj = states.get(mapped) %}
+          {% set obj = (expand(mapped) | first | default(none)) %}
           {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
           {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and
              (as_timestamp(now()) - as_timestamp(reported)) <= 180 else none }}
         attributes:
           freshness: >-
             {% set mapped = states('input_text.indoor_map_aranet_co2') %}
-            {% set obj = states.get(mapped) %}
+            {% set obj = (expand(mapped) | first | default(none)) %}
             {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
             {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and
                (as_timestamp(now()) - as_timestamp(reported)) <= 180 else 'UNAVAILABLE' }}
@@ -141,57 +141,57 @@ template:
         unit_of_measurement: "°F"
         state: >-
           {% set mapped = states('input_text.indoor_map_aranet_temperature') %}
-          {% set obj = states.get(mapped) %}
+          {% set obj = (expand(mapped) | first | default(none)) %}
           {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
           {% if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 180 %}
             {{ ((obj.state | float) * 9 / 5 + 32) if obj.attributes.get('unit_of_measurement') == '°C' else (obj.state | float) }}
           {% else %}{{ none }}{% endif %}
         attributes:
           freshness: >-
-            {% set obj = states.get(states('input_text.indoor_map_aranet_temperature')) %}
+            {% set obj = (expand(states('input_text.indoor_map_aranet_temperature')) | first | default(none)) %}
             {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
             {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 180 else 'UNAVAILABLE' }}
       - name: Indoor Aranet humidity
         unique_id: indoor_aranet_humidity
         unit_of_measurement: "%"
         state: >-
-          {% set obj = states.get(states('input_text.indoor_map_aranet_humidity')) %}
+          {% set obj = (expand(states('input_text.indoor_map_aranet_humidity')) | first | default(none)) %}
           {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
           {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 180 else none }}
         attributes:
           freshness: >-
-            {% set obj = states.get(states('input_text.indoor_map_aranet_humidity')) %}
+            {% set obj = (expand(states('input_text.indoor_map_aranet_humidity')) | first | default(none)) %}
             {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
             {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 180 else 'UNAVAILABLE' }}
       - name: Indoor Aranet pressure
         unique_id: indoor_aranet_pressure
         unit_of_measurement: "hPa"
         state: >-
-          {% set obj = states.get(states('input_text.indoor_map_aranet_pressure')) %}
+          {% set obj = (expand(states('input_text.indoor_map_aranet_pressure')) | first | default(none)) %}
           {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
           {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 180 else none }}
         attributes:
           freshness: >-
-            {% set obj = states.get(states('input_text.indoor_map_aranet_pressure')) %}
+            {% set obj = (expand(states('input_text.indoor_map_aranet_pressure')) | first | default(none)) %}
             {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
             {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 180 else 'UNAVAILABLE' }}
       - name: Indoor Aranet battery
         unique_id: indoor_aranet_battery
         unit_of_measurement: "%"
         state: >-
-          {% set obj = states.get(states('input_text.indoor_map_aranet_battery')) %}
+          {% set obj = (expand(states('input_text.indoor_map_aranet_battery')) | first | default(none)) %}
           {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
           {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 180 else none }}
         attributes:
           freshness: >-
-            {% set obj = states.get(states('input_text.indoor_map_aranet_battery')) %}
+            {% set obj = (expand(states('input_text.indoor_map_aranet_battery')) | first | default(none)) %}
             {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
             {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 180 else 'UNAVAILABLE' }}
       - name: Indoor Nest temperature
         unique_id: indoor_nest_temperature
         unit_of_measurement: "°F"
         state: >-
-          {% set obj = states.get(states('input_text.indoor_map_nest_temperature')) %}
+          {% set obj = (expand(states('input_text.indoor_map_nest_temperature')) | first | default(none)) %}
           {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
           {% set value = obj.attributes.get('current_temperature') if obj else none %}
           {% if value is not none and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 %}
@@ -199,118 +199,118 @@ template:
           {% else %}{{ none }}{% endif %}
         attributes:
           freshness: >-
-            {% set obj = states.get(states('input_text.indoor_map_nest_temperature')) %}
+            {% set obj = (expand(states('input_text.indoor_map_nest_temperature')) | first | default(none)) %}
             {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
             {{ 'CURRENT' if obj and obj.attributes.get('current_temperature') is not none and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
       - name: Indoor Nest humidity
         unique_id: indoor_nest_humidity
         unit_of_measurement: "%"
         state: >-
-          {% set obj = states.get(states('input_text.indoor_map_nest_humidity')) %}
+          {% set obj = (expand(states('input_text.indoor_map_nest_humidity')) | first | default(none)) %}
           {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
           {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
         attributes:
           freshness: >-
-            {% set obj = states.get(states('input_text.indoor_map_nest_humidity')) %}
+            {% set obj = (expand(states('input_text.indoor_map_nest_humidity')) | first | default(none)) %}
             {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
             {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
       - name: Indoor Coway Living Room AQI
         unique_id: indoor_coway_living_room_aqi
         state: >-
-          {% set obj = states.get(states('input_text.indoor_map_coway_living_room_aqi')) %}
+          {% set obj = (expand(states('input_text.indoor_map_coway_living_room_aqi')) | first | default(none)) %}
           {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
           {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
         attributes:
           freshness: >-
-            {% set obj = states.get(states('input_text.indoor_map_coway_living_room_aqi')) %}
+            {% set obj = (expand(states('input_text.indoor_map_coway_living_room_aqi')) | first | default(none)) %}
             {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
             {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
       - name: Indoor Coway Living Room PM25
         unique_id: indoor_coway_living_room_pm25
         unit_of_measurement: "µg/m³"
         state: >-
-          {% set obj = states.get(states('input_text.indoor_map_coway_living_room_pm25')) %}
+          {% set obj = (expand(states('input_text.indoor_map_coway_living_room_pm25')) | first | default(none)) %}
           {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
           {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
         attributes:
           freshness: >-
-            {% set obj = states.get(states('input_text.indoor_map_coway_living_room_pm25')) %}
+            {% set obj = (expand(states('input_text.indoor_map_coway_living_room_pm25')) | first | default(none)) %}
             {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
             {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
       - name: Indoor Coway Living Room PM10
         unique_id: indoor_coway_living_room_pm10
         unit_of_measurement: "µg/m³"
         state: >-
-          {% set obj = states.get(states('input_text.indoor_map_coway_living_room_pm10')) %}
+          {% set obj = (expand(states('input_text.indoor_map_coway_living_room_pm10')) | first | default(none)) %}
           {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
           {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
         attributes:
           freshness: >-
-            {% set obj = states.get(states('input_text.indoor_map_coway_living_room_pm10')) %}
+            {% set obj = (expand(states('input_text.indoor_map_coway_living_room_pm10')) | first | default(none)) %}
             {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
             {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
       - name: Indoor Coway Bedroom AQI
         unique_id: indoor_coway_bedroom_aqi
         state: >-
-          {% set obj = states.get(states('input_text.indoor_map_coway_bedroom_aqi')) %}
+          {% set obj = (expand(states('input_text.indoor_map_coway_bedroom_aqi')) | first | default(none)) %}
           {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
           {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
         attributes:
           freshness: >-
-            {% set obj = states.get(states('input_text.indoor_map_coway_bedroom_aqi')) %}
+            {% set obj = (expand(states('input_text.indoor_map_coway_bedroom_aqi')) | first | default(none)) %}
             {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
             {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
       - name: Indoor Coway Bedroom PM25
         unique_id: indoor_coway_bedroom_pm25
         unit_of_measurement: "µg/m³"
         state: >-
-          {% set obj = states.get(states('input_text.indoor_map_coway_bedroom_pm25')) %}
+          {% set obj = (expand(states('input_text.indoor_map_coway_bedroom_pm25')) | first | default(none)) %}
           {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
           {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
         attributes:
           freshness: >-
-            {% set obj = states.get(states('input_text.indoor_map_coway_bedroom_pm25')) %}
+            {% set obj = (expand(states('input_text.indoor_map_coway_bedroom_pm25')) | first | default(none)) %}
             {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
             {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
       - name: Indoor Coway Bedroom PM10
         unique_id: indoor_coway_bedroom_pm10
         unit_of_measurement: "µg/m³"
         state: >-
-          {% set obj = states.get(states('input_text.indoor_map_coway_bedroom_pm10')) %}
+          {% set obj = (expand(states('input_text.indoor_map_coway_bedroom_pm10')) | first | default(none)) %}
           {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
           {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
         attributes:
           freshness: >-
-            {% set obj = states.get(states('input_text.indoor_map_coway_bedroom_pm10')) %}
+            {% set obj = (expand(states('input_text.indoor_map_coway_bedroom_pm10')) | first | default(none)) %}
             {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
             {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
       - name: Indoor Coway Living Room filter life
         unique_id: indoor_coway_living_room_filter_life
         state: >-
-          {% set a = states.get(states('input_text.indoor_map_coway_living_room_filter_a')) %}
-          {% set b = states.get(states('input_text.indoor_map_coway_living_room_filter_b')) %}
+          {% set a = (expand(states('input_text.indoor_map_coway_living_room_filter_a')) | first | default(none)) %}
+          {% set b = (expand(states('input_text.indoor_map_coway_living_room_filter_b')) | first | default(none)) %}
           {% set ar = a.last_reported | default(a.last_updated, true) if a else none %}
           {% set br = b.last_reported | default(b.last_updated, true) if b else none %}
           {{ [a.state | float, b.state | float] | min if a and b and a.state not in ['unknown','unavailable'] and b.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(ar)) <= 300 and (as_timestamp(now()) - as_timestamp(br)) <= 300 else none }}
         attributes:
           freshness: >-
-            {% set a = states.get(states('input_text.indoor_map_coway_living_room_filter_a')) %}
-            {% set b = states.get(states('input_text.indoor_map_coway_living_room_filter_b')) %}
+            {% set a = (expand(states('input_text.indoor_map_coway_living_room_filter_a')) | first | default(none)) %}
+            {% set b = (expand(states('input_text.indoor_map_coway_living_room_filter_b')) | first | default(none)) %}
             {% set ar = a.last_reported | default(a.last_updated, true) if a else none %}
             {% set br = b.last_reported | default(b.last_updated, true) if b else none %}
             {{ 'CURRENT' if a and b and a.state not in ['unknown','unavailable'] and b.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(ar)) <= 300 and (as_timestamp(now()) - as_timestamp(br)) <= 300 else 'UNAVAILABLE' }}
       - name: Indoor Coway Bedroom filter life
         unique_id: indoor_coway_bedroom_filter_life
         state: >-
-          {% set a = states.get(states('input_text.indoor_map_coway_bedroom_filter_a')) %}
-          {% set b = states.get(states('input_text.indoor_map_coway_bedroom_filter_b')) %}
+          {% set a = (expand(states('input_text.indoor_map_coway_bedroom_filter_a')) | first | default(none)) %}
+          {% set b = (expand(states('input_text.indoor_map_coway_bedroom_filter_b')) | first | default(none)) %}
           {% set ar = a.last_reported | default(a.last_updated, true) if a else none %}
           {% set br = b.last_reported | default(b.last_updated, true) if b else none %}
           {{ [a.state | float, b.state | float] | min if a and b and a.state not in ['unknown','unavailable'] and b.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(ar)) <= 300 and (as_timestamp(now()) - as_timestamp(br)) <= 300 else none }}
         attributes:
           freshness: >-
-            {% set a = states.get(states('input_text.indoor_map_coway_bedroom_filter_a')) %}
-            {% set b = states.get(states('input_text.indoor_map_coway_bedroom_filter_b')) %}
+            {% set a = (expand(states('input_text.indoor_map_coway_bedroom_filter_a')) | first | default(none)) %}
+            {% set b = (expand(states('input_text.indoor_map_coway_bedroom_filter_b')) | first | default(none)) %}
             {% set ar = a.last_reported | default(a.last_updated, true) if a else none %}
             {% set br = b.last_reported | default(b.last_updated, true) if b else none %}
             {{ 'CURRENT' if a and b and a.state not in ['unknown','unavailable'] and b.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(ar)) <= 300 and (as_timestamp(now()) - as_timestamp(br)) <= 300 else 'UNAVAILABLE' }}
@@ -886,7 +886,7 @@ automation:
     trigger:
       - platform: template
         value_template: >-
-          {% set obj = states.get(states('input_text.indoor_map_aranet_co2')) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > 180 }}
+          {% set obj = (expand(states('input_text.indoor_map_aranet_co2')) | first | default(none)) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > 180 }}
         for: "00:05:00"
     condition: "{{ states('input_select.indoor_alert_source_aranet') == 'ok' }}"
     action:
@@ -901,7 +901,7 @@ automation:
     trigger:
       - platform: template
         value_template: >-
-          {% set obj = states.get(states('input_text.indoor_map_aranet_co2')) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > 180 }}
+          {% set obj = (expand(states('input_text.indoor_map_aranet_co2')) | first | default(none)) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > 180 }}
         for: "00:30:00"
     condition: "{{ states('input_select.indoor_alert_source_aranet') != 'critical' }}"
     action:
@@ -920,7 +920,7 @@ automation:
     trigger:
       - platform: template
         value_template: >-
-          {% set obj = states.get(states('input_text.indoor_map_aranet_co2')) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 180 }}
+          {% set obj = (expand(states('input_text.indoor_map_aranet_co2')) | first | default(none)) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 180 }}
         for: "00:05:00"
     condition: "{{ states('input_select.indoor_alert_source_aranet') != 'ok' }}"
     action:
@@ -935,7 +935,7 @@ automation:
     trigger:
       - platform: template
         value_template: >-
-          {% set obj = states.get(states('input_text.indoor_map_nest_temperature')) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > 300 }}
+          {% set obj = (expand(states('input_text.indoor_map_nest_temperature')) | first | default(none)) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > 300 }}
         for: "00:05:00"
     condition: "{{ states('input_select.indoor_alert_source_nest') == 'ok' }}"
     action:
@@ -950,7 +950,7 @@ automation:
     trigger:
       - platform: template
         value_template: >-
-          {% set obj = states.get(states('input_text.indoor_map_nest_temperature')) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > 300 }}
+          {% set obj = (expand(states('input_text.indoor_map_nest_temperature')) | first | default(none)) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > 300 }}
         for: "00:30:00"
     condition: "{{ states('input_select.indoor_alert_source_nest') != 'critical' }}"
     action:
@@ -969,7 +969,7 @@ automation:
     trigger:
       - platform: template
         value_template: >-
-          {% set obj = states.get(states('input_text.indoor_map_nest_temperature')) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 }}
+          {% set obj = (expand(states('input_text.indoor_map_nest_temperature')) | first | default(none)) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 }}
         for: "00:05:00"
     condition: "{{ states('input_select.indoor_alert_source_nest') != 'ok' }}"
     action:
@@ -984,7 +984,7 @@ automation:
     trigger:
       - platform: template
         value_template: >-
-          {% set obj = states.get(states('input_text.indoor_map_coway_living_room_pm25')) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > 300 }}
+          {% set obj = (expand(states('input_text.indoor_map_coway_living_room_pm25')) | first | default(none)) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > 300 }}
         for: "00:05:00"
     condition: "{{ states('input_select.indoor_alert_source_coway_living_room') == 'ok' }}"
     action:
@@ -999,7 +999,7 @@ automation:
     trigger:
       - platform: template
         value_template: >-
-          {% set obj = states.get(states('input_text.indoor_map_coway_living_room_pm25')) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > 300 }}
+          {% set obj = (expand(states('input_text.indoor_map_coway_living_room_pm25')) | first | default(none)) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > 300 }}
         for: "00:30:00"
     condition: "{{ states('input_select.indoor_alert_source_coway_living_room') != 'critical' }}"
     action:
@@ -1018,7 +1018,7 @@ automation:
     trigger:
       - platform: template
         value_template: >-
-          {% set obj = states.get(states('input_text.indoor_map_coway_living_room_pm25')) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 }}
+          {% set obj = (expand(states('input_text.indoor_map_coway_living_room_pm25')) | first | default(none)) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 }}
         for: "00:05:00"
     condition: "{{ states('input_select.indoor_alert_source_coway_living_room') != 'ok' }}"
     action:
@@ -1033,7 +1033,7 @@ automation:
     trigger:
       - platform: template
         value_template: >-
-          {% set obj = states.get(states('input_text.indoor_map_coway_bedroom_pm25')) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > 300 }}
+          {% set obj = (expand(states('input_text.indoor_map_coway_bedroom_pm25')) | first | default(none)) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > 300 }}
         for: "00:05:00"
     condition: "{{ states('input_select.indoor_alert_source_coway_bedroom') == 'ok' }}"
     action:
@@ -1048,7 +1048,7 @@ automation:
     trigger:
       - platform: template
         value_template: >-
-          {% set obj = states.get(states('input_text.indoor_map_coway_bedroom_pm25')) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > 300 }}
+          {% set obj = (expand(states('input_text.indoor_map_coway_bedroom_pm25')) | first | default(none)) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > 300 }}
         for: "00:30:00"
     condition: "{{ states('input_select.indoor_alert_source_coway_bedroom') != 'critical' }}"
     action:
@@ -1067,7 +1067,7 @@ automation:
     trigger:
       - platform: template
         value_template: >-
-          {% set obj = states.get(states('input_text.indoor_map_coway_bedroom_pm25')) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 }}
+          {% set obj = (expand(states('input_text.indoor_map_coway_bedroom_pm25')) | first | default(none)) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 }}
         for: "00:05:00"
     condition: "{{ states('input_select.indoor_alert_source_coway_bedroom') != 'ok' }}"
     action:

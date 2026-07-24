@@ -49,8 +49,9 @@ def automation(name, sensor, warn, warn_m, crit, crit_m, recover, recover_m):
 def source_automations(name, mapping, freshness):
     helper = f"input_select.indoor_alert_source_{name}"
     timestamp = "obj.last_reported | default(obj.last_updated, true)"
-    unavailable = f"{{% set obj = states.get(states('{mapping}')) %}}{{% set reported = {timestamp} if obj else none %}}{{{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > {freshness} }}}}"
-    current = f"{{% set obj = states.get(states('{mapping}')) %}}{{% set reported = {timestamp} if obj else none %}}{{{{ obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= {freshness} }}}}"
+    lookup = f"(expand(states('{mapping}')) | first | default(none))"
+    unavailable = f"{{% set obj = {lookup} %}}{{% set reported = {timestamp} if obj else none %}}{{{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > {freshness} }}}}"
+    current = f"{{% set obj = {lookup} %}}{{% set reported = {timestamp} if obj else none %}}{{{{ obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= {freshness} }}}}"
     return f'''  - id: indoor_alert_source_{name}_warning
     alias: Indoor alerts - source {name} warning
     trigger:

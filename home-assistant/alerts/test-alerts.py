@@ -8,6 +8,9 @@ ROOT = Path(__file__).resolve().parent
 contract = json.loads((ROOT / "alert_contract.json").read_text())
 package = (ROOT / "indoor_alerts.yaml").read_text()
 
+assert "states.get(" not in package, "unsupported dynamic states.get lookup"
+assert "expand(states('input_text.indoor_map_" in package
+
 class Incident:
     def __init__(self):
         self.state = "ok"
