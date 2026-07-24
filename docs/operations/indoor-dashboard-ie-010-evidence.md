@@ -105,5 +105,7 @@ Prometheus PVC.
 | Plaintext credential absent from Git | PASS |
 | Dedicated non-admin identity and protected runtime Secret | PASS |
 | PVC-backed private mapping contract | PASS (17/17) |
-| Live target and history queries | PENDING CREDENTIAL |
-| Controlled unavailable-series test | PENDING LIVE TARGET |
+| Live target and exact indoor data allowlist | PASS (15/15) |
+| `1h`, `24h`, `7d`, and `30d` history queries | PASS (15 series each) |
+| Controlled unavailable-series test | PASS; current disappeared, history remained, recovery returned |
+| Argo reconciliation | PASS; Home Assistant and monitoring Synced/Healthy |
