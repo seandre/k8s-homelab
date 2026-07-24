@@ -1,6 +1,6 @@
 # IE-012 Homepage Control Gateway
 
-Status: **implemented; live rollout pending**.
+Status: **complete**.
 
 The Homepage backend now exposes only `POST /api/v1/indoor/actions`. Its strict
 discriminated contract accepts canonical Nest and Coway aliases and verified
@@ -70,6 +70,24 @@ entity/device registries on the trusted operator workstation and create
 `homepage-home-assistant-control` with one `mapping.json` key. Validate only the
 schema and count; never print or commit its values. The gateway stays disabled
 and returns `503 ACTIONS_UNAVAILABLE` when the Secret or token is absent.
+
+## Live evidence
+
+On 2026-07-24, GitHub Actions run `30123179403` completed successfully with
+103 unit tests plus typecheck, lint, integration, production build, SBOM,
+provenance, and vulnerability gates. Production uses immutable image tag
+`sha-2c77a10` and OCI digest
+`sha256:0f6aa66c705d218162a58bcc6eda72d07d3c0152097fce9fd64a96a8f9fba495`.
+Argo CD reported `Synced` and `Healthy` at revision `3074712`; the gateway
+replica was Ready and its 1 GiB replay-journal PVC was Bound.
+
+The live endpoint rejected an empty request with `INVALID_REQUEST`, returned no
+private identifier, and produced no gateway configuration error. Aranet was
+`AVAILABLE`; Nest and both Coway sources were truthfully `DEGRADED`, with
+control state null. Therefore the live acceptance intentionally did not issue a
+device command: the mandatory source gate prevents one until a fresh cloud
+observation arrives. Deterministic tests cover HA success/convergence, cloud
+failure, and timeout without bypassing that live safeguard.
 
 ## Rollback
 
