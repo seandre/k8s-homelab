@@ -17,6 +17,14 @@ The normalized sensors enforce source freshness before export:
   Assistant then removes the corresponding Prometheus series; it never emits a
   zero or carries the old value forward.
 
+The 17 raw-to-normalized mappings are derived from the already-onboarded device
+registry and stored only in `/config/secrets.yaml` on the writable PVC with mode
+`0600`. Git contains the secret keys but never their values. This avoids the
+runtime-helper restore loss observed during the first IE-010 restart and makes
+pod replacement deterministic. The Nest temperature template reads the official
+climate entity's `current_temperature` attribute; it never treats the HVAC mode
+string as a temperature.
+
 The fixed query catalog maps the 15 public aliases to metric names and permits
 only `1h`, `24h`, `7d`, and `30d`. IE-011 must select from this catalog and must
 not accept browser-supplied PromQL, metric names, entity IDs, or URLs.
@@ -88,5 +96,6 @@ Prometheus PVC.
 | Four fixed history horizons | PASS |
 | Plaintext credential absent from Git | PASS |
 | Dedicated non-admin identity and protected runtime Secret | PASS |
+| PVC-backed private mapping contract | PASS (17/17) |
 | Live target and history queries | PENDING CREDENTIAL |
 | Controlled unavailable-series test | PENDING LIVE TARGET |

@@ -1,5 +1,5 @@
-# IE-009 package. Runtime-only mappings are entered in these helpers through HA;
-# no raw device entity ID, vendor ID, or notifier identifier belongs in Git.
+# IE-009/IE-010 package. Private mappings are injected from the PVC-backed,
+# mode-0600 secrets file; no raw entity ID, vendor ID, or notifier belongs in Git.
 input_text:
   indoor_alert_mobile_notifier:
     name: Indoor alert mobile notifier
@@ -7,54 +7,71 @@ input_text:
   indoor_map_aranet_temperature:
     name: Indoor map - Aranet temperature
     max: 255
+    initial: !secret indoor_map_aranet_temperature
   indoor_map_aranet_humidity:
     name: Indoor map - Aranet humidity
     max: 255
+    initial: !secret indoor_map_aranet_humidity
   indoor_map_aranet_pressure:
     name: Indoor map - Aranet pressure
     max: 255
+    initial: !secret indoor_map_aranet_pressure
   indoor_map_aranet_co2:
     name: Indoor map - Aranet CO2
     max: 255
+    initial: !secret indoor_map_aranet_co2
   indoor_map_aranet_battery:
     name: Indoor map - Aranet battery
     max: 255
+    initial: !secret indoor_map_aranet_battery
   indoor_map_nest_temperature:
     name: Indoor map - Nest temperature
     max: 255
+    initial: !secret indoor_map_nest_temperature
   indoor_map_nest_humidity:
     name: Indoor map - Nest humidity
     max: 255
+    initial: !secret indoor_map_nest_humidity
   indoor_map_coway_living_room_aqi:
     name: Indoor map - Living Room Coway AQI
     max: 255
+    initial: !secret indoor_map_coway_living_room_aqi
   indoor_map_coway_living_room_pm25:
     name: Indoor map - Living Room Coway PM2.5
     max: 255
+    initial: !secret indoor_map_coway_living_room_pm25
   indoor_map_coway_living_room_pm10:
     name: Indoor map - Living Room Coway PM10
     max: 255
+    initial: !secret indoor_map_coway_living_room_pm10
   indoor_map_coway_living_room_filter_a:
     name: Indoor map - Living Room Coway filter A
     max: 255
+    initial: !secret indoor_map_coway_living_room_filter_a
   indoor_map_coway_living_room_filter_b:
     name: Indoor map - Living Room Coway filter B
     max: 255
+    initial: !secret indoor_map_coway_living_room_filter_b
   indoor_map_coway_bedroom_pm25:
     name: Indoor map - Bedroom Coway PM2.5
     max: 255
+    initial: !secret indoor_map_coway_bedroom_pm25
   indoor_map_coway_bedroom_aqi:
     name: Indoor map - Bedroom Coway AQI
     max: 255
+    initial: !secret indoor_map_coway_bedroom_aqi
   indoor_map_coway_bedroom_pm10:
     name: Indoor map - Bedroom Coway PM10
     max: 255
+    initial: !secret indoor_map_coway_bedroom_pm10
   indoor_map_coway_bedroom_filter_a:
     name: Indoor map - Bedroom Coway filter A
     max: 255
+    initial: !secret indoor_map_coway_bedroom_filter_a
   indoor_map_coway_bedroom_filter_b:
     name: Indoor map - Bedroom Coway filter B
     max: 255
+    initial: !secret indoor_map_coway_bedroom_filter_b
 
 input_select:
   indoor_alert_co2:
@@ -96,7 +113,7 @@ input_datetime:
 
 # Source sensors are deliberately clock-triggered. Cloud integrations can retain
 # numeric states indefinitely after connectivity fails, so state alone is never
-# proof of freshness. Mapped entity IDs live only in HA's writable runtime state.
+# proof of freshness. Mapped entity IDs live only in HA's writable private state.
 template:
   - trigger:
       - platform: time_pattern
@@ -176,14 +193,15 @@ template:
         state: >-
           {% set obj = states.get(states('input_text.indoor_map_nest_temperature')) %}
           {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
-          {% if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 %}
-            {{ ((obj.state | float) * 9 / 5 + 32) if obj.attributes.get('unit_of_measurement') == '°C' else (obj.state | float) }}
+          {% set value = obj.attributes.get('current_temperature') if obj else none %}
+          {% if value is not none and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 %}
+            {{ ((value | float) * 9 / 5 + 32) if obj.attributes.get('temperature_unit') == '°C' else (value | float) }}
           {% else %}{{ none }}{% endif %}
         attributes:
           freshness: >-
             {% set obj = states.get(states('input_text.indoor_map_nest_temperature')) %}
             {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
-            {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
+            {{ 'CURRENT' if obj and obj.attributes.get('current_temperature') is not none and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
       - name: Indoor Nest humidity
         unique_id: indoor_nest_humidity
         unit_of_measurement: "%"
