@@ -23,4 +23,22 @@ describe('Home Assistant action executor', () => {
     const executor = new HomeAssistantActionExecutor('http://ha.test', 'token', mapping, async () => ({ ok: false }));
     await expect(executor.execute({ type: 'NEST_SET_HVAC_MODE', target: 'nest_living_room', mode: 'HEAT' })).rejects.toThrow('Home Assistant action failed.');
   });
+
+  it('converts approved Fahrenheit setpoints to Home Assistant metric service values', async () => {
+    let body: unknown;
+    const executor = new HomeAssistantActionExecutor('http://ha.test:8123', 'token', mapping, async (_url, init) => {
+      body = JSON.parse(String(init.body));
+      return { ok: true };
+    });
+    await executor.execute({
+      type: 'NEST_SET_SETPOINT',
+      target: 'nest_living_room',
+      setpoint: { shape: 'RANGE', heatTemperatureF: 68, coolTemperatureF: 74 },
+    });
+    expect(body).toEqual({
+      entity_id: 'climate.private_nest',
+      target_temp_low: 20,
+      target_temp_high: 23.33,
+    });
+  });
 });

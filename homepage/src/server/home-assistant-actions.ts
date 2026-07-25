@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { IndoorCommand } from '../shared/contracts.js';
 import type { IndoorActionExecutor } from './indoor-actions.js';
+import { fahrenheitToCelsius } from './temperature.js';
 
 const EntityIdSchema = z.string().regex(/^(climate|fan|select|switch)\.[a-z0-9_]+$/);
 const TargetSchema = z.object({
@@ -26,9 +27,9 @@ function service(command: IndoorCommand, mapping: HomeAssistantControlMap): Serv
       return { domain: 'climate', service: 'set_hvac_mode', data: { entity_id: entities.primary, hvac_mode: command.mode.toLowerCase() } };
     case 'NEST_SET_SETPOINT': {
       const s = command.setpoint;
-      const temperatures = s.shape === 'HEAT' ? { temperature: s.temperatureF }
-        : s.shape === 'COOL' ? { temperature: s.temperatureF }
-        : { target_temp_low: s.heatTemperatureF, target_temp_high: s.coolTemperatureF };
+      const temperatures = s.shape === 'HEAT' ? { temperature: fahrenheitToCelsius(s.temperatureF) }
+        : s.shape === 'COOL' ? { temperature: fahrenheitToCelsius(s.temperatureF) }
+        : { target_temp_low: fahrenheitToCelsius(s.heatTemperatureF), target_temp_high: fahrenheitToCelsius(s.coolTemperatureF) };
       return { domain: 'climate', service: 'set_temperature', data: { entity_id: entities.primary, ...temperatures } };
     }
     case 'NEST_SET_FAN_TIMER':

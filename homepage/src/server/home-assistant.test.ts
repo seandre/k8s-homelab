@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { BootstrapSchema } from '../shared/contracts.js';
 import { healthyBootstrapFixture } from '../shared/fixtures.js';
+import { HomeAssistantControlMapSchema } from './home-assistant-actions.js';
 import { HomeAssistantIndoorAdapter } from './home-assistant.js';
 
 const now = () => new Date('2026-07-24T12:00:00.000Z');
 const state = (entity_id: string, value: string, last_updated = '2026-07-24T11:59:30.000Z', last_reported?: string, attributes: Record<string, unknown> = {}) => ({ entity_id, state: value, last_updated, ...(last_reported ? { last_reported } : {}), attributes });
+const controls = HomeAssistantControlMapSchema.parse({
+  nest_living_room: { primary: 'climate.private_nest' },
+  coway_living_room: { primary: 'fan.private_living' },
+  coway_bedroom: { primary: 'fan.private_bedroom' },
+});
 
 describe('Home Assistant indoor adapter', () => {
   it('normalizes only fixed indoor aliases and never returns entity identifiers', async () => {
@@ -69,6 +75,23 @@ describe('Home Assistant indoor adapter', () => {
     expect(indoor.purifiers[0].readings.pm25).toMatchObject({
       value: 1,
       metadata: { observedAt: '2026-07-24T12:00:00.000Z', freshness: 'CURRENT', sourceState: 'AVAILABLE' },
+    });
+  });
+
+  it('normalizes metric Nest target temperatures to whole Fahrenheit setpoints', async () => {
+    const adapter = new HomeAssistantIndoorAdapter('http://home-assistant.test:8123', 'token', async () => ({
+      ok: true,
+      json: async () => [
+        state('sensor.indoor_nest_temperature', '74.3', undefined, undefined, { freshness: 'CURRENT' }),
+        state('climate.private_nest', 'heat_cool', undefined, undefined, {
+          target_temp_low: 19.3, target_temp_high: 22.5, temperature_unit: '°C',
+        }),
+      ],
+    }), now, controls);
+    expect((await adapter.read()).thermostats[0]).toMatchObject({
+      hvacMode: 'HEAT_COOL',
+      heatSetpointF: 67,
+      coolSetpointF: 73,
     });
   });
 });

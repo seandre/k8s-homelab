@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { IndoorEntityAlias, IndoorState } from '../shared/contracts.js';
 import { unavailableIndoorFixture } from '../shared/indoor-fixtures.js';
 import type { HomeAssistantControlMap } from './home-assistant-actions.js';
+import { nestSetpointToFahrenheit } from './temperature.js';
 
 const StateSchema = z.object({
   entity_id: z.string(),
@@ -108,8 +109,9 @@ export class HomeAssistantIndoorAdapter {
       result.thermostats[0].hvacMode = ['OFF', 'HEAT', 'COOL', 'HEAT_COOL'].includes(mode) ? mode as 'OFF' | 'HEAT' | 'COOL' | 'HEAT_COOL' : null;
       const heat = Number(nestControl.attributes.target_temp_low ?? nestControl.attributes.temperature);
       const cool = Number(nestControl.attributes.target_temp_high ?? nestControl.attributes.temperature);
-      result.thermostats[0].heatSetpointF = Number.isFinite(heat) ? heat : null;
-      result.thermostats[0].coolSetpointF = Number.isFinite(cool) ? cool : null;
+      const sourceUnit = nestControl.attributes.temperature_unit;
+      result.thermostats[0].heatSetpointF = Number.isFinite(heat) ? nestSetpointToFahrenheit(heat, sourceUnit) : null;
+      result.thermostats[0].coolSetpointF = Number.isFinite(cool) ? nestSetpointToFahrenheit(cool, sourceUnit) : null;
       const fan = String(nestControl.attributes.fan_mode ?? '').toLowerCase();
       result.thermostats[0].fanTimerEndsAt = fan === 'on' ? new Date(this.now().getTime() + 720 * 60_000).toISOString() : null;
     }
