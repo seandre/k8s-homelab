@@ -75,11 +75,12 @@ export function HistoryGraph({ series, label, thresholds, scale }: { series: Tim
   }).join(' ');
   const valueLabel = (value: number) => value.toFixed(scale.digits ?? 0);
   const summary = `${label}, ${series.window}, ${values.length} samples, latest ${values.at(-1)} ${series.unit}. Thresholds ${thresholds.join(', ')} ${series.unit}.`;
+  const temperatureAxis = series.metric === 'aranet_living_room.temperature';
   return (
     <figure className="indoor-history-graph">
       <figcaption><strong>{label}</strong><span>{valueLabel(values.at(-1)!)} {series.unit}</span></figcaption>
       <div className="history-chart">
-        <div className="y-axis-labels" aria-hidden="true">
+        <div className={`y-axis-labels${temperatureAxis ? ' y-axis-labels-temperature' : ''}`} aria-hidden="true">
           <span className="y-axis-unit">{series.unit}</span>
           {ticks.map((value) => <span key={value} className="y-axis-label" style={{ top: `${y(value)}%` }}>{valueLabel(value)}</span>)}
         </div>
@@ -93,7 +94,7 @@ export function HistoryGraph({ series, label, thresholds, scale }: { series: Tim
         </svg>
         <div className="x-axis-labels" aria-hidden="true">
           <span>{historyTimeLabel(series.points[0]!.timestamp, series.window)}</span>
-          <span>{historyTimeLabel(series.points.at(-1)!.timestamp, series.window)}</span>
+          <span>Current</span>
         </div>
       </div>
     </figure>
@@ -164,9 +165,9 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
   const aranet = indoor.sensors[0];
   const thermostat = indoor.thermostats[0];
   const metrics = useMemo(() => [
-    { alias: 'aranet_living_room.temperature', label: 'Temperature', thresholds: [55, 60, 80, 85], scale: { minSpan: 10, digits: 0 } },
-    { alias: 'aranet_living_room.humidity', label: 'Humidity', thresholds: [20, 30, 60, 70], scale: { minSpan: 20, hardMin: 0, hardMax: 100, digits: 0 } },
-    { alias: 'aranet_living_room.co2', label: 'CO₂', thresholds: [900, 1000, 1500], scale: { minSpan: 500, hardMin: 0, digits: 0 } },
+    { alias: 'aranet_living_room.temperature', label: 'Temperature', thresholds: [55, 60, 80, 85], scale: { fixedMin: 60, fixedMax: 80, ticks: [60, 65, 70, 75, 80], digits: 0 } },
+    { alias: 'aranet_living_room.humidity', label: 'Humidity', thresholds: [20, 30, 60, 70], scale: { fixedMin: 0, fixedMax: 100, ticks: [0, 20, 40, 60, 80, 100], digits: 0 } },
+    { alias: 'aranet_living_room.co2', label: 'CO₂', thresholds: [900, 1000, 1500], scale: { fixedMin: 400, fixedMax: 1500, ticks: [400, 600, 800, 1000, 1200, 1400, 1500], digits: 0 } },
     { alias: 'coway_living_room.pm25', label: 'Living Room PM2.5', thresholds: [10, 15, 35], scale: { minSpan: 10, hardMin: 0, digits: 0 } },
   ], []);
   useEffect(() => {

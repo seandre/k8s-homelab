@@ -83,16 +83,17 @@ test('renders the responsive indoor dashboard and requires review before control
   await expect(page.getByRole('heading', { name: 'Bedroom Coway' })).toBeVisible();
   expect(await page.evaluate(() => {
     const axis = document.createElement('div');
-    axis.className = 'y-axis-labels';
+    axis.className = 'y-axis-labels y-axis-labels-temperature';
     const number = document.createElement('span');
     number.className = 'y-axis-label';
     number.textContent = '1000';
     axis.append(number);
     document.body.append(axis);
     const fontSize = getComputedStyle(number).fontSize;
+    const metricFontSize = getComputedStyle(document.querySelector('.metric-label')!).fontSize;
     axis.remove();
-    return fontSize;
-  })).toBe('7px');
+    return { fontSize, metricFontSize };
+  })).toEqual({ fontSize: '9.92px', metricFontSize: '9.92px' });
   await page.getByLabel('HVAC mode').selectOption('OFF');
   const review = page.getByRole('dialog', { name: 'Review device command' });
   await expect(review).toBeVisible();

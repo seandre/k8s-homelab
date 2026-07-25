@@ -1,4 +1,12 @@
-export type HistoryScale = { minSpan: number; hardMin?: number; hardMax?: number; digits?: number };
+export type HistoryScale = {
+  minSpan?: number;
+  hardMin?: number;
+  hardMax?: number;
+  fixedMin?: number;
+  fixedMax?: number;
+  ticks?: number[];
+  digits?: number;
+};
 
 function niceStep(minimum: number) {
   const magnitude = 10 ** Math.floor(Math.log10(minimum));
@@ -8,9 +16,18 @@ function niceStep(minimum: number) {
 }
 
 export function computeHistoryDomain(values: number[], scale: HistoryScale) {
+  if (scale.fixedMin !== undefined && scale.fixedMax !== undefined) {
+    const ticks = scale.ticks ?? [scale.fixedMin, scale.fixedMax];
+    return {
+      min: scale.fixedMin,
+      max: scale.fixedMax,
+      step: ticks.length > 1 ? ticks[1]! - ticks[0]! : scale.fixedMax - scale.fixedMin,
+      ticks,
+    };
+  }
   const observedMin = Math.min(...values);
   const observedMax = Math.max(...values);
-  const desiredSpan = Math.max(observedMax - observedMin, scale.minSpan);
+  const desiredSpan = Math.max(observedMax - observedMin, scale.minSpan ?? 1);
   const step = niceStep(desiredSpan / 5);
   const span = step * 5;
   const center = (observedMin + observedMax) / 2;

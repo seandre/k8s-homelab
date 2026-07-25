@@ -46,13 +46,18 @@ describe('indoor dashboard', () => {
     expect(computeHistoryDomain([1, 3], { minSpan: 10, hardMin: 0 })).toEqual({
       min: 0, max: 10, step: 2, ticks: [0, 2, 4, 6, 8, 10],
     });
+    expect(computeHistoryDomain([72.3, 76.8], {
+      fixedMin: 60, fixedMax: 80, ticks: [60, 65, 70, 75, 80],
+    })).toEqual({
+      min: 60, max: 80, step: 5, ticks: [60, 65, 70, 75, 80],
+    });
   });
 
   it('renders proportional y-axis labels and real history-window endpoints', () => {
     const markup = renderToStaticMarkup(<HistoryGraph
       label="Temperature"
       thresholds={[55, 60, 80, 85]}
-      scale={{ minSpan: 10 }}
+      scale={{ fixedMin: 60, fixedMax: 80, ticks: [60, 65, 70, 75, 80] }}
       series={{
         metric: 'aranet_living_room.temperature',
         unit: '°F',
@@ -64,9 +69,10 @@ describe('indoor dashboard', () => {
         metadata: { source: 'fixture', observedAt: '2026-07-25T00:30:00.000Z', freshness: 'CURRENT', severity: 'OK' },
       }}
     />);
-    expect(markup).toContain('70');
+    expect(markup).toContain('60');
     expect(markup).toContain('80');
+    expect(markup).toContain('y-axis-labels-temperature');
     expect(markup).toContain('12:00 PM');
-    expect(markup).toContain('5:30 PM');
+    expect(markup).toContain('Current');
   });
 });
