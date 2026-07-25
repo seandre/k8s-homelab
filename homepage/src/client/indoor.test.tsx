@@ -61,7 +61,7 @@ describe('indoor dashboard', () => {
   it('renders proportional y-axis labels and real history-window endpoints', () => {
     const markup = renderToStaticMarkup(<HistoryGraph
       label="Temperature"
-      thresholds={[55, 60, 80, 85]}
+      thresholds={[{ value: 60, tone: 'blue' }, { value: 80, tone: 'red' }]}
       scale={{ fixedMin: 60, fixedMax: 80, ticks: [60, 65, 70, 75, 80] }}
       series={{
         metric: 'aranet_living_room.temperature',
@@ -84,7 +84,7 @@ describe('indoor dashboard', () => {
   it('smooths only the CO₂ trace and emphasizes visible threshold ticks', () => {
     const markup = renderToStaticMarkup(<HistoryGraph
       label="CO₂"
-      thresholds={[900, 1000, 1500]}
+      thresholds={[{ value: 900, tone: 'yellow' }, { value: 1000, tone: 'red' }]}
       scale={{ fixedMin: 400, fixedMax: 1200, ticks: [400, 600, 800, 1000, 1200] }}
       series={{
         metric: 'aranet_living_room.co2',
@@ -101,5 +101,7 @@ describe('indoor dashboard', () => {
     expect(markup).toContain('<path');
     expect(markup).toContain('history-line-smoothed');
     expect(markup).toContain('y-axis-label-threshold');
+    expect(markup).toContain('threshold-tone-yellow');
+    expect(markup).toContain('threshold-tone-red');
   });
 });

@@ -31,6 +31,11 @@
   --info: #8da3d6;
   --warn: #e3bd72;
   --crit: #ef7777;
+  --threshold-blue: #6fa8ff;
+  --threshold-light-blue: #8edcff;
+  --threshold-dark-blue: #4776b8;
+  --threshold-yellow: #e3bd72;
+  --threshold-red: #ef7777;
   --surface: #090b09;
   --shadow: rgba(0, 0, 0, 0.55);
   --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -72,6 +77,11 @@
   --info: #304f8e;
   --warn: #765900;
   --crit: #a52828;
+  --threshold-blue: #2866b5;
+  --threshold-light-blue: #3b87b5;
+  --threshold-dark-blue: #174a82;
+  --threshold-yellow: #765900;
+  --threshold-red: #a52828;
   --surface: #ffffff;
   --shadow: rgba(24, 35, 26, 0.12);
 }
@@ -360,11 +370,21 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .history-line { fill: none; stroke: var(--focus); stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
 .y-axis-labels { position: relative; min-width: 0; color: var(--muted); font: 400 0.62rem/1 var(--mono); letter-spacing: 0.06em; }
 .y-axis-label { position: absolute; right: 0.3rem; translate: 0 -50%; white-space: nowrap; }
-.y-axis-label-threshold { color: var(--warn); font-weight: 700; }
+.y-axis-label-threshold { font-weight: 700; }
+.y-axis-label.threshold-tone-blue { color: var(--threshold-blue); }
+.y-axis-label.threshold-tone-light-blue { color: var(--threshold-light-blue); }
+.y-axis-label.threshold-tone-dark-blue { color: var(--threshold-dark-blue); }
+.y-axis-label.threshold-tone-yellow { color: var(--threshold-yellow); }
+.y-axis-label.threshold-tone-red { color: var(--threshold-red); }
 .y-axis-unit { position: absolute; top: 0; left: 0; color: var(--muted); font-size: 6px; white-space: nowrap; }
 .y-axis-line { stroke: var(--muted); stroke-width: 0.55; vector-effect: non-scaling-stroke; }
 .y-axis-grid { stroke: var(--divider); stroke-width: 0.45; vector-effect: non-scaling-stroke; }
-.threshold-line { stroke: var(--warn); stroke-width: 1; stroke-dasharray: 4 3; opacity: 0.9; vector-effect: non-scaling-stroke; }
+.threshold-line { stroke-width: 1; stroke-dasharray: 4 3; opacity: 0.9; vector-effect: non-scaling-stroke; }
+.threshold-line.threshold-tone-blue { stroke: var(--threshold-blue); }
+.threshold-line.threshold-tone-light-blue { stroke: var(--threshold-light-blue); }
+.threshold-line.threshold-tone-dark-blue { stroke: var(--threshold-dark-blue); }
+.threshold-line.threshold-tone-yellow { stroke: var(--threshold-yellow); }
+.threshold-line.threshold-tone-red { stroke: var(--threshold-red); }
 .x-axis-labels { display: flex; grid-column: 2; justify-content: space-between; padding-top: 0.25rem; color: var(--muted); font: 0.52rem/1 var(--mono); }
 .indoor-no-data { display: grid; place-items: center; min-height: 11.5rem; border: 1px solid var(--divider); color: var(--muted); font-size: 0.64rem; }
 .purifier-grid { margin-top: 1rem; }

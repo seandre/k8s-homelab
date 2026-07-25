@@ -12,6 +12,9 @@ type Review = { command: IndoorCommand; target: string; current: string; request
 type IndoorReading = IndoorState['sensors'][0]['readings']['temperature'];
 type ThermostatState = IndoorState['thermostats'][0];
 type PurifierState = IndoorState['purifiers'][number];
+type ThresholdTone = 'blue' | 'light-blue' | 'dark-blue' | 'yellow' | 'red';
+type HistoryThreshold = { value: number; tone: ThresholdTone };
+type HistoryMetric = { alias: string; label: string; thresholds: HistoryThreshold[]; scale: HistoryScale };
 
 function display(reading: IndoorReading, digits = 0) {
   return reading.value === null ? '—' : reading.value.toFixed(digits);
@@ -56,7 +59,7 @@ function historyTimeLabel(timestamp: string, window: TimeSeries['window']) {
   return new Intl.DateTimeFormat('en-US', { ...options, timeZone: 'America/Los_Angeles' }).format(date);
 }
 
-export function HistoryGraph({ series, label, thresholds, scale }: { series: TimeSeries | undefined; label: string; thresholds: number[]; scale: HistoryScale }) {
+export function HistoryGraph({ series, label, thresholds, scale }: { series: TimeSeries | undefined; label: string; thresholds: HistoryThreshold[]; scale: HistoryScale }) {
   if (!series || series.points.length === 0) return <div className="indoor-no-data" role="status">NO DATA · {label}</div>;
   const values = series.points.map((point) => point.value);
   const { min, max, ticks } = computeHistoryDomain(values, scale);
@@ -74,24 +77,31 @@ export function HistoryGraph({ series, label, thresholds, scale }: { series: Tim
     return { x, y: y(point.value) };
   });
   const points = chartPoints.map((point) => `${point.x},${point.y}`).join(' ');
-  const smoothCo2 = series.metric === 'aranet_living_room.co2' && chartPoints.length > 2;
+  const smoothMetric = [
+    'aranet_living_room.temperature',
+    'aranet_living_room.humidity',
+    'aranet_living_room.co2',
+  ].includes(series.metric) && chartPoints.length > 2;
   const valueLabel = (value: number) => value.toFixed(scale.digits ?? 0);
-  const summary = `${label}, ${series.window}, ${values.length} samples, latest ${values.at(-1)} ${series.unit}. Thresholds ${thresholds.join(', ')} ${series.unit}.`;
+  const summary = `${label}, ${series.window}, ${values.length} samples, latest ${values.at(-1)} ${series.unit}. Thresholds ${thresholds.map((threshold) => threshold.value).join(', ')} ${series.unit}.`;
   return (
     <figure className="indoor-history-graph">
       <figcaption><strong>{label}</strong><span>{valueLabel(values.at(-1)!)} {series.unit}</span></figcaption>
       <div className="history-chart">
         <div className="y-axis-labels" aria-hidden="true">
           <span className="y-axis-unit">{series.unit}</span>
-          {ticks.map((value) => <span key={value} className={`y-axis-label${thresholds.includes(value) ? ' y-axis-label-threshold' : ''}`} style={{ top: `${y(value)}%` }}>{valueLabel(value)}</span>)}
+          {ticks.map((value) => {
+            const threshold = thresholds.find((item) => item.value === value);
+            return <span key={value} className={`y-axis-label${threshold ? ` y-axis-label-threshold threshold-tone-${threshold.tone}` : ''}`} style={{ top: `${y(value)}%` }}>{valueLabel(value)}</span>;
+          })}
         </div>
         <svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={summary}>
           {ticks.map((value) => <line key={value} x1={plotLeft} x2={plotRight} y1={y(value)} y2={y(value)} className="y-axis-grid" />)}
           <line x1={plotLeft} x2={plotLeft} y1={plotTop} y2={plotBottom} className="y-axis-line" />
-          {thresholds.filter((value) => value >= min && value <= max).map((value) =>
-            <line key={value} x1={plotLeft} x2={plotRight} y1={y(value)} y2={y(value)} className="threshold-line" />,
+          {thresholds.filter(({ value }) => value >= min && value <= max).map(({ value, tone }) =>
+            <line key={value} x1={plotLeft} x2={plotRight} y1={y(value)} y2={y(value)} className={`threshold-line threshold-tone-${tone}`} />,
           )}
-          {smoothCo2
+          {smoothMetric
             ? <path d={smoothSvgPath(chartPoints)} className="history-line history-line-smoothed" vectorEffect="non-scaling-stroke" />
             : <polyline points={points} className="history-line" vectorEffect="non-scaling-stroke" />}
         </svg>
@@ -167,11 +177,11 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
   const [error, setError] = useState<string | null>(null);
   const aranet = indoor.sensors[0];
   const thermostat = indoor.thermostats[0];
-  const metrics = useMemo(() => [
-    { alias: 'aranet_living_room.temperature', label: 'Temperature', thresholds: [55, 60, 80, 85], scale: { fixedMin: 60, fixedMax: 80, ticks: [60, 65, 70, 75, 80], digits: 0 } },
-    { alias: 'aranet_living_room.humidity', label: 'Humidity', thresholds: [20, 30, 60, 70], scale: { fixedMin: 0, fixedMax: 100, ticks: [0, 20, 40, 60, 80, 100], digits: 0 } },
-    { alias: 'aranet_living_room.co2', label: 'CO₂', thresholds: [900, 1000, 1500], scale: { fixedMin: 400, fixedMax: 1200, ticks: [400, 600, 800, 1000, 1200], digits: 0 } },
-    { alias: 'coway_living_room.pm25', label: 'Living Room PM2.5', thresholds: [10, 15, 35], scale: { minSpan: 10, hardMin: 0, digits: 0 } },
+  const metrics = useMemo<HistoryMetric[]>(() => [
+    { alias: 'aranet_living_room.temperature', label: 'Temperature', thresholds: [{ value: 60, tone: 'blue' }, { value: 80, tone: 'red' }], scale: { fixedMin: 60, fixedMax: 80, ticks: [60, 65, 70, 75, 80], digits: 0 } },
+    { alias: 'aranet_living_room.humidity', label: 'Humidity', thresholds: [{ value: 20, tone: 'dark-blue' }, { value: 30, tone: 'light-blue' }, { value: 60, tone: 'light-blue' }, { value: 70, tone: 'dark-blue' }], scale: { fixedMin: 0, fixedMax: 100, ticks: [0, 20, 40, 60, 80, 100], digits: 0 } },
+    { alias: 'aranet_living_room.co2', label: 'CO₂', thresholds: [{ value: 900, tone: 'yellow' }, { value: 1000, tone: 'red' }], scale: { fixedMin: 400, fixedMax: 1200, ticks: [400, 600, 800, 1000, 1200], digits: 0 } },
+    { alias: 'coway_living_room.pm25', label: 'Living Room PM2.5', thresholds: [{ value: 5, tone: 'yellow' }, { value: 15, tone: 'red' }], scale: { minSpan: 20, hardMin: 0, digits: 0 } },
   ], []);
   useEffect(() => {
     let active = true;
