@@ -45,24 +45,39 @@ export function IndoorOverviewCard({ indoor }: { indoor: IndoorState }) {
   );
 }
 
-function HistoryGraph({ series, label, thresholds }: { series: TimeSeries | undefined; label: string; thresholds: number[] }) {
+type HistoryScale = { min: number; max: number; step: number };
+
+function HistoryGraph({ series, label, thresholds, scale }: { series: TimeSeries | undefined; label: string; thresholds: number[]; scale: HistoryScale }) {
   if (!series || series.points.length === 0) return <div className="indoor-no-data" role="status">NO DATA · {label}</div>;
   const values = series.points.map((point) => point.value);
-  const all = [...values, ...thresholds];
-  const min = Math.min(...all);
-  const max = Math.max(...all);
+  const min = Math.min(scale.min, ...values);
+  const max = Math.max(scale.max, ...values);
   const range = Math.max(max - min, 1);
-  const y = (value: number) => 92 - ((value - min) / range) * 80;
-  const points = values.map((value, index) => `${values.length === 1 ? 50 : (index / (values.length - 1)) * 100},${y(value)}`).join(' ');
+  const plotLeft = 22;
+  const plotRight = 118;
+  const plotTop = 8;
+  const plotBottom = 92;
+  const y = (value: number) => plotBottom - ((value - min) / range) * (plotBottom - plotTop);
+  const points = values.map((value, index) => `${values.length === 1 ? (plotLeft + plotRight) / 2 : plotLeft + (index / (values.length - 1)) * (plotRight - plotLeft)},${y(value)}`).join(' ');
+  const ticks: number[] = [];
+  for (let value = Math.ceil(min / scale.step) * scale.step; value <= max; value += scale.step) ticks.push(value);
   const summary = `${label}, ${series.window}, ${values.length} samples, latest ${values.at(-1)} ${series.unit}. Thresholds ${thresholds.join(', ')} ${series.unit}.`;
   return (
     <figure className="indoor-history-graph">
       <figcaption><strong>{label}</strong><span>{values.at(-1)} {series.unit}</span></figcaption>
-      <svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={summary}>
-        {thresholds.map((value) => <line key={value} x1="0" x2="100" y1={y(value)} y2={y(value)} className="threshold-line" />)}
+      <svg viewBox="0 0 120 100" preserveAspectRatio="none" role="img" aria-label={summary}>
+        <text x="1" y="5" className="y-axis-unit">{series.unit}</text>
+        {ticks.map((value) => <g key={value} className="y-axis-tick">
+          <line x1={plotLeft} x2={plotRight} y1={y(value)} y2={y(value)} />
+          <text x={plotLeft - 2} y={y(value)}>{value}</text>
+        </g>)}
+        <line x1={plotLeft} x2={plotLeft} y1={plotTop} y2={plotBottom} className="y-axis-line" />
+        {thresholds.filter((value) => value >= min && value <= max).map((value) => <g key={value} className="threshold-marker">
+          <line x1={plotLeft} x2={plotRight} y1={y(value)} y2={y(value)} className="threshold-line" />
+          <text x={plotLeft + 1} y={y(value) - 1}>{value}</text>
+        </g>)}
         <polyline points={points} className="history-line" vectorEffect="non-scaling-stroke" />
       </svg>
-      <div className="graph-thresholds">thresholds {thresholds.join(' / ')} {series.unit}</div>
     </figure>
   );
 }
@@ -131,10 +146,10 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
   const aranet = indoor.sensors[0];
   const thermostat = indoor.thermostats[0];
   const metrics = useMemo(() => [
-    { alias: 'aranet_living_room.temperature', label: 'Temperature', thresholds: [55, 60, 80, 85] },
-    { alias: 'aranet_living_room.humidity', label: 'Humidity', thresholds: [20, 30, 60, 70] },
-    { alias: 'aranet_living_room.co2', label: 'CO₂', thresholds: [900, 1000, 1500] },
-    { alias: 'coway_living_room.pm25', label: 'Living Room PM2.5', thresholds: [10, 15, 35] },
+    { alias: 'aranet_living_room.temperature', label: 'Temperature', thresholds: [55, 60, 80, 85], scale: { min: 50, max: 90, step: 10 } },
+    { alias: 'aranet_living_room.humidity', label: 'Humidity', thresholds: [20, 30, 60, 70], scale: { min: 0, max: 100, step: 20 } },
+    { alias: 'aranet_living_room.co2', label: 'CO₂', thresholds: [900, 1000, 1500], scale: { min: 0, max: 2000, step: 500 } },
+    { alias: 'coway_living_room.pm25', label: 'Living Room PM2.5', thresholds: [10, 15, 35], scale: { min: 0, max: 40, step: 10 } },
   ], []);
   useEffect(() => {
     let active = true;
@@ -176,7 +191,7 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
       </section>
       <section className="indoor-history" aria-labelledby="indoor-history-title">
         <div className="section-heading"><div><span className="panel-eyebrow">PROMETHEUS HISTORY</span><h2 id="indoor-history-title">Environmental trends</h2></div><div className="history-window" role="group" aria-label="History window">{WINDOWS.map((item) => <button type="button" aria-pressed={window === item} onClick={() => setWindow(item)} key={item}>{item}</button>)}</div></div>
-        <div className="indoor-graph-grid">{metrics.map((metric) => <HistoryGraph key={metric.alias} series={history[metric.alias]} label={metric.label} thresholds={metric.thresholds} />)}</div>
+        <div className="indoor-graph-grid">{metrics.map((metric) => <HistoryGraph key={metric.alias} series={history[metric.alias]} label={metric.label} thresholds={metric.thresholds} scale={metric.scale} />)}</div>
       </section>
       <section className="purifier-grid" aria-label="Air purifiers">
         {indoor.purifiers.map((purifier) => <Panel key={purifier.alias} title={`${purifier.room === 'living_room' ? 'Living Room' : 'Bedroom'} Coway`} eyebrow="AIRMEGA 250S / CLOUD" severity={sourceSeverity(purifier.sourceState)} freshness={panelFreshness(purifier.readings.pm25.metadata.freshness)}><div className="indoor-reading-grid"><Metric label="PM2.5" value={display(purifier.readings.pm25)} unit="µg/m³" /><Metric label="PM10" value={display(purifier.readings.pm10)} unit="µg/m³" /><Metric label="AQI" value={display(purifier.readings.aqi)} /><Metric label="FILTER" value={display(purifier.readings.filterLife)} unit="%" /></div><div className="device-state-line"><strong>{purifier.sourceState}</strong><span>{purifier.power === null ? 'NO DATA' : purifier.power ? 'ON' : 'OFF'} · {purifier.preset ?? '—'} · speed {purifier.speed ?? '—'}</span></div><PurifierControls purifier={purifier} review={setReview} /></Panel>)}
