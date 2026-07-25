@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { HistoryResponseSchema } from '../../src/shared/contracts.js';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -67,6 +68,31 @@ test('has no serious or critical automated accessibility violations', async ({ p
 });
 
 test('renders the responsive indoor dashboard and requires review before controls', async ({ page }) => {
+  let historyRequestCount = 0;
+  await page.route(/\/api\/v1\/history\?/, async (route) => {
+    historyRequestCount += 1;
+    const url = new URL(route.request().url());
+    const metric = url.searchParams.get('metric')!;
+    const unit = metric.endsWith('.co2') ? 'ppm' : metric.endsWith('.temperature') ? '°F' : metric.endsWith('.humidity') ? '%' : 'µg/m³';
+    const values = metric.endsWith('.co2') ? [640, 720, 680] : metric.endsWith('.temperature') ? [70, 72, 71] : metric.endsWith('.humidity') ? [42, 44, 43] : [3, 5, 4];
+    const body = {
+      requestId: 'e2e-history-request',
+      data: {
+        metric,
+        unit,
+        window: url.searchParams.get('window'),
+        points: values.map((value, index) => ({ timestamp: `2026-07-25T0${index}:00:00.000Z`, value })),
+        metadata: { source: 'fixture', observedAt: '2026-07-25T02:00:00.000Z', freshness: 'CURRENT', severity: 'OK' },
+      },
+    };
+    const parsed = HistoryResponseSchema.safeParse(body);
+    expect(parsed.success ? [] : parsed.error.issues).toEqual([]);
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(body),
+    });
+  });
   await page.route('**/api/v1/indoor/actions', async (route) => {
     const body = route.request().postDataJSON();
     expect(body.confirmed).toBe(true);
@@ -81,6 +107,15 @@ test('renders the responsive indoor dashboard and requires review before control
   await expect(page.getByRole('heading', { name: 'Indoor environment' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Living Room Coway' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Bedroom Coway' })).toBeVisible();
+  await expect.poll(() => historyRequestCount).toBe(4);
+  const co2Graph = page.getByRole('img', { name: /CO₂, 1h/ });
+  await expect(co2Graph).toBeVisible();
+  await co2Graph.hover({ position: { x: 120, y: 60 } });
+  await expect(co2Graph.locator('.history-tooltip')).toContainText('ppm');
+  await expect(co2Graph.locator('.history-crosshair')).toHaveCount(1);
+  await co2Graph.focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect(co2Graph.locator('.history-tooltip')).toContainText('ppm');
   expect(await page.evaluate(() => {
     const axis = document.createElement('div');
     axis.className = 'y-axis-labels';

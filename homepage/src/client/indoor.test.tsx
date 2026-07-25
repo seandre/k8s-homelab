@@ -52,9 +52,9 @@ describe('indoor dashboard', () => {
       min: 60, max: 80, step: 5, ticks: [60, 65, 70, 75, 80],
     });
     expect(computeHistoryDomain([800, 1050], {
-      fixedMin: 400, fixedMax: 1200, ticks: [400, 600, 800, 1000, 1200],
+      fixedMin: 400, fixedMax: 1400, ticks: [400, 600, 800, 1000, 1200, 1400],
     })).toEqual({
-      min: 400, max: 1200, step: 200, ticks: [400, 600, 800, 1000, 1200],
+      min: 400, max: 1400, step: 200, ticks: [400, 600, 800, 1000, 1200, 1400],
     });
   });
 
@@ -77,6 +77,7 @@ describe('indoor dashboard', () => {
     expect(markup).toContain('60');
     expect(markup).toContain('80');
     expect(markup).toContain('y-axis-labels');
+    expect(markup).toContain('x-axis-grid');
     expect(markup).toContain('12:00 PM');
     expect(markup).toContain('Current');
   });
@@ -85,7 +86,7 @@ describe('indoor dashboard', () => {
     const markup = renderToStaticMarkup(<HistoryGraph
       label="CO₂"
       thresholds={[{ value: 900, tone: 'yellow' }, { value: 1000, tone: 'red' }]}
-      scale={{ fixedMin: 400, fixedMax: 1200, ticks: [400, 600, 800, 1000, 1200] }}
+      scale={{ fixedMin: 400, fixedMax: 1400, ticks: [400, 600, 800, 1000, 1200, 1400] }}
       series={{
         metric: 'aranet_living_room.co2',
         unit: 'ppm',

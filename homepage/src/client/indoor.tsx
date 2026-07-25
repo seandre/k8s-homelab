@@ -59,7 +59,21 @@ function historyTimeLabel(timestamp: string, window: TimeSeries['window']) {
   return new Intl.DateTimeFormat('en-US', { ...options, timeZone: 'America/Los_Angeles' }).format(date);
 }
 
+function historyTooltipTime(timestamp: string) {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+    timeZone: 'America/Los_Angeles',
+  }).format(new Date(timestamp));
+}
+
 export function HistoryGraph({ series, label, thresholds, scale }: { series: TimeSeries | undefined; label: string; thresholds: HistoryThreshold[]; scale: HistoryScale }) {
+  const plot = useRef<HTMLDivElement>(null);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   if (!series || series.points.length === 0) return <div className="indoor-no-data" role="status">NO DATA · {label}</div>;
   const values = series.points.map((point) => point.value);
   const { min, max, ticks } = computeHistoryDomain(values, scale);
@@ -76,6 +90,21 @@ export function HistoryGraph({ series, label, thresholds, scale }: { series: Tim
     const x = values.length === 1 ? (plotLeft + plotRight) / 2 : plotLeft + ((Date.parse(point.timestamp) - firstTimestamp) / timeRange) * (plotRight - plotLeft);
     return { x, y: y(point.value) };
   });
+  const xTicks = Array.from({ length: 5 }, (_, index) => {
+    const ratio = index / 4;
+    const timestamp = new Date(firstTimestamp + timeRange * ratio).toISOString();
+    return { x: plotLeft + ratio * (plotRight - plotLeft), timestamp };
+  });
+  const hoveredPoint = hoveredIndex === null ? null : series.points[hoveredIndex]!;
+  const hoveredChartPoint = hoveredIndex === null ? null : chartPoints[hoveredIndex]!;
+  const selectNearestPoint = (clientX: number) => {
+    const bounds = plot.current?.getBoundingClientRect();
+    if (!bounds) return;
+    const x = Math.min(Math.max((clientX - bounds.left) / bounds.width, 0), 1) * 100;
+    const nearest = chartPoints.reduce((best, point, index) =>
+      Math.abs(point.x - x) < Math.abs(chartPoints[best]!.x - x) ? index : best, 0);
+    setHoveredIndex(nearest);
+  };
   const points = chartPoints.map((point) => `${point.x},${point.y}`).join(' ');
   const smoothMetric = [
     'aranet_living_room.temperature',
@@ -95,19 +124,49 @@ export function HistoryGraph({ series, label, thresholds, scale }: { series: Tim
             return <span key={value} className={`y-axis-label${threshold ? ` y-axis-label-threshold threshold-tone-${threshold.tone}` : ''}`} style={{ top: `${y(value)}%` }}>{valueLabel(value)}</span>;
           })}
         </div>
-        <svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={summary}>
-          {ticks.map((value) => <line key={value} x1={plotLeft} x2={plotRight} y1={y(value)} y2={y(value)} className="y-axis-grid" />)}
-          <line x1={plotLeft} x2={plotLeft} y1={plotTop} y2={plotBottom} className="y-axis-line" />
-          {thresholds.filter(({ value }) => value >= min && value <= max).map(({ value, tone }) =>
-            <line key={value} x1={plotLeft} x2={plotRight} y1={y(value)} y2={y(value)} className={`threshold-line threshold-tone-${tone}`} />,
-          )}
-          {smoothMetric
-            ? <path d={smoothSvgPath(chartPoints)} className="history-line history-line-smoothed" vectorEffect="non-scaling-stroke" />
-            : <polyline points={points} className="history-line" vectorEffect="non-scaling-stroke" />}
-        </svg>
+        <div
+          ref={plot}
+          className="history-plot"
+          role="img"
+          tabIndex={0}
+          aria-label={summary}
+          onPointerMove={(event) => selectNearestPoint(event.clientX)}
+          onPointerLeave={() => setHoveredIndex(null)}
+          onFocus={() => setHoveredIndex((current) => current ?? series.points.length - 1)}
+          onBlur={() => setHoveredIndex(null)}
+          onKeyDown={(event) => {
+            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+            event.preventDefault();
+            const direction = event.key === 'ArrowLeft' ? -1 : 1;
+            setHoveredIndex((current) => Math.min(Math.max((current ?? series.points.length - 1) + direction, 0), series.points.length - 1));
+          }}
+        >
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            {ticks.map((value) => <line key={value} x1={plotLeft} x2={plotRight} y1={y(value)} y2={y(value)} className="y-axis-grid" />)}
+            {xTicks.map(({ x }) => <line key={x} x1={x} x2={x} y1={plotTop} y2={plotBottom} className="x-axis-grid" />)}
+            <line x1={plotLeft} x2={plotLeft} y1={plotTop} y2={plotBottom} className="y-axis-line" />
+            {thresholds.filter(({ value }) => value >= min && value <= max).map(({ value, tone }) =>
+              <line key={value} x1={plotLeft} x2={plotRight} y1={y(value)} y2={y(value)} className={`threshold-line threshold-tone-${tone}`} />,
+            )}
+            {smoothMetric
+              ? <path d={smoothSvgPath(chartPoints)} className="history-line history-line-smoothed" vectorEffect="non-scaling-stroke" />
+              : <polyline points={points} className="history-line" vectorEffect="non-scaling-stroke" />}
+            {hoveredChartPoint ? <>
+              <line x1={hoveredChartPoint.x} x2={hoveredChartPoint.x} y1={plotTop} y2={plotBottom} className="history-crosshair" />
+              <circle cx={hoveredChartPoint.x} cy={hoveredChartPoint.y} r="1.35" className="history-hover-point" vectorEffect="non-scaling-stroke" />
+            </> : null}
+          </svg>
+          {hoveredPoint && hoveredChartPoint ? <div
+            className={`history-tooltip${hoveredChartPoint.x > 62 ? ' history-tooltip-left' : ''}`}
+            style={{ left: `${hoveredChartPoint.x}%`, top: `${Math.min(Math.max(hoveredChartPoint.y, 18), 72)}%` }}
+            role="status"
+          >
+            <strong>{historyTooltipTime(hoveredPoint.timestamp)}</strong>
+            <span><i aria-hidden="true" />{valueLabel(hoveredPoint.value)} {series.unit}</span>
+          </div> : null}
+        </div>
         <div className="x-axis-labels" aria-hidden="true">
-          <span>{historyTimeLabel(series.points[0]!.timestamp, series.window)}</span>
-          <span>Current</span>
+          {xTicks.map(({ x, timestamp }, index) => <span key={x} style={{ left: `${x}%` }}>{index === xTicks.length - 1 ? 'Current' : historyTimeLabel(timestamp, series.window)}</span>)}
         </div>
       </div>
     </figure>
@@ -180,7 +239,7 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
   const metrics = useMemo<HistoryMetric[]>(() => [
     { alias: 'aranet_living_room.temperature', label: 'Temperature', thresholds: [{ value: 60, tone: 'blue' }, { value: 80, tone: 'red' }], scale: { fixedMin: 60, fixedMax: 80, ticks: [60, 65, 70, 75, 80], digits: 0 } },
     { alias: 'aranet_living_room.humidity', label: 'Humidity', thresholds: [{ value: 20, tone: 'dark-blue' }, { value: 30, tone: 'light-blue' }, { value: 60, tone: 'light-blue' }, { value: 70, tone: 'dark-blue' }], scale: { fixedMin: 0, fixedMax: 100, ticks: [0, 20, 40, 60, 80, 100], digits: 0 } },
-    { alias: 'aranet_living_room.co2', label: 'CO₂', thresholds: [{ value: 900, tone: 'yellow' }, { value: 1000, tone: 'red' }], scale: { fixedMin: 400, fixedMax: 1200, ticks: [400, 600, 800, 1000, 1200], digits: 0 } },
+    { alias: 'aranet_living_room.co2', label: 'CO₂', thresholds: [{ value: 900, tone: 'yellow' }, { value: 1000, tone: 'red' }], scale: { fixedMin: 400, fixedMax: 1400, ticks: [400, 600, 800, 1000, 1200, 1400], digits: 0 } },
     { alias: 'coway_living_room.pm25', label: 'Living Room PM2.5', thresholds: [{ value: 5, tone: 'yellow' }, { value: 15, tone: 'red' }], scale: { minSpan: 20, hardMin: 0, digits: 0 } },
   ], []);
   useEffect(() => {
