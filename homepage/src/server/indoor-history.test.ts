@@ -20,4 +20,19 @@ describe('indoor history adapter', () => {
     expect(isIndoorHistoryAlias('sensor.indoor_aranet_co2')).toBe(false);
     expect(isIndoorHistoryAlias('aranet_living_room.co2')).toBe(true);
   });
+
+  it('normalizes Prometheus temperature samples from Celsius to Fahrenheit', async () => {
+    const adapter = new IndoorHistoryAdapter('http://prometheus.test:9090', async () => ({
+      ok: true,
+      json: async () => ({
+        status: 'success',
+        data: { resultType: 'matrix', result: [{ values: [[1784908800, '-5.2'], [1784908860, '22.5'], [1784908920, '24.9']] }] },
+      }),
+    }));
+    const series = await adapter.read('aranet_living_room.temperature', '1h');
+    expect(series).toMatchObject({
+      unit: '°F',
+      points: [{ value: 72.5 }, { value: 76.82 }],
+    });
+  });
 });

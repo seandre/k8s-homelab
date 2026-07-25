@@ -354,15 +354,16 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .indoor-history-graph { min-width: 0; margin: 0; border: 1px solid var(--divider); background: var(--surface); padding: 0.55rem; }
 .indoor-history-graph figcaption { display: flex; justify-content: space-between; gap: 0.5rem; color: var(--muted); font-size: 0.62rem; }
 .indoor-history-graph figcaption strong { color: var(--title); }
-.history-chart { display: grid; grid-template-columns: 3.2rem minmax(0, 1fr); height: 9rem; margin-top: 0.4rem; }
+.history-chart { display: grid; grid-template: minmax(9rem, 1fr) 1.15rem / 3.2rem minmax(0, 1fr); margin-top: 0.4rem; }
 .history-chart svg { width: 100%; height: 100%; overflow: visible; }
-.history-line { fill: none; stroke: var(--focus); stroke-width: 1.6; }
+.history-line { fill: none; stroke: var(--focus); stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
 .y-axis-labels { position: relative; min-width: 0; color: var(--muted); font: 0.55rem/1 var(--mono); }
 .y-axis-label { position: absolute; right: 0.45rem; translate: 0 -50%; white-space: nowrap; }
 .y-axis-unit { position: absolute; top: 0; left: 0; color: var(--muted); font-size: 0.5rem; white-space: nowrap; }
 .y-axis-line { stroke: var(--muted); stroke-width: 0.55; vector-effect: non-scaling-stroke; }
 .y-axis-grid { stroke: var(--divider); stroke-width: 0.45; vector-effect: non-scaling-stroke; }
 .threshold-line { stroke: var(--warn); stroke-width: 0.55; stroke-dasharray: 2 2; vector-effect: non-scaling-stroke; }
+.x-axis-labels { display: flex; grid-column: 2; justify-content: space-between; padding-top: 0.25rem; color: var(--muted); font: 0.52rem/1 var(--mono); }
 .indoor-no-data { display: grid; place-items: center; min-height: 11.5rem; border: 1px solid var(--divider); color: var(--muted); font-size: 0.64rem; }
 .purifier-grid { margin-top: 1rem; }
 .indoor-action-status { display: grid; gap: 0.35rem; margin-top: 1rem; }

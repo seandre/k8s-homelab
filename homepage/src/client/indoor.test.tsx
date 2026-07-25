@@ -3,7 +3,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { healthyBootstrapFixture } from '../shared/fixtures.js';
 import { unsupportedIndoorFixture } from '../shared/indoor-fixtures.js';
-import { IndoorOverviewCard, IndoorScreen } from './indoor.js';
+import { computeHistoryDomain } from './indoor-chart.js';
+import { HistoryGraph, IndoorOverviewCard, IndoorScreen } from './indoor.js';
 
 describe('indoor dashboard', () => {
   it('renders normalized readings, both purifiers, history windows, and capability controls', () => {
@@ -33,5 +34,39 @@ describe('indoor dashboard', () => {
     expect(markup).toContain('WORST PM2.5');
     expect(markup).toContain('Open indoor dashboard');
     expect(markup).toContain('href="/indoor"');
+  });
+
+  it('uses compact, readable chart domains with six evenly spaced ticks', () => {
+    expect(computeHistoryDomain([72.3, 76.8], { minSpan: 10 })).toEqual({
+      min: 70, max: 80, step: 2, ticks: [70, 72, 74, 76, 78, 80],
+    });
+    expect(computeHistoryDomain([46, 52], { minSpan: 20, hardMin: 0, hardMax: 100 })).toEqual({
+      min: 40, max: 60, step: 4, ticks: [40, 44, 48, 52, 56, 60],
+    });
+    expect(computeHistoryDomain([1, 3], { minSpan: 10, hardMin: 0 })).toEqual({
+      min: 0, max: 10, step: 2, ticks: [0, 2, 4, 6, 8, 10],
+    });
+  });
+
+  it('renders proportional y-axis labels and real history-window endpoints', () => {
+    const markup = renderToStaticMarkup(<HistoryGraph
+      label="Temperature"
+      thresholds={[55, 60, 80, 85]}
+      scale={{ minSpan: 10 }}
+      series={{
+        metric: 'aranet_living_room.temperature',
+        unit: '°F',
+        window: '24h',
+        points: [
+          { timestamp: '2026-07-24T19:00:00.000Z', value: 72.5 },
+          { timestamp: '2026-07-25T00:30:00.000Z', value: 76.8 },
+        ],
+        metadata: { source: 'fixture', observedAt: '2026-07-25T00:30:00.000Z', freshness: 'CURRENT', severity: 'OK' },
+      }}
+    />);
+    expect(markup).toContain('70');
+    expect(markup).toContain('80');
+    expect(markup).toContain('12:00 PM');
+    expect(markup).toContain('5:30 PM');
   });
 });

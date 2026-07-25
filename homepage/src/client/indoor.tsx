@@ -4,6 +4,7 @@ import type {
 } from '../shared/contracts.js';
 import { HistoryResponseSchema, IndoorActionAcceptedSchema } from '../shared/contracts.js';
 import { Metric, Panel, StateBadge } from './components.js';
+import { computeHistoryDomain, type HistoryScale } from './indoor-chart.js';
 
 const WINDOWS = ['1h', '24h', '7d', '30d'] as const;
 type Window = typeof WINDOWS[number];
@@ -45,30 +46,42 @@ export function IndoorOverviewCard({ indoor }: { indoor: IndoorState }) {
   );
 }
 
-type HistoryScale = { min: number; max: number; step: number };
+function historyTimeLabel(timestamp: string, window: TimeSeries['window']) {
+  const date = new Date(timestamp);
+  const options: Intl.DateTimeFormatOptions = window === '30d'
+    ? { month: 'short', day: 'numeric' }
+    : window === '7d'
+      ? { weekday: 'short', hour: 'numeric' }
+      : { hour: 'numeric', minute: '2-digit' };
+  return new Intl.DateTimeFormat('en-US', { ...options, timeZone: 'America/Los_Angeles' }).format(date);
+}
 
-function HistoryGraph({ series, label, thresholds, scale }: { series: TimeSeries | undefined; label: string; thresholds: number[]; scale: HistoryScale }) {
+export function HistoryGraph({ series, label, thresholds, scale }: { series: TimeSeries | undefined; label: string; thresholds: number[]; scale: HistoryScale }) {
   if (!series || series.points.length === 0) return <div className="indoor-no-data" role="status">NO DATA · {label}</div>;
   const values = series.points.map((point) => point.value);
-  const min = Math.min(scale.min, ...values);
-  const max = Math.max(scale.max, ...values);
-  const range = Math.max(max - min, 1);
+  const { min, max, ticks } = computeHistoryDomain(values, scale);
+  const range = max - min;
   const plotLeft = 0;
   const plotRight = 100;
   const plotTop = 8;
   const plotBottom = 92;
   const y = (value: number) => plotBottom - ((value - min) / range) * (plotBottom - plotTop);
-  const points = values.map((value, index) => `${values.length === 1 ? (plotLeft + plotRight) / 2 : plotLeft + (index / (values.length - 1)) * (plotRight - plotLeft)},${y(value)}`).join(' ');
-  const ticks: number[] = [];
-  for (let value = Math.ceil(min / scale.step) * scale.step; value <= max; value += scale.step) ticks.push(value);
+  const firstTimestamp = Date.parse(series.points[0]!.timestamp);
+  const lastTimestamp = Date.parse(series.points.at(-1)!.timestamp);
+  const timeRange = Math.max(lastTimestamp - firstTimestamp, 1);
+  const points = series.points.map((point) => {
+    const x = values.length === 1 ? (plotLeft + plotRight) / 2 : plotLeft + ((Date.parse(point.timestamp) - firstTimestamp) / timeRange) * (plotRight - plotLeft);
+    return `${x},${y(point.value)}`;
+  }).join(' ');
+  const valueLabel = (value: number) => value.toFixed(scale.digits ?? 0);
   const summary = `${label}, ${series.window}, ${values.length} samples, latest ${values.at(-1)} ${series.unit}. Thresholds ${thresholds.join(', ')} ${series.unit}.`;
   return (
     <figure className="indoor-history-graph">
-      <figcaption><strong>{label}</strong><span>{values.at(-1)} {series.unit}</span></figcaption>
+      <figcaption><strong>{label}</strong><span>{valueLabel(values.at(-1)!)} {series.unit}</span></figcaption>
       <div className="history-chart">
         <div className="y-axis-labels" aria-hidden="true">
           <span className="y-axis-unit">{series.unit}</span>
-          {ticks.map((value) => <span key={value} className="y-axis-label" style={{ top: `${y(value)}%` }}>{value}</span>)}
+          {ticks.map((value) => <span key={value} className="y-axis-label" style={{ top: `${y(value)}%` }}>{valueLabel(value)}</span>)}
         </div>
         <svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={summary}>
           {ticks.map((value) => <line key={value} x1={plotLeft} x2={plotRight} y1={y(value)} y2={y(value)} className="y-axis-grid" />)}
@@ -78,6 +91,10 @@ function HistoryGraph({ series, label, thresholds, scale }: { series: TimeSeries
           )}
           <polyline points={points} className="history-line" vectorEffect="non-scaling-stroke" />
         </svg>
+        <div className="x-axis-labels" aria-hidden="true">
+          <span>{historyTimeLabel(series.points[0]!.timestamp, series.window)}</span>
+          <span>{historyTimeLabel(series.points.at(-1)!.timestamp, series.window)}</span>
+        </div>
       </div>
     </figure>
   );
@@ -147,10 +164,10 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
   const aranet = indoor.sensors[0];
   const thermostat = indoor.thermostats[0];
   const metrics = useMemo(() => [
-    { alias: 'aranet_living_room.temperature', label: 'Temperature', thresholds: [55, 60, 80, 85], scale: { min: 50, max: 90, step: 10 } },
-    { alias: 'aranet_living_room.humidity', label: 'Humidity', thresholds: [20, 30, 60, 70], scale: { min: 0, max: 100, step: 20 } },
-    { alias: 'aranet_living_room.co2', label: 'CO₂', thresholds: [900, 1000, 1500], scale: { min: 0, max: 2000, step: 500 } },
-    { alias: 'coway_living_room.pm25', label: 'Living Room PM2.5', thresholds: [10, 15, 35], scale: { min: 0, max: 40, step: 10 } },
+    { alias: 'aranet_living_room.temperature', label: 'Temperature', thresholds: [55, 60, 80, 85], scale: { minSpan: 10, digits: 0 } },
+    { alias: 'aranet_living_room.humidity', label: 'Humidity', thresholds: [20, 30, 60, 70], scale: { minSpan: 20, hardMin: 0, hardMax: 100, digits: 0 } },
+    { alias: 'aranet_living_room.co2', label: 'CO₂', thresholds: [900, 1000, 1500], scale: { minSpan: 500, hardMin: 0, digits: 0 } },
+    { alias: 'coway_living_room.pm25', label: 'Living Room PM2.5', thresholds: [10, 15, 35], scale: { minSpan: 10, hardMin: 0, digits: 0 } },
   ], []);
   useEffect(() => {
     let active = true;

@@ -39,6 +39,18 @@ export function isIndoorHistoryAlias(value: string): value is IndoorHistoryAlias
   return Object.hasOwn(catalog, value);
 }
 
+function normalizeHistoryValue(alias: IndoorHistoryAlias, rawValue: string) {
+  const value = Number(rawValue);
+  if (!Number.isFinite(value)) return null;
+  if (alias === 'aranet_living_room.temperature' || alias === 'nest_living_room.current_temperature') {
+    // Home Assistant's Prometheus exporter emits temperature samples in its
+    // canonical Celsius unit even when override_metric contains "fahrenheit".
+    const fahrenheit = value * 9 / 5 + 32;
+    return fahrenheit >= 40 && fahrenheit <= 120 ? Number(fahrenheit.toFixed(2)) : null;
+  }
+  return value;
+}
+
 export class IndoorHistoryAdapter {
   constructor(private readonly server: string, private readonly fetcher: IndoorHistoryFetch, private readonly now: () => Date = () => new Date()) {}
 
@@ -55,13 +67,17 @@ export class IndoorHistoryAdapter {
       if (!response.ok) return null;
       const parsed = ResponseSchema.parse(await response.json());
       const values = parsed.data.result[0]?.values ?? [];
+      const points = values.flatMap(([timestamp, rawValue]) => {
+        const value = normalizeHistoryValue(alias, rawValue);
+        return value === null ? [] : [{ timestamp: new Date(timestamp * 1_000).toISOString(), value }];
+      }).slice(-360);
       return {
         metric: alias, unit, window,
-        points: values.map(([timestamp, value]) => ({ timestamp: new Date(timestamp * 1_000).toISOString(), value: Number(value) })).filter((point) => Number.isFinite(point.value)).slice(-360),
+        points,
         metadata: {
           source: 'prometheus-indoor-history', observedAt: this.now().toISOString(),
-          freshness: values.length ? 'CURRENT' : 'NO_DATA', severity: values.length ? 'OK' : 'INFO',
-          ...(!values.length ? { message: 'No retained samples are available for this window.' } : {}),
+          freshness: points.length ? 'CURRENT' : 'NO_DATA', severity: points.length ? 'OK' : 'INFO',
+          ...(!points.length ? { message: 'No retained samples are available for this window.' } : {}),
         },
       };
     } catch {
