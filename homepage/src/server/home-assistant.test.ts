@@ -4,7 +4,7 @@ import { healthyBootstrapFixture } from '../shared/fixtures.js';
 import { HomeAssistantIndoorAdapter } from './home-assistant.js';
 
 const now = () => new Date('2026-07-24T12:00:00.000Z');
-const state = (entity_id: string, value: string, last_updated = '2026-07-24T11:59:30.000Z', last_reported?: string) => ({ entity_id, state: value, last_updated, ...(last_reported ? { last_reported } : {}), attributes: {} });
+const state = (entity_id: string, value: string, last_updated = '2026-07-24T11:59:30.000Z', last_reported?: string, attributes: Record<string, unknown> = {}) => ({ entity_id, state: value, last_updated, ...(last_reported ? { last_reported } : {}), attributes });
 
 describe('Home Assistant indoor adapter', () => {
   it('normalizes only fixed indoor aliases and never returns entity identifiers', async () => {
@@ -50,6 +50,25 @@ describe('Home Assistant indoor adapter', () => {
     expect((await adapter.read()).sensors[0].readings.co2).toMatchObject({
       value: 612,
       metadata: { observedAt: '2026-07-24T11:59:45.000Z', freshness: 'CURRENT', sourceState: 'AVAILABLE' },
+    });
+  });
+
+  it('honors the normalized Home Assistant freshness contract for stable values', async () => {
+    const adapter = new HomeAssistantIndoorAdapter('http://home-assistant.test:8123', 'token', async () => ({
+      ok: true,
+      json: async () => [
+        state('sensor.indoor_nest_temperature', '72.32', '2026-07-24T10:00:00.000Z', undefined, { freshness: 'CURRENT' }),
+        state('sensor.indoor_coway_living_room_pm25', '1', '2026-07-24T10:00:00.000Z', undefined, { freshness: 'CURRENT' }),
+      ],
+    }), now);
+    const indoor = await adapter.read();
+    expect(indoor.thermostats[0].currentTemperature).toMatchObject({
+      value: 72.32,
+      metadata: { observedAt: '2026-07-24T12:00:00.000Z', freshness: 'CURRENT', sourceState: 'AVAILABLE' },
+    });
+    expect(indoor.purifiers[0].readings.pm25).toMatchObject({
+      value: 1,
+      metadata: { observedAt: '2026-07-24T12:00:00.000Z', freshness: 'CURRENT', sourceState: 'AVAILABLE' },
     });
   });
 });
