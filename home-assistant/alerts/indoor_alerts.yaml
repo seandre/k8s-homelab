@@ -126,67 +126,55 @@ template:
         state: >-
           {% set mapped = states('input_text.indoor_map_aranet_co2') %}
           {% set obj = (expand(mapped) | first | default(none)) %}
-          {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
-          {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and
-             (as_timestamp(now()) - as_timestamp(reported)) <= 180 else none }}
+          {{ obj.state if obj and obj.state not in ['unknown','unavailable'] else none }}
         attributes:
           freshness: >-
             {% set mapped = states('input_text.indoor_map_aranet_co2') %}
             {% set obj = (expand(mapped) | first | default(none)) %}
-            {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
-            {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and
-               (as_timestamp(now()) - as_timestamp(reported)) <= 180 else 'UNAVAILABLE' }}
+            {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] else 'UNAVAILABLE' }}
       - name: Indoor Aranet temperature
         unique_id: indoor_aranet_temperature
         unit_of_measurement: "°F"
         state: >-
           {% set mapped = states('input_text.indoor_map_aranet_temperature') %}
           {% set obj = (expand(mapped) | first | default(none)) %}
-          {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
-          {% if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 180 %}
+          {% if obj and obj.state not in ['unknown','unavailable'] %}
             {{ ((obj.state | float) * 9 / 5 + 32) if obj.attributes.get('unit_of_measurement') == '°C' else (obj.state | float) }}
           {% else %}{{ none }}{% endif %}
         attributes:
           freshness: >-
             {% set obj = (expand(states('input_text.indoor_map_aranet_temperature')) | first | default(none)) %}
-            {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
-            {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 180 else 'UNAVAILABLE' }}
+            {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] else 'UNAVAILABLE' }}
       - name: Indoor Aranet humidity
         unique_id: indoor_aranet_humidity
         unit_of_measurement: "%"
         state: >-
           {% set obj = (expand(states('input_text.indoor_map_aranet_humidity')) | first | default(none)) %}
-          {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
-          {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 180 else none }}
+          {{ obj.state if obj and obj.state not in ['unknown','unavailable'] else none }}
         attributes:
           freshness: >-
             {% set obj = (expand(states('input_text.indoor_map_aranet_humidity')) | first | default(none)) %}
-            {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
-            {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 180 else 'UNAVAILABLE' }}
+            {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] else 'UNAVAILABLE' }}
       - name: Indoor Aranet pressure
         unique_id: indoor_aranet_pressure
         unit_of_measurement: "hPa"
         state: >-
           {% set obj = (expand(states('input_text.indoor_map_aranet_pressure')) | first | default(none)) %}
-          {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
-          {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 180 else none }}
+          {{ obj.state if obj and obj.state not in ['unknown','unavailable'] else none }}
         attributes:
           freshness: >-
             {% set obj = (expand(states('input_text.indoor_map_aranet_pressure')) | first | default(none)) %}
-            {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
-            {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 180 else 'UNAVAILABLE' }}
+            {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] else 'UNAVAILABLE' }}
       - name: Indoor Aranet battery
         unique_id: indoor_aranet_battery
         unit_of_measurement: "%"
         state: >-
           {% set obj = (expand(states('input_text.indoor_map_aranet_battery')) | first | default(none)) %}
-          {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
-          {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 180 else none }}
+          {{ obj.state if obj and obj.state not in ['unknown','unavailable'] else none }}
         attributes:
           freshness: >-
             {% set obj = (expand(states('input_text.indoor_map_aranet_battery')) | first | default(none)) %}
-            {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
-            {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 180 else 'UNAVAILABLE' }}
+            {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] else 'UNAVAILABLE' }}
       - name: Indoor Nest temperature
         unique_id: indoor_nest_temperature
         unit_of_measurement: "°F"
@@ -928,7 +916,7 @@ automation:
     trigger:
       - platform: template
         value_template: >-
-          {% set obj = (expand(states('input_text.indoor_map_aranet_co2')) | first | default(none)) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > 180 }}
+          {% set obj = (expand(states('input_text.indoor_map_aranet_co2')) | first | default(none)) %}{{ not obj or obj.state in ['unknown','unavailable'] }}
         for: "00:05:00"
     condition: "{{ states('input_select.indoor_alert_source_aranet') == 'ok' }}"
     action:
@@ -943,7 +931,7 @@ automation:
     trigger:
       - platform: template
         value_template: >-
-          {% set obj = (expand(states('input_text.indoor_map_aranet_co2')) | first | default(none)) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > 180 }}
+          {% set obj = (expand(states('input_text.indoor_map_aranet_co2')) | first | default(none)) %}{{ not obj or obj.state in ['unknown','unavailable'] }}
         for: "00:30:00"
     condition: "{{ states('input_select.indoor_alert_source_aranet') != 'critical' }}"
     action:
@@ -962,7 +950,7 @@ automation:
     trigger:
       - platform: template
         value_template: >-
-          {% set obj = (expand(states('input_text.indoor_map_aranet_co2')) | first | default(none)) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 180 }}
+          {% set obj = (expand(states('input_text.indoor_map_aranet_co2')) | first | default(none)) %}{{ obj and obj.state not in ['unknown','unavailable'] }}
         for: "00:05:00"
     condition: "{{ states('input_select.indoor_alert_source_aranet') != 'ok' }}"
     action:

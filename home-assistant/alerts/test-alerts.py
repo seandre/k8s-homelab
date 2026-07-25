@@ -61,13 +61,25 @@ assert "target: local" in package
 assert "last_reported | default(obj.last_updated, true)" in package
 assert not re.search(r"as_timestamp\((?:obj|a|b)\.last_updated\)", package)
 
-numeric_names = [
+availability_names = [
     "Indoor Aranet CO2", "Indoor Aranet temperature", "Indoor Aranet humidity",
-    "Indoor Aranet battery", "Indoor Coway Living Room PM25",
+    "Indoor Aranet pressure", "Indoor Aranet battery",
+]
+for name in availability_names:
+    start = package.index(f"- name: {name}")
+    end = package.find("      - name:", start + 1)
+    block = package[start:end if end != -1 else package.index("automation:", start)]
+    state_block = block.split("attributes:", 1)[0]
+    assert "state not in ['unknown','unavailable']" in state_block, name
+    assert "as_timestamp(now())" not in block, name
+    assert "else none" in state_block or "{% else %}{{ none }}" in state_block, name
+
+timestamp_names = [
+    "Indoor Coway Living Room PM25",
     "Indoor Coway Bedroom PM25", "Indoor Coway Living Room filter life",
     "Indoor Coway Bedroom filter life",
 ]
-for name in numeric_names:
+for name in timestamp_names:
     start = package.index(f"- name: {name}")
     end = package.find("      - name:", start + 1)
     block = package[start:end if end != -1 else package.index("automation:", start)]
