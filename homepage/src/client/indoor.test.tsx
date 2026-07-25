@@ -51,6 +51,11 @@ describe('indoor dashboard', () => {
     })).toEqual({
       min: 60, max: 80, step: 5, ticks: [60, 65, 70, 75, 80],
     });
+    expect(computeHistoryDomain([800, 1050], {
+      fixedMin: 400, fixedMax: 1200, ticks: [400, 600, 800, 1000, 1200],
+    })).toEqual({
+      min: 400, max: 1200, step: 200, ticks: [400, 600, 800, 1000, 1200],
+    });
   });
 
   it('renders proportional y-axis labels and real history-window endpoints', () => {
@@ -71,7 +76,7 @@ describe('indoor dashboard', () => {
     />);
     expect(markup).toContain('60');
     expect(markup).toContain('80');
-    expect(markup).toContain('y-axis-labels-temperature');
+    expect(markup).toContain('y-axis-labels');
     expect(markup).toContain('12:00 PM');
     expect(markup).toContain('Current');
   });

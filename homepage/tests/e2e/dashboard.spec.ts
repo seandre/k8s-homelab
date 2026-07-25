@@ -83,7 +83,7 @@ test('renders the responsive indoor dashboard and requires review before control
   await expect(page.getByRole('heading', { name: 'Bedroom Coway' })).toBeVisible();
   expect(await page.evaluate(() => {
     const axis = document.createElement('div');
-    axis.className = 'y-axis-labels y-axis-labels-temperature';
+    axis.className = 'y-axis-labels';
     const number = document.createElement('span');
     number.className = 'y-axis-label';
     number.textContent = '1000';
