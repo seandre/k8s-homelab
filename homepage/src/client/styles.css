@@ -354,13 +354,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .indoor-history-graph { min-width: 0; margin: 0; border: 1px solid var(--divider); background: var(--surface); padding: 0.55rem; }
 .indoor-history-graph figcaption { display: flex; justify-content: space-between; gap: 0.5rem; color: var(--muted); font-size: 0.62rem; }
 .indoor-history-graph figcaption strong { color: var(--title); }
-.indoor-history-graph svg { width: 100%; height: 9rem; margin-top: 0.4rem; overflow: visible; }
+.history-chart { display: grid; grid-template-columns: 3.2rem minmax(0, 1fr); height: 9rem; margin-top: 0.4rem; }
+.history-chart svg { width: 100%; height: 100%; overflow: visible; }
 .history-line { fill: none; stroke: var(--focus); stroke-width: 1.6; }
+.y-axis-labels { position: relative; min-width: 0; color: var(--muted); font: 0.55rem/1 var(--mono); }
+.y-axis-label { position: absolute; right: 0.45rem; translate: 0 -50%; white-space: nowrap; }
+.y-axis-unit { position: absolute; top: 0; left: 0; color: var(--muted); font-size: 0.5rem; white-space: nowrap; }
 .y-axis-line { stroke: var(--muted); stroke-width: 0.55; vector-effect: non-scaling-stroke; }
-.y-axis-tick line { stroke: var(--divider); stroke-width: 0.45; vector-effect: non-scaling-stroke; }
-.y-axis-tick text, .y-axis-unit, .threshold-marker text { fill: var(--muted); font-size: 4px; font-family: var(--mono); text-anchor: end; dominant-baseline: middle; }
-.y-axis-unit { text-anchor: start; dominant-baseline: hanging; }
-.threshold-marker text { fill: var(--warn); text-anchor: start; dominant-baseline: auto; }
+.y-axis-grid { stroke: var(--divider); stroke-width: 0.45; vector-effect: non-scaling-stroke; }
 .threshold-line { stroke: var(--warn); stroke-width: 0.55; stroke-dasharray: 2 2; vector-effect: non-scaling-stroke; }
 .indoor-no-data { display: grid; place-items: center; min-height: 11.5rem; border: 1px solid var(--divider); color: var(--muted); font-size: 0.64rem; }
 .purifier-grid { margin-top: 1rem; }

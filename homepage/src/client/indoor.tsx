@@ -53,8 +53,8 @@ function HistoryGraph({ series, label, thresholds, scale }: { series: TimeSeries
   const min = Math.min(scale.min, ...values);
   const max = Math.max(scale.max, ...values);
   const range = Math.max(max - min, 1);
-  const plotLeft = 22;
-  const plotRight = 118;
+  const plotLeft = 0;
+  const plotRight = 100;
   const plotTop = 8;
   const plotBottom = 92;
   const y = (value: number) => plotBottom - ((value - min) / range) * (plotBottom - plotTop);
@@ -65,19 +65,20 @@ function HistoryGraph({ series, label, thresholds, scale }: { series: TimeSeries
   return (
     <figure className="indoor-history-graph">
       <figcaption><strong>{label}</strong><span>{values.at(-1)} {series.unit}</span></figcaption>
-      <svg viewBox="0 0 120 100" preserveAspectRatio="none" role="img" aria-label={summary}>
-        <text x="1" y="5" className="y-axis-unit">{series.unit}</text>
-        {ticks.map((value) => <g key={value} className="y-axis-tick">
-          <line x1={plotLeft} x2={plotRight} y1={y(value)} y2={y(value)} />
-          <text x={plotLeft - 2} y={y(value)}>{value}</text>
-        </g>)}
-        <line x1={plotLeft} x2={plotLeft} y1={plotTop} y2={plotBottom} className="y-axis-line" />
-        {thresholds.filter((value) => value >= min && value <= max).map((value) => <g key={value} className="threshold-marker">
-          <line x1={plotLeft} x2={plotRight} y1={y(value)} y2={y(value)} className="threshold-line" />
-          <text x={plotLeft + 1} y={y(value) - 1}>{value}</text>
-        </g>)}
-        <polyline points={points} className="history-line" vectorEffect="non-scaling-stroke" />
-      </svg>
+      <div className="history-chart">
+        <div className="y-axis-labels" aria-hidden="true">
+          <span className="y-axis-unit">{series.unit}</span>
+          {ticks.map((value) => <span key={value} className="y-axis-label" style={{ top: `${y(value)}%` }}>{value}</span>)}
+        </div>
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={summary}>
+          {ticks.map((value) => <line key={value} x1={plotLeft} x2={plotRight} y1={y(value)} y2={y(value)} className="y-axis-grid" />)}
+          <line x1={plotLeft} x2={plotLeft} y1={plotTop} y2={plotBottom} className="y-axis-line" />
+          {thresholds.filter((value) => value >= min && value <= max).map((value) =>
+            <line key={value} x1={plotLeft} x2={plotRight} y1={y(value)} y2={y(value)} className="threshold-line" />,
+          )}
+          <polyline points={points} className="history-line" vectorEffect="non-scaling-stroke" />
+        </svg>
+      </div>
     </figure>
   );
 }
