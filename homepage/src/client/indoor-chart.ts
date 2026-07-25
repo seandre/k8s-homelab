@@ -8,6 +8,30 @@ export type HistoryScale = {
   digits?: number;
 };
 
+export type ChartPoint = { x: number; y: number };
+
+export function smoothSvgPath(points: ChartPoint[], tension = 0.65) {
+  if (points.length === 0) return '';
+  const format = (value: number) => Number(value.toFixed(3));
+  let path = `M ${format(points[0]!.x)},${format(points[0]!.y)}`;
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const previous = points[index - 1] ?? points[index]!;
+    const current = points[index]!;
+    const next = points[index + 1]!;
+    const following = points[index + 2] ?? next;
+    const control1 = {
+      x: current.x + (next.x - previous.x) * tension / 6,
+      y: current.y + (next.y - previous.y) * tension / 6,
+    };
+    const control2 = {
+      x: next.x - (following.x - current.x) * tension / 6,
+      y: next.y - (following.y - current.y) * tension / 6,
+    };
+    path += ` C ${format(control1.x)},${format(control1.y)} ${format(control2.x)},${format(control2.y)} ${format(next.x)},${format(next.y)}`;
+  }
+  return path;
+}
+
 function niceStep(minimum: number) {
   const magnitude = 10 ** Math.floor(Math.log10(minimum));
   const normalized = minimum / magnitude;

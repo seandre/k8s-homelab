@@ -4,7 +4,7 @@ import type {
 } from '../shared/contracts.js';
 import { HistoryResponseSchema, IndoorActionAcceptedSchema } from '../shared/contracts.js';
 import { Metric, Panel, StateBadge } from './components.js';
-import { computeHistoryDomain, type HistoryScale } from './indoor-chart.js';
+import { computeHistoryDomain, smoothSvgPath, type HistoryScale } from './indoor-chart.js';
 
 const WINDOWS = ['1h', '24h', '7d', '30d'] as const;
 type Window = typeof WINDOWS[number];
@@ -69,10 +69,12 @@ export function HistoryGraph({ series, label, thresholds, scale }: { series: Tim
   const firstTimestamp = Date.parse(series.points[0]!.timestamp);
   const lastTimestamp = Date.parse(series.points.at(-1)!.timestamp);
   const timeRange = Math.max(lastTimestamp - firstTimestamp, 1);
-  const points = series.points.map((point) => {
+  const chartPoints = series.points.map((point) => {
     const x = values.length === 1 ? (plotLeft + plotRight) / 2 : plotLeft + ((Date.parse(point.timestamp) - firstTimestamp) / timeRange) * (plotRight - plotLeft);
-    return `${x},${y(point.value)}`;
-  }).join(' ');
+    return { x, y: y(point.value) };
+  });
+  const points = chartPoints.map((point) => `${point.x},${point.y}`).join(' ');
+  const smoothCo2 = series.metric === 'aranet_living_room.co2' && chartPoints.length > 2;
   const valueLabel = (value: number) => value.toFixed(scale.digits ?? 0);
   const summary = `${label}, ${series.window}, ${values.length} samples, latest ${values.at(-1)} ${series.unit}. Thresholds ${thresholds.join(', ')} ${series.unit}.`;
   return (
@@ -81,7 +83,7 @@ export function HistoryGraph({ series, label, thresholds, scale }: { series: Tim
       <div className="history-chart">
         <div className="y-axis-labels" aria-hidden="true">
           <span className="y-axis-unit">{series.unit}</span>
-          {ticks.map((value) => <span key={value} className="y-axis-label" style={{ top: `${y(value)}%` }}>{valueLabel(value)}</span>)}
+          {ticks.map((value) => <span key={value} className={`y-axis-label${thresholds.includes(value) ? ' y-axis-label-threshold' : ''}`} style={{ top: `${y(value)}%` }}>{valueLabel(value)}</span>)}
         </div>
         <svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={summary}>
           {ticks.map((value) => <line key={value} x1={plotLeft} x2={plotRight} y1={y(value)} y2={y(value)} className="y-axis-grid" />)}
@@ -89,7 +91,9 @@ export function HistoryGraph({ series, label, thresholds, scale }: { series: Tim
           {thresholds.filter((value) => value >= min && value <= max).map((value) =>
             <line key={value} x1={plotLeft} x2={plotRight} y1={y(value)} y2={y(value)} className="threshold-line" />,
           )}
-          <polyline points={points} className="history-line" vectorEffect="non-scaling-stroke" />
+          {smoothCo2
+            ? <path d={smoothSvgPath(chartPoints)} className="history-line history-line-smoothed" vectorEffect="non-scaling-stroke" />
+            : <polyline points={points} className="history-line" vectorEffect="non-scaling-stroke" />}
         </svg>
         <div className="x-axis-labels" aria-hidden="true">
           <span>{historyTimeLabel(series.points[0]!.timestamp, series.window)}</span>

@@ -360,10 +360,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .history-line { fill: none; stroke: var(--focus); stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
 .y-axis-labels { position: relative; min-width: 0; color: var(--muted); font: 400 0.62rem/1 var(--mono); letter-spacing: 0.06em; }
 .y-axis-label { position: absolute; right: 0.3rem; translate: 0 -50%; white-space: nowrap; }
+.y-axis-label-threshold { color: var(--warn); font-weight: 700; }
 .y-axis-unit { position: absolute; top: 0; left: 0; color: var(--muted); font-size: 6px; white-space: nowrap; }
 .y-axis-line { stroke: var(--muted); stroke-width: 0.55; vector-effect: non-scaling-stroke; }
 .y-axis-grid { stroke: var(--divider); stroke-width: 0.45; vector-effect: non-scaling-stroke; }
-.threshold-line { stroke: var(--warn); stroke-width: 0.55; stroke-dasharray: 2 2; vector-effect: non-scaling-stroke; }
+.threshold-line { stroke: var(--warn); stroke-width: 1; stroke-dasharray: 4 3; opacity: 0.9; vector-effect: non-scaling-stroke; }
 .x-axis-labels { display: flex; grid-column: 2; justify-content: space-between; padding-top: 0.25rem; color: var(--muted); font: 0.52rem/1 var(--mono); }
 .indoor-no-data { display: grid; place-items: center; min-height: 11.5rem; border: 1px solid var(--divider); color: var(--muted); font-size: 0.64rem; }
 .purifier-grid { margin-top: 1rem; }

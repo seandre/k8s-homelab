@@ -80,4 +80,26 @@ describe('indoor dashboard', () => {
     expect(markup).toContain('12:00 PM');
     expect(markup).toContain('Current');
   });
+
+  it('smooths only the CO₂ trace and emphasizes visible threshold ticks', () => {
+    const markup = renderToStaticMarkup(<HistoryGraph
+      label="CO₂"
+      thresholds={[900, 1000, 1500]}
+      scale={{ fixedMin: 400, fixedMax: 1200, ticks: [400, 600, 800, 1000, 1200] }}
+      series={{
+        metric: 'aranet_living_room.co2',
+        unit: 'ppm',
+        window: '1h',
+        points: [
+          { timestamp: '2026-07-25T00:00:00.000Z', value: 700 },
+          { timestamp: '2026-07-25T00:05:00.000Z', value: 900 },
+          { timestamp: '2026-07-25T00:10:00.000Z', value: 800 },
+        ],
+        metadata: { source: 'fixture', observedAt: '2026-07-25T00:10:00.000Z', freshness: 'CURRENT', severity: 'OK' },
+      }}
+    />);
+    expect(markup).toContain('<path');
+    expect(markup).toContain('history-line-smoothed');
+    expect(markup).toContain('y-axis-label-threshold');
+  });
 });
