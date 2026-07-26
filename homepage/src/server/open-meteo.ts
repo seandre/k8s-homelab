@@ -18,7 +18,7 @@ const NwsStationsSchema = z.object({
 });
 const NwsObservationSchema = z.object({
   properties: z.object({
-    timestamp: z.string().datetime(),
+    timestamp: z.string().datetime({ offset: true }),
     temperature: z.object({ value: z.number().nullable() }),
     textDescription: z.string().nullable(),
   }),
@@ -26,7 +26,7 @@ const NwsObservationSchema = z.object({
 const NwsForecastSchema = z.object({
   properties: z.object({
     periods: z.array(z.object({
-      startTime: z.string().datetime(),
+      startTime: z.string().datetime({ offset: true }),
       temperature: z.number(),
       temperatureUnit: z.enum(['F', 'C']),
       shortForecast: z.string(),
@@ -49,8 +49,8 @@ type ConditionsValue = {
   source: string;
   temperatureFahrenheit: number;
   condition: string;
-  sunrise: string;
-  sunset: string;
+  sunrise: string | null;
+  sunset: string | null;
 };
 type AirValue = {
   source: string;
@@ -224,21 +224,21 @@ export class OpenMeteoAdapter {
         // The independently fetched Open-Meteo result below is the outage fallback.
       }
       const openMeteoResult = await openMeteoPromise;
-      if (!openMeteoResult.value) throw openMeteoResult.error;
       const backup = openMeteoResult.value;
       const observation = nwsObservation?.properties;
       const forecast = nwsForecast?.properties.periods[0];
       const hasObservation = observation?.temperature.value !== null && observation?.temperature.value !== undefined;
-      const temperatureFahrenheit = hasObservation ? fahrenheit(observation!.temperature.value!) : forecast ? forecastTemperature(forecast.temperature, forecast.temperatureUnit) : backup.current.temperature_2m;
-      const condition = observation?.textDescription || forecast?.shortForecast || conditionFromCode(backup.current.weather_code);
+      if (!hasObservation && !forecast && !backup) throw openMeteoResult.error ?? new Error('No weather provider returned conditions.');
+      const temperatureFahrenheit = hasObservation ? fahrenheit(observation!.temperature.value!) : forecast ? forecastTemperature(forecast.temperature, forecast.temperatureUnit) : backup!.current.temperature_2m;
+      const condition = observation?.textDescription || forecast?.shortForecast || conditionFromCode(backup!.current.weather_code);
       const source = hasObservation ? 'nws-observation' : forecast ? 'nws-hourly-forecast' : 'open-meteo-fallback';
-      const sampledAt = hasObservation ? new Date(observation!.timestamp) : forecast ? new Date(forecast.startTime) : new Date(backup.current.time * 1_000);
+      const sampledAt = hasObservation ? new Date(observation!.timestamp) : forecast ? new Date(forecast.startTime) : new Date(backup!.current.time * 1_000);
       this.conditions.recordSuccess({
         source,
         temperatureFahrenheit,
         condition,
-        sunrise: isoFromUnix(backup.daily.sunrise[0]!),
-        sunset: isoFromUnix(backup.daily.sunset[0]!),
+        sunrise: backup ? isoFromUnix(backup.daily.sunrise[0]!) : null,
+        sunset: backup ? isoFromUnix(backup.daily.sunset[0]!) : null,
       }, sampledAt);
     } catch {
       this.conditions.recordFailure();

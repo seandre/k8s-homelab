@@ -13,8 +13,8 @@ function response(value: unknown, ok = true, status = ok ? 200 : 503): FetchResp
 
 const points = { properties: { observationStations: 'https://api.weather.gov/gridpoints/PQR/112,103/stations', forecastHourly: 'https://api.weather.gov/gridpoints/PQR/112,103/forecast/hourly' } };
 const stations = { features: [{ id: 'https://api.weather.gov/stations/KPDX' }] };
-const observation = { properties: { timestamp: '2026-07-19T12:00:00.000Z', temperature: { value: 20 }, textDescription: 'Mostly Cloudy' } };
-const forecast = { properties: { periods: [{ startTime: '2026-07-19T12:00:00.000Z', temperature: 67, temperatureUnit: 'F', shortForecast: 'Cloudy' }] } };
+const observation = { properties: { timestamp: '2026-07-19T05:00:00-07:00', temperature: { value: 20 }, textDescription: 'Mostly Cloudy' } };
+const forecast = { properties: { periods: [{ startTime: '2026-07-19T05:00:00-07:00', temperature: 67, temperatureUnit: 'F', shortForecast: 'Cloudy' }] } };
 const conditions = { current: { time: 1_774_182_400, temperature_2m: 68, weather_code: 2 }, daily: { sunrise: [1_774_160_000], sunset: [1_774_210_000] } };
 const air = { current: { time: 1_774_182_400, us_aqi: 24, pm2_5: 4.1, pm10: 12.3 } };
 const airNow = [{ ParameterName: 'PM2.5', AQI: 31 }, { ParameterName: 'O3', AQI: 22 }];
@@ -81,6 +81,20 @@ describe('weather provider chain', () => {
     expect(weather.condition).toBe('Cloudy');
     expect(weather.conditionsMetadata.source).toBe('nws-hourly-forecast');
     expect(diagnostics).toContainEqual({ provider: 'nws', operation: 'latest observation', reason: 'HTTP 503' });
+  });
+
+  it('keeps NWS conditions current when Open-Meteo sunrise data is rate-limited', async () => {
+    const calls: Array<{ url: string; headers?: Record<string, string> }> = [];
+    const weather = await new OpenMeteoAdapter({
+      fetch: providerFetch(calls, { conditions: response({}, false, 429) }),
+      latitude: 45.527412,
+      longitude: -122.686270,
+      enabled: true,
+      clock: mutableClock().clock,
+      diagnostic: () => undefined,
+    }).read();
+    expect(weather).toMatchObject({ temperatureFahrenheit: 68, condition: 'Mostly Cloudy', sunrise: null, sunset: null });
+    expect(weather.conditionsMetadata).toMatchObject({ source: 'nws-observation', freshness: 'CURRENT' });
   });
 
   it('uses Open-Meteo when NWS and an optional AirNow request fail', async () => {
