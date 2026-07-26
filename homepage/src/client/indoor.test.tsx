@@ -18,6 +18,9 @@ describe('indoor dashboard', () => {
     expect(markup).toContain('HVAC mode');
     expect(markup).toContain('Review power off');
     expect(markup).toContain('NO DATA · CO₂');
+    expect(markup.indexOf('NO DATA · CO₂')).toBeLessThan(markup.indexOf('NO DATA · Temperature'));
+    expect(markup.indexOf('NO DATA · Living Room PM2.5')).toBeLessThan(markup.indexOf('NO DATA · Humidity'));
+    expect(markup.indexOf('Bedroom Coway')).toBeLessThan(markup.indexOf('Living Room Nest'));
   });
 
   it('aligns live history refreshes to the next 30-second scrape boundary', () => {

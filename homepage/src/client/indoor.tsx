@@ -290,10 +290,10 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
   const aranet = indoor.sensors[0];
   const thermostat = indoor.thermostats[0];
   const metrics = useMemo<HistoryMetric[]>(() => [
-    { alias: 'aranet_living_room.temperature', label: 'Temperature', thresholds: [{ value: 60, tone: 'blue' }, { value: 80, tone: 'red' }], scale: { fixedMin: 60, fixedMax: 80, ticks: [60, 65, 70, 75, 80], digits: 0 } },
-    { alias: 'aranet_living_room.humidity', label: 'Humidity', thresholds: [{ value: 20, tone: 'dark-blue' }, { value: 30, tone: 'light-blue' }, { value: 60, tone: 'light-blue' }, { value: 70, tone: 'dark-blue' }], scale: { fixedMin: 0, fixedMax: 100, ticks: [0, 20, 40, 60, 80, 100], digits: 0 } },
     { alias: 'aranet_living_room.co2', label: 'CO₂', thresholds: [{ value: 900, tone: 'yellow' }, { value: 1000, tone: 'red' }], scale: { fixedMin: 400, fixedMax: 1400, ticks: [400, 600, 800, 1000, 1200, 1400], digits: 0 } },
     { alias: 'coway_living_room.pm25', label: 'Living Room PM2.5', thresholds: [{ value: 5, tone: 'yellow' }, { value: 15, tone: 'red' }], scale: { minSpan: 20, hardMin: 0, digits: 0 } },
+    { alias: 'aranet_living_room.temperature', label: 'Temperature', thresholds: [{ value: 60, tone: 'blue' }, { value: 80, tone: 'red' }], scale: { fixedMin: 60, fixedMax: 80, ticks: [60, 65, 70, 75, 80], digits: 0 } },
+    { alias: 'aranet_living_room.humidity', label: 'Humidity', thresholds: [{ value: 20, tone: 'dark-blue' }, { value: 30, tone: 'light-blue' }, { value: 60, tone: 'light-blue' }, { value: 70, tone: 'dark-blue' }], scale: { fixedMin: 0, fixedMax: 100, ticks: [0, 20, 40, 60, 80, 100], digits: 0 } },
   ], []);
   useEffect(() => {
     let active = true;
@@ -393,9 +393,6 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
         <Panel title="Living Room environment" eyebrow="ARANET + NEST" severity={sourceSeverity(aranet.sourceState)} freshness={panelFreshness(indoor.rooms[0]?.freshness ?? 'NO_DATA')}>
           <div className="indoor-reading-grid"><Metric label="TEMPERATURE" value={display(thermostat.currentTemperature, 1)} unit="°F" detail={thermostat.currentTemperature.metadata.freshness} /><Metric label="HUMIDITY" value={display(aranet.readings.humidity)} unit="%" detail={aranet.readings.humidity.metadata.freshness} /><Metric label="CO₂" value={display(aranet.readings.co2)} unit="ppm" detail={aranet.readings.co2.metadata.freshness} /><Metric label="PRESSURE" value={display(aranet.readings.pressure)} unit="hPa" detail={aranet.readings.pressure.metadata.freshness} /><Metric label="ARANET BATTERY" value={display(aranet.readings.battery)} unit="%" detail={aranet.readings.battery.metadata.freshness} /></div>
         </Panel>
-        <Panel title="Living Room Nest" eyebrow="THERMOSTAT / CLOUD" severity={sourceSeverity(thermostat.sourceState)} freshness={panelFreshness(thermostat.currentTemperature.metadata.freshness)}>
-          <div className="device-state-line"><strong>{thermostat.sourceState}</strong><span>{thermostat.hvacMode ?? 'NO DATA'} · {thermostat.heatSetpointF ?? '—'}–{thermostat.coolSetpointF ?? '—'}°F</span></div><ThermostatControls thermostat={thermostat} review={setReview} />
-        </Panel>
       </section>
       <section className="indoor-history" aria-labelledby="indoor-history-title">
         <div className="section-heading"><div><span className="panel-eyebrow">PROMETHEUS HISTORY</span><h2 id="indoor-history-title">Environmental trends</h2><span className={`history-update-status history-update-${historyUpdate.status.toLowerCase()}`} role="status">{historyUpdate.status === 'LOADING' ? 'Loading history…' : historyUpdate.status === 'STALE' ? `Update failed · retaining data${historyUpdate.updatedAt ? ` from ${historyUpdatedTime(historyUpdate.updatedAt)} PT` : ''}` : `Updated ${historyUpdatedTime(historyUpdate.updatedAt!)} PT`}</span></div><div className="history-window" role="group" aria-label="History window">{WINDOWS.map((item) => <button type="button" aria-pressed={selection.window === item} onClick={() => { setSelection({ window: item }); setCustomOpen(false); }} key={item}>{item}</button>)}<button type="button" aria-pressed={selection.window === 'custom'} aria-expanded={customOpen} onClick={() => setCustomOpen((open) => !open)}>Custom</button></div></div>
@@ -420,6 +417,11 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
         {indoor.purifiers.map((purifier) => <Panel key={purifier.alias} title={`${purifier.room === 'living_room' ? 'Living Room' : 'Bedroom'} Coway`} eyebrow="AIRMEGA 250S / CLOUD" severity={sourceSeverity(purifier.sourceState)} freshness={panelFreshness(purifier.readings.pm25.metadata.freshness)}><div className="indoor-reading-grid"><Metric label="PM2.5" value={display(purifier.readings.pm25)} unit="µg/m³" /><Metric label="PM10" value={display(purifier.readings.pm10)} unit="µg/m³" /><Metric label="AQI" value={display(purifier.readings.aqi)} /><Metric label="FILTER" value={display(purifier.readings.filterLife)} unit="%" /></div><div className="device-state-line"><strong>{purifier.sourceState}</strong><span>{purifier.power === null ? 'NO DATA' : purifier.power ? 'ON' : 'OFF'} · {purifier.preset ?? '—'} · speed {purifier.speed ?? '—'}</span></div><PurifierControls purifier={purifier} review={setReview} /></Panel>)}
       </section>
       {indoor.actions.length ? <section className="indoor-action-status" aria-live="polite" aria-label="Recent indoor commands">{indoor.actions.slice(0, 5).map((action) => <div key={action.actionId}><StateBadge severity={action.status === 'SUCCEEDED' ? 'OK' : action.status === 'PENDING' ? 'INFO' : 'CRIT'} label={action.status} /><span>{action.target.replaceAll('_', ' ')}</span>{action.message ? <small>{action.message}</small> : null}</div>)}</section> : null}
+      <section className="indoor-thermostat-grid" aria-label="Thermostat">
+        <Panel title="Living Room Nest" eyebrow="THERMOSTAT / CLOUD" severity={sourceSeverity(thermostat.sourceState)} freshness={panelFreshness(thermostat.currentTemperature.metadata.freshness)}>
+          <div className="device-state-line"><strong>{thermostat.sourceState}</strong><span>{thermostat.hvacMode ?? 'NO DATA'} · {thermostat.heatSetpointF ?? '—'}–{thermostat.coolSetpointF ?? '—'}°F</span></div><ThermostatControls thermostat={thermostat} review={setReview} />
+        </Panel>
+      </section>
       {review ? <ReviewDialog review={review} onClose={() => { setReview(null); setError(null); }} onSubmit={() => void submit()} submitting={submitting} error={error} /> : null}
     </main>
   );

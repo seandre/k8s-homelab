@@ -427,6 +427,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .x-axis-labels span:last-child { translate: -100% 0; }
 .indoor-no-data { display: grid; place-items: center; min-height: 11.5rem; border: 1px solid var(--divider); color: var(--muted); font-size: 0.64rem; }
 .purifier-grid { margin-top: 1rem; }
+.indoor-thermostat-grid { display: grid; margin-top: 1rem; }
 .indoor-action-status { display: grid; gap: 0.35rem; margin-top: 1rem; }
 .indoor-action-status small { color: var(--muted); }
 .indoor-review-card dl { display: grid; grid-template-columns: 8rem 1fr; gap: 0.45rem; font-size: 0.68rem; }
