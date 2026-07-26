@@ -46,6 +46,14 @@ data:
           - sensor.indoor_coway_bedroom_pm25
           - sensor.indoor_coway_bedroom_pm10
           - sensor.indoor_coway_bedroom_filter_life
+          - sensor.indoor_airgradient_source
+          - sensor.indoor_airgradient_temperature
+          - sensor.indoor_airgradient_humidity
+          - sensor.indoor_airgradient_co2
+          - sensor.indoor_airgradient_pm25
+          - sensor.indoor_airgradient_pm10
+          - sensor.indoor_airgradient_tvoc_index
+          - sensor.indoor_airgradient_nox_index
       component_config:
         sensor.indoor_aranet_temperature:
           override_metric: aranet_temperature_fahrenheit
