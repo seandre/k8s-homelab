@@ -395,6 +395,26 @@ leaving the official integration available for direct Home Assistant use.
 
 **Next:** AG-004 and AG-005, which may proceed in parallel.
 
+**AG-003 handoff evidence (2026-07-26):** COMPLETE. Seven private runtime
+mappings feed eight canonical entities: the seven readings and the local-source
+rollup. Live state reported all seven mappings populated, all eight canonical
+entities current, source `CURRENT`, and temperature normalized to Fahrenheit.
+The mappings survived two controlled Home Assistant restarts. Every reading
+suppresses unavailable, malformed, or older-than-180-second input and reports
+`CURRENT`, `STALE`, or `UNAVAILABLE` freshness without retaining a fabricated
+current number. `home-assistant/airgradient/test-contract.sh`,
+`home-assistant/k3s/test-manifests.sh`, Kustomize rendering, startup-log review,
+Argo health, and the live redacted state check passed.
+
+Changed commits are `780e307`, `5e394af`, `65ff4cd`, and `c3588ac`. Evidence is
+live and redacted; no raw entity ID, hardware identifier, or token is recorded.
+One operational observation remains: Argo reported the intended revision before
+the ConfigMap volume refreshed, so the Git-owned ConfigMap was applied directly
+once and Home Assistant restarted; final live content and state matched Git.
+Rollback is to revert those commits, let Argo reconcile, remove only the seven
+private mappings, and restart Home Assistant. AG-004 and AG-005 are now
+unblocked.
+
 ### AG-004 — Alert migration
 
 **Objective:** Safely move Living Room environmental alert authority.
@@ -609,4 +629,5 @@ versions/digests, and redacted capability shapes.
 | AG-000 | COMPLETE when its documentation-only commit is recorded | This plan, documentation order, site index, sidebar, documentation build, link validation, and commit |
 | AG-001 | COMPLETE | Contract baseline amendment committed and pushed |
 | AG-002 | COMPLETE | Owner gate, firmware 3.6.2, local integration, cloud sharing off, least-privilege HTTP path, and redacted live evidence recorded above |
-| AG-003 through AG-009 | NOT STARTED | Awaiting their listed prerequisites |
+| AG-003 | COMPLETE | Canonical readings, private mappings, Fahrenheit normalization, 180-second freshness, source rollup, contract tests, restart recovery, and redacted live verification recorded above |
+| AG-004 through AG-009 | NOT STARTED | Awaiting their listed prerequisites |
