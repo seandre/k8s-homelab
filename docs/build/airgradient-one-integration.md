@@ -353,6 +353,21 @@ and verify unrelated IoT policy is unchanged.
 
 **Next:** AG-003.
 
+**AG-002 handoff evidence (2026-07-26):** Owner gate complete. The ONE is on
+the IoT Wi-Fi with a reserved address, firmware **3.6.2**, the official
+Home Assistant integration, local configuration authority, and cloud metric
+sharing disabled. UniFi permits only the three k3s node sources to reach the
+reserved address on TCP/80; the Home Assistant pod reached the device over
+HTTP, while unrelated source/port probes remained blocked. The repository
+NetworkPolicy and manifest contract test are committed and pushed in
+`9b1e147`; `home-assistant/k3s/test-manifests.sh` passed. No MAC, serial,
+token, raw entity ID, or vendor identifier is recorded here.
+
+The approximately-one-minute polling, Internet-loss, device-reboot,
+Home-Assistant-restart, stale-state, and five-control convergence checks remain
+production acceptance checks for AG-009; AG-003 may use the live integration
+and this redacted capability evidence as its input.
+
 ### AG-003 — Home Assistant normalization
 
 **Objective:** Expose stable canonical AirGradient state inside Home Assistant.
@@ -592,4 +607,6 @@ versions/digests, and redacted capability shapes.
 | Package | Status | Evidence |
 |---|---|---|
 | AG-000 | COMPLETE when its documentation-only commit is recorded | This plan, documentation order, site index, sidebar, documentation build, link validation, and commit |
-| AG-001 through AG-009 | NOT STARTED | No implementation or live evidence is claimed by AG-000 |
+| AG-001 | COMPLETE | Contract baseline amendment committed and pushed |
+| AG-002 | COMPLETE | Owner gate, firmware 3.6.2, local integration, cloud sharing off, least-privilege HTTP path, and redacted live evidence recorded above |
+| AG-003 through AG-009 | NOT STARTED | Awaiting their listed prerequisites |
