@@ -48,7 +48,7 @@ export function loadRuntimeConfig(input: unknown): RuntimeConfig {
 }
 
 export const gitOwnedRuntimeConfig: RuntimeConfig = loadRuntimeConfig({
-  allowedHosts: ['argocd.lab.seandre.dev', 'grafana.lab.seandre.dev', 'unifi.ui.com', 'api.ui.com', 'pve-01.lab.seandre.dev', 'pve-02.lab.seandre.dev', 'pbs-01.lab.seandre.dev', 'ha.lab.seandre.dev', 'nexus.lab.seandre.dev', 'docs.lab.seandre.dev', 'nginx-test.lab.seandre.dev', 'github.com', 'api.weather.gov', 'www.airnowapi.org', 'api.open-meteo.com', 'air-quality-api.open-meteo.com', 'argocd-server.argocd.svc', 'kube-prometheus-stack-grafana.monitoring.svc', 'homelab-docs.homelab-docs.svc', 'nginx-test.nginx-test.svc', 'home-assistant.home-assistant.svc', 'kube-prometheus-stack-prometheus.monitoring.svc', 'kube-prometheus-stack-alertmanager.monitoring.svc'],
+  allowedHosts: ['argocd.lab.seandre.dev', 'grafana.lab.seandre.dev', 'unifi.ui.com', 'api.ui.com', 'pve-01.lab.seandre.dev', 'pve-02.lab.seandre.dev', 'pbs-01.lab.seandre.dev', 'ha.lab.seandre.dev', 'nexus.lab.seandre.dev', 'docs.lab.seandre.dev', 'nginx-test.lab.seandre.dev', 'github.com', 'api.weatherapi.com', 'api.weather.gov', 'www.airnowapi.org', 'api.open-meteo.com', 'air-quality-api.open-meteo.com', 'argocd-server.argocd.svc', 'kube-prometheus-stack-grafana.monitoring.svc', 'homelab-docs.homelab-docs.svc', 'nginx-test.nginx-test.svc', 'home-assistant.home-assistant.svc', 'kube-prometheus-stack-prometheus.monitoring.svc', 'kube-prometheus-stack-alertmanager.monitoring.svc'],
   views: ['overview', 'compute', 'network', 'storage-backups', 'kubernetes', 'okd', 'services', 'weather'].map((id) => ({ id, enabled: true })),
   defaultLayout: { navigation: 'expanded', density: 'compact', overview: 'balanced' },
   serviceLinks: [
@@ -88,6 +88,7 @@ export const gitOwnedRuntimeConfig: RuntimeConfig = loadRuntimeConfig({
     { id: 'home-assistant-readonly', namespace: 'homepage', secretName: 'homepage-home-assistant-readonly', keys: ['token'] },
     { id: 'home-assistant-control', namespace: 'homepage', secretName: 'homepage-home-assistant-control', keys: ['mapping.json'] },
     { id: 'airnow-readonly', namespace: 'homepage', secretName: 'homepage-airnow-readonly', keys: ['api-key'] },
+    { id: 'weatherapi-readonly', namespace: 'homepage', secretName: 'homepage-weatherapi-readonly', keys: ['api-key'] },
   ],
   // Validated against Prometheus: one USP-PDU-Pro device and one series for
   // each of the required pve-01 and pve-02 outlet labels.

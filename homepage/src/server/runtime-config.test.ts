@@ -8,6 +8,7 @@ describe('Git-owned runtime configuration', () => {
     expect(gitOwnedRuntimeConfig.allowedHosts).toContain('pve-01.lab.seandre.dev');
     expect(gitOwnedRuntimeConfig.allowedHosts).toContain('api.weather.gov');
     expect(gitOwnedRuntimeConfig.allowedHosts).toContain('www.airnowapi.org');
+    expect(gitOwnedRuntimeConfig.allowedHosts).toContain('api.weatherapi.com');
   });
 
   it('rejects unknown fields, duplicate IDs, invalid URLs, and invalid thresholds at startup', () => {
@@ -22,6 +23,7 @@ describe('Git-owned runtime configuration', () => {
     const weather = gitOwnedRuntimeConfig.sources.find((source) => source.id === 'weather-source')!;
     expect(weather).toMatchObject({ enabled: true, endpoint: 'https://api.weather.gov', stateWhenDisabled: 'NOT_SUPPORTED' });
     expect(gitOwnedRuntimeConfig.credentialReferences).toContainEqual({ id: 'airnow-readonly', namespace: 'homepage', secretName: 'homepage-airnow-readonly', keys: ['api-key'] });
+    expect(gitOwnedRuntimeConfig.credentialReferences).toContainEqual({ id: 'weatherapi-readonly', namespace: 'homepage', secretName: 'homepage-weatherapi-readonly', keys: ['api-key'] });
     expect(gitOwnedRuntimeConfig.featureFlags.prometheus).toBe(true);
     expect(gitOwnedRuntimeConfig.pduPower).toEqual({ enabled: true, deviceName: 'USP-PDU-Pro' });
     expect(gitOwnedRuntimeConfig.probes.every((probe) => probe.target !== 'https://example.com')).toBe(true);

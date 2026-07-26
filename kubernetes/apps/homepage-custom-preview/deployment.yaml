@@ -60,6 +60,12 @@ spec:
                   name: homepage-airnow-readonly
                   key: api-key
                   optional: true
+            - name: WEATHERAPI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: homepage-weatherapi-readonly
+                  key: api-key
+                  optional: true
           resources:
             requests:
               cpu: 100m

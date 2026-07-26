@@ -122,6 +122,7 @@ export class LiveTelemetry {
       longitude: runtimeConfig.weatherLocation.longitude,
       enabled: runtimeConfig.featureFlags.weather,
       ...(process.env.AIRNOW_API_KEY ? { airNowApiKey: process.env.AIRNOW_API_KEY } : {}),
+      ...(process.env.WEATHERAPI_API_KEY ? { weatherApiKey: process.env.WEATHERAPI_API_KEY } : {}),
     });
     this.probes = new AllowlistedProbeRunner(runtimeConfig, (url, init) => fetch(url, init), { now: () => new Date() });
   }

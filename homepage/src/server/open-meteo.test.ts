@@ -18,10 +18,16 @@ const forecast = { properties: { periods: [{ startTime: '2026-07-19T05:00:00-07:
 const conditions = { current: { time: 1_774_182_400, temperature_2m: 68, weather_code: 2 }, daily: { sunrise: [1_774_160_000], sunset: [1_774_210_000] } };
 const air = { current: { time: 1_774_182_400, us_aqi: 24, pm2_5: 4.1, pm10: 12.3 } };
 const airNow = [{ ParameterName: 'PM2.5', AQI: 31 }, { ParameterName: 'O3', AQI: 22 }];
+const weatherApi = {
+  location: { tz_id: 'America/Los_Angeles' },
+  current: { last_updated_epoch: 1_774_182_400, temp_f: 69.4, condition: { text: 'Sunny' } },
+  forecast: { forecastday: [{ date: '2026-07-19', astro: { sunrise: '05:39 AM', sunset: '08:53 PM' } }] },
+};
 
-function providerFetch(calls: Array<{ url: string; headers?: Record<string, string> }>, overrides: Partial<Record<'points' | 'stations' | 'observation' | 'forecast' | 'conditions' | 'air' | 'airnow', FetchResponse>> = {}): SafeFetch {
+function providerFetch(calls: Array<{ url: string; headers?: Record<string, string> }>, overrides: Partial<Record<'weatherapi' | 'points' | 'stations' | 'observation' | 'forecast' | 'conditions' | 'air' | 'airnow', FetchResponse>> = {}): SafeFetch {
   return async (url, init) => {
     calls.push({ url, ...(init?.headers ? { headers: init.headers } : {}) });
+    if (url.includes('weatherapi.com')) return overrides.weatherapi ?? response(weatherApi);
     if (url.includes('/points/')) return overrides.points ?? response(points);
     if (url.endsWith('/stations')) return overrides.stations ?? response(stations);
     if (url.endsWith('/observations/latest')) return overrides.observation ?? response(observation);
@@ -33,6 +39,41 @@ function providerFetch(calls: Array<{ url: string; headers?: Record<string, stri
 }
 
 describe('weather provider chain', () => {
+  it('uses WeatherAPI current conditions and astronomy when its key is configured', async () => {
+    const calls: Array<{ url: string; headers?: Record<string, string> }> = [];
+    const weather = await new OpenMeteoAdapter({
+      fetch: providerFetch(calls),
+      latitude: 45.527412,
+      longitude: -122.686270,
+      weatherApiKey: 'test-weather-key',
+      enabled: true,
+      clock: mutableClock().clock,
+    }).read();
+    expect(weather).toMatchObject({
+      temperatureFahrenheit: 69.4,
+      condition: 'Sunny',
+      sunrise: '2026-07-19T12:39:00.000Z',
+      sunset: '2026-07-20T03:53:00.000Z',
+    });
+    expect(weather.conditionsMetadata.source).toBe('weatherapi');
+    expect(calls.some((call) => call.url.includes('api.weather.gov'))).toBe(false);
+  });
+
+  it('falls back to NWS when WeatherAPI rejects its request', async () => {
+    const calls: Array<{ url: string; headers?: Record<string, string> }> = [];
+    const weather = await new OpenMeteoAdapter({
+      fetch: providerFetch(calls, { weatherapi: response({}, false, 503) }),
+      latitude: 45.527412,
+      longitude: -122.686270,
+      weatherApiKey: 'test-weather-key',
+      enabled: true,
+      clock: mutableClock().clock,
+      diagnostic: () => undefined,
+    }).read();
+    expect(weather.conditionsMetadata.source).toBe('nws-observation');
+    expect(weather.temperatureFahrenheit).toBe(68);
+  });
+
   it('uses NWS observations, AirNow AQI, and Open-Meteo PM/sun data', async () => {
     const calls: Array<{ url: string; headers?: Record<string, string> }> = [];
     const time = mutableClock();

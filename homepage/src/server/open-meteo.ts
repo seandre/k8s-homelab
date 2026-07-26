@@ -44,6 +44,23 @@ const AirNowSchema = z.array(z.object({
   ParameterName: z.string(),
   AQI: z.number().int().nonnegative(),
 }));
+const WeatherApiSchema = z.object({
+  location: z.object({ tz_id: z.string().min(1) }),
+  current: z.object({
+    last_updated_epoch: z.number().int(),
+    temp_f: z.number(),
+    condition: z.object({ text: z.string().min(1) }),
+  }),
+  forecast: z.object({
+    forecastday: z.array(z.object({
+      date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      astro: z.object({
+        sunrise: z.string().min(1),
+        sunset: z.string().min(1),
+      }),
+    })).min(1),
+  }),
+});
 
 type ConditionsValue = {
   source: string;
@@ -61,7 +78,7 @@ type AirValue = {
 
 export interface FetchResponse { ok: boolean; status?: number; json(): Promise<unknown>; }
 export type SafeFetch = (input: string, init?: { signal?: AbortSignal; headers?: Record<string, string> }) => Promise<FetchResponse>;
-export type WeatherDiagnostic = (event: { provider: 'nws' | 'airnow' | 'open-meteo'; operation: string; reason: string }) => void;
+export type WeatherDiagnostic = (event: { provider: 'weatherapi' | 'nws' | 'airnow' | 'open-meteo'; operation: string; reason: string }) => void;
 
 export interface OpenMeteoOptions {
   fetch: SafeFetch;
@@ -69,6 +86,7 @@ export interface OpenMeteoOptions {
   longitude: number;
   enabled: boolean;
   airNowApiKey?: string | null;
+  weatherApiKey?: string | null;
   timeoutMs?: number;
   clock?: Clock;
   diagnostic?: WeatherDiagnostic;
@@ -77,6 +95,31 @@ export interface OpenMeteoOptions {
 function isoFromUnix(seconds: number) { return new Date(seconds * 1_000).toISOString(); }
 function fahrenheit(celsius: number) { return (celsius * 9) / 5 + 32; }
 function forecastTemperature(value: number, unit: 'F' | 'C') { return unit === 'F' ? value : fahrenheit(value); }
+
+function astronomyIso(date: string, time: string, timeZone: string) {
+  const match = /^(\d{1,2}):(\d{2})\s+(AM|PM)$/i.exec(time.trim());
+  if (!match) throw new Error('Invalid astronomy time.');
+  let hour = Number(match[1]);
+  const minute = Number(match[2]);
+  const period = match[3]!.toUpperCase();
+  if (hour === 12) hour = 0;
+  if (period === 'PM') hour += 12;
+  const [year, month, day] = date.split('-').map(Number) as [number, number, number];
+  const localAsUtc = Date.UTC(year, month - 1, day, hour, minute);
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date(localAsUtc));
+  const value = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((part) => part.type === type)?.value);
+  const representedAsUtc = Date.UTC(value('year'), value('month') - 1, value('day'), value('hour'), value('minute'));
+  const offsetMs = representedAsUtc - localAsUtc;
+  return new Date(localAsUtc - offsetMs).toISOString();
+}
 
 function conditionFromCode(code: number) {
   if (code === 0) return 'Clear sky';
@@ -101,7 +144,7 @@ class ProviderError extends Error {
 
 /**
  * Weather provider chain:
- * - NWS observation -> NWS hourly forecast -> Open-Meteo for conditions
+ * - WeatherAPI -> NWS observation -> NWS hourly forecast -> Open-Meteo for conditions
  * - AirNow -> Open-Meteo for AQI
  * Open-Meteo remains necessary for sunrise/sunset and PM concentrations.
  *
@@ -114,6 +157,7 @@ export class OpenMeteoAdapter {
   private readonly latitude: number;
   private readonly longitude: number;
   private readonly airNowApiKey: string | null;
+  private readonly weatherApiKey: string | null;
   private readonly enabled: boolean;
   private readonly timeoutMs: number;
   private readonly clock: Clock;
@@ -123,6 +167,7 @@ export class OpenMeteoAdapter {
   private discoveryExpiresAt = 0;
   private nwsStationUrl: string | undefined;
   private nwsForecastUrl: string | undefined;
+  private lastAstronomy: { sunrise: string; sunset: string } | undefined;
 
   constructor(options: OpenMeteoOptions) {
     const inactive = !options.enabled;
@@ -132,6 +177,7 @@ export class OpenMeteoAdapter {
     this.latitude = options.latitude;
     this.longitude = options.longitude;
     this.airNowApiKey = options.airNowApiKey?.trim() || null;
+    this.weatherApiKey = options.weatherApiKey?.trim() || null;
     this.enabled = options.enabled;
     this.timeoutMs = options.timeoutMs ?? 5_000;
     this.clock = options.clock ?? { now: () => new Date() };
@@ -173,7 +219,7 @@ export class OpenMeteoAdapter {
     };
   }
 
-  private async request(provider: 'nws' | 'airnow' | 'open-meteo', operation: string, url: URL | string, headers?: Record<string, string>) {
+  private async request(provider: 'weatherapi' | 'nws' | 'airnow' | 'open-meteo', operation: string, url: URL | string, headers?: Record<string, string>) {
     try {
       const response = await withTimeout(this.fetcher(url.toString(), headers ? { headers } : undefined), this.timeoutMs);
       if (!response.ok) throw new ProviderError(response.status);
@@ -204,6 +250,28 @@ export class OpenMeteoAdapter {
   private async refreshConditions() {
     if (!this.conditions.canAttempt()) return;
     try {
+      if (this.weatherApiKey) {
+        const url = new URL('https://api.weatherapi.com/v1/forecast.json');
+        url.search = new URLSearchParams({ key: this.weatherApiKey, q: `${this.latitude},${this.longitude}`, days: '1', aqi: 'no', alerts: 'no' }).toString();
+        try {
+          const primary = WeatherApiSchema.parse(await this.request('weatherapi', 'current conditions and astronomy', url));
+          const day = primary.forecast.forecastday[0]!;
+          const astronomy = {
+            sunrise: astronomyIso(day.date, day.astro.sunrise, primary.location.tz_id),
+            sunset: astronomyIso(day.date, day.astro.sunset, primary.location.tz_id),
+          };
+          this.lastAstronomy = astronomy;
+          this.conditions.recordSuccess({
+            source: 'weatherapi',
+            temperatureFahrenheit: primary.current.temp_f,
+            condition: primary.current.condition.text,
+            ...astronomy,
+          }, new Date(primary.current.last_updated_epoch * 1_000));
+          return;
+        } catch {
+          // NWS and Open-Meteo remain independent fallbacks.
+        }
+      }
       // Attach the rejection handler immediately while the independent NWS
       // discovery chain runs, avoiding an unhandled fallback rejection.
       const openMeteoPromise = this.openMeteoConditions()
@@ -237,8 +305,8 @@ export class OpenMeteoAdapter {
         source,
         temperatureFahrenheit,
         condition,
-        sunrise: backup ? isoFromUnix(backup.daily.sunrise[0]!) : null,
-        sunset: backup ? isoFromUnix(backup.daily.sunset[0]!) : null,
+        sunrise: backup ? isoFromUnix(backup.daily.sunrise[0]!) : this.lastAstronomy?.sunrise ?? null,
+        sunset: backup ? isoFromUnix(backup.daily.sunset[0]!) : this.lastAstronomy?.sunset ?? null,
       }, sampledAt);
     } catch {
       this.conditions.recordFailure();
