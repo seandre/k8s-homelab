@@ -7,10 +7,10 @@ PACKAGE = ROOT / "indoor_alerts.yaml"
 MARKER = "# Numeric/source incident automations are generated from the reviewed contract\n# by generate.py. This marker is replaced in the checked-in rendered package.\n"
 
 SPECS = [
-    ("co2", "aranet_co2", ">= 1000", 10, ">= 1500", 5, "< 900", 10),
+    ("co2", "living_room_co2_alert", ">= 1000", 10, ">= 1500", 5, "< 900", 10),
     ("temperature", "aranet_temperature", "value < 60 or value > 80", 15, "value < 55 or value > 85", 10, "62 <= value <= 78", 15),
-    ("humidity", "aranet_humidity", "value < 30 or value > 60", 30, "value < 20 or value > 70", 15, "32 <= value <= 58", 30),
-    ("pm25_living_room", "coway_living_room_pm25", ">= 15", 15, ">= 35", 10, "< 10", 15),
+    ("humidity", "living_room_humidity_alert", "value < 30 or value > 60", 30, "value < 20 or value > 70", 15, "32 <= value <= 58", 30),
+    ("pm25_living_room", "living_room_pm25_worst", ">= 15", 15, ">= 35", 10, "< 10", 15),
     ("pm25_bedroom", "coway_bedroom_pm25", ">= 15", 15, ">= 35", 10, "< 10", 15),
     ("battery", "aranet_battery", "<= 20", 30, "<= 10", 15, ">= 25", 30),
     ("filter_living_room", "coway_living_room_filter_life", "<= 10", 60, "<= 2", 60, ">= 15", 60),
@@ -18,6 +18,7 @@ SPECS = [
 ]
 
 SOURCES = [
+    ("airgradient", "input_text.indoor_map_airgradient_co2", 180),
     ("aranet", "input_text.indoor_map_aranet_co2", 180),
     ("nest", "input_text.indoor_map_nest_temperature", 300),
     ("coway_living_room", "input_text.indoor_map_coway_living_room_pm25", 300),

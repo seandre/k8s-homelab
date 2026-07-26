@@ -48,6 +48,35 @@ assert "{{ (value | float) * 9 / 5 + 32 }}" in package
 assert not re.search(r"(?:fan|climate|switch|light)\.(?:turn_|set_|toggle)", package)
 assert not re.search(r"(?:sensor|climate|fan|switch)\.[a-z0-9]+_[0-9a-f]{6,}", package)
 assert package.count("# BEGIN GENERATED INCIDENTS") == 1
+assert "sensor.indoor_living_room_co2_alert" in package
+assert "sensor.indoor_living_room_humidity_alert" in package
+assert "sensor.indoor_living_room_pm25_worst" in package
+assert "indoor_alert_source_airgradient" in package
+assert "incident: source_airgradient" in package
+assert contract["freshness_seconds"]["airgradient_living_room"] == 180
+
+def preferred(primary, primary_current, fallback, fallback_current):
+    if primary_current:
+        return primary
+    if fallback_current:
+        return fallback
+    return None
+
+def worst_current(airgradient, airgradient_current, coway, coway_current):
+    values = []
+    if airgradient_current:
+        values.append(airgradient)
+    if coway_current:
+        values.append(coway)
+    return max(values) if values else None
+
+assert preferred(1100, True, 900, True) == 1100
+assert preferred(1100, False, 900, True) == 900
+assert preferred(1100, False, 900, False) is None
+assert worst_current(12, True, 20, True) == 20
+assert worst_current(22, True, 20, False) == 22
+assert worst_current(22, False, 20, True) == 20
+assert worst_current(22, False, 20, False) is None
 
 backup = BackupIncident()
 backup.failed_run(); backup.failed_run(); backup.failed_run()

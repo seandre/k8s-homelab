@@ -232,6 +232,8 @@ data:
         options: [ok, warning, critical]
       indoor_alert_source_aranet:
         options: [ok, warning, critical]
+      indoor_alert_source_airgradient:
+        options: [ok, warning, critical]
       indoor_alert_source_nest:
         options: [ok, warning, critical]
       indoor_alert_source_coway_living_room:
@@ -440,6 +442,41 @@ data:
                 {% set ar = a.last_reported | default(a.last_updated, true) if a else none %}
                 {% set br = b.last_reported | default(b.last_updated, true) if b else none %}
                 {{ 'CURRENT' if a and b and a.state not in ['unknown','unavailable'] and b.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(ar)) <= 300 and (as_timestamp(now()) - as_timestamp(br)) <= 300 else 'UNAVAILABLE' }}
+          - name: Indoor Living Room CO2 alert
+            unique_id: indoor_living_room_co2_alert
+            unit_of_measurement: ppm
+            state: >-
+              {% set primary = states('sensor.indoor_airgradient_co2') | float(none) %}
+              {% set fallback = states('sensor.indoor_aranet_co2') | float(none) %}
+              {{ primary if primary is not none and state_attr('sensor.indoor_airgradient_co2', 'freshness') == 'CURRENT' else fallback if fallback is not none and state_attr('sensor.indoor_aranet_co2', 'freshness') == 'CURRENT' else none }}
+            attributes:
+              freshness: >-
+                {{ 'CURRENT' if state_attr('sensor.indoor_airgradient_co2', 'freshness') == 'CURRENT' or state_attr('sensor.indoor_aranet_co2', 'freshness') == 'CURRENT' else 'UNAVAILABLE' }}
+              authority: >-
+                {{ 'AIRGRADIENT_LOCAL' if state_attr('sensor.indoor_airgradient_co2', 'freshness') == 'CURRENT' else 'ARANET_LOCAL' if state_attr('sensor.indoor_aranet_co2', 'freshness') == 'CURRENT' else 'NONE' }}
+          - name: Indoor Living Room humidity alert
+            unique_id: indoor_living_room_humidity_alert
+            unit_of_measurement: "%"
+            state: >-
+              {% set primary = states('sensor.indoor_airgradient_humidity') | float(none) %}
+              {% set fallback = states('sensor.indoor_aranet_humidity') | float(none) %}
+              {{ primary if primary is not none and state_attr('sensor.indoor_airgradient_humidity', 'freshness') == 'CURRENT' else fallback if fallback is not none and state_attr('sensor.indoor_aranet_humidity', 'freshness') == 'CURRENT' else none }}
+            attributes:
+              freshness: >-
+                {{ 'CURRENT' if state_attr('sensor.indoor_airgradient_humidity', 'freshness') == 'CURRENT' or state_attr('sensor.indoor_aranet_humidity', 'freshness') == 'CURRENT' else 'UNAVAILABLE' }}
+              authority: >-
+                {{ 'AIRGRADIENT_LOCAL' if state_attr('sensor.indoor_airgradient_humidity', 'freshness') == 'CURRENT' else 'ARANET_LOCAL' if state_attr('sensor.indoor_aranet_humidity', 'freshness') == 'CURRENT' else 'NONE' }}
+          - name: Indoor Living Room PM25 worst
+            unique_id: indoor_living_room_pm25_worst
+            unit_of_measurement: "µg/m³"
+            state: >-
+              {% set ag = states('sensor.indoor_airgradient_pm25') | float(none) if state_attr('sensor.indoor_airgradient_pm25', 'freshness') == 'CURRENT' else none %}
+              {% set coway = states('sensor.indoor_coway_living_room_pm25') | float(none) if state_attr('sensor.indoor_coway_living_room_pm25', 'freshness') == 'CURRENT' else none %}
+              {{ [ag, coway] | reject('none') | max if ag is not none or coway is not none else none }}
+            attributes:
+              freshness: >-
+                {{ 'CURRENT' if state_attr('sensor.indoor_airgradient_pm25', 'freshness') == 'CURRENT' or state_attr('sensor.indoor_coway_living_room_pm25', 'freshness') == 'CURRENT' else 'UNAVAILABLE' }}
+              authority: WORST_CURRENT
 
     # IE-014 calls these events after a completed archive/copy. No credentials or
     # storage endpoints cross this interface.
@@ -594,7 +631,7 @@ data:
         trigger:
           - platform: template
             value_template: >-
-              {% set entity = 'sensor.indoor_aranet_co2' %}
+              {% set entity = 'sensor.indoor_living_room_co2_alert' %}
               {% set value = states(entity) | float(none) %}
               {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (value >= 1000) }}
             for: "00:10:00"
@@ -612,7 +649,7 @@ data:
         trigger:
           - platform: template
             value_template: >-
-              {% set entity = 'sensor.indoor_aranet_co2' %}
+              {% set entity = 'sensor.indoor_living_room_co2_alert' %}
               {% set value = states(entity) | float(none) %}
               {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (value >= 1500) }}
             for: "00:05:00"
@@ -634,7 +671,7 @@ data:
         trigger:
           - platform: template
             value_template: >-
-              {% set entity = 'sensor.indoor_aranet_co2' %}
+              {% set entity = 'sensor.indoor_living_room_co2_alert' %}
               {% set value = states(entity) | float(none) %}
               {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (value < 900) }}
             for: "00:10:00"
@@ -710,7 +747,7 @@ data:
         trigger:
           - platform: template
             value_template: >-
-              {% set entity = 'sensor.indoor_aranet_humidity' %}
+              {% set entity = 'sensor.indoor_living_room_humidity_alert' %}
               {% set value = states(entity) | float(none) %}
               {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (value < 30 or value > 60) }}
             for: "00:30:00"
@@ -728,7 +765,7 @@ data:
         trigger:
           - platform: template
             value_template: >-
-              {% set entity = 'sensor.indoor_aranet_humidity' %}
+              {% set entity = 'sensor.indoor_living_room_humidity_alert' %}
               {% set value = states(entity) | float(none) %}
               {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (value < 20 or value > 70) }}
             for: "00:15:00"
@@ -750,7 +787,7 @@ data:
         trigger:
           - platform: template
             value_template: >-
-              {% set entity = 'sensor.indoor_aranet_humidity' %}
+              {% set entity = 'sensor.indoor_living_room_humidity_alert' %}
               {% set value = states(entity) | float(none) %}
               {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (32 <= value <= 58) }}
             for: "00:30:00"
@@ -768,7 +805,7 @@ data:
         trigger:
           - platform: template
             value_template: >-
-              {% set entity = 'sensor.indoor_coway_living_room_pm25' %}
+              {% set entity = 'sensor.indoor_living_room_pm25_worst' %}
               {% set value = states(entity) | float(none) %}
               {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (value >= 15) }}
             for: "00:15:00"
@@ -786,7 +823,7 @@ data:
         trigger:
           - platform: template
             value_template: >-
-              {% set entity = 'sensor.indoor_coway_living_room_pm25' %}
+              {% set entity = 'sensor.indoor_living_room_pm25_worst' %}
               {% set value = states(entity) | float(none) %}
               {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (value >= 35) }}
             for: "00:10:00"
@@ -808,7 +845,7 @@ data:
         trigger:
           - platform: template
             value_template: >-
-              {% set entity = 'sensor.indoor_coway_living_room_pm25' %}
+              {% set entity = 'sensor.indoor_living_room_pm25_worst' %}
               {% set value = states(entity) | float(none) %}
               {{ value is not none and state_attr(entity, 'freshness') == 'CURRENT' and (value < 10) }}
             for: "00:15:00"
@@ -1051,6 +1088,55 @@ data:
             data: {option: ok}
           - event: indoor_alert_notification
             event_data: {incident: filter_bedroom, level: recovery, path: /indoor}
+      - id: indoor_alert_source_airgradient_warning
+        alias: Indoor alerts - source airgradient warning
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set obj = (expand(states('input_text.indoor_map_airgradient_co2')) | first | default(none)) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > 180 }}
+            for: "00:05:00"
+        condition: "{{ states('input_select.indoor_alert_source_airgradient') == 'ok' }}"
+        action:
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_source_airgradient}
+            data: {option: warning}
+          - event: indoor_alert_notification
+            event_data: {incident: source_airgradient, level: warning, path: /indoor}
+
+      - id: indoor_alert_source_airgradient_critical
+        alias: Indoor alerts - source airgradient critical
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set obj = (expand(states('input_text.indoor_map_airgradient_co2')) | first | default(none)) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ not obj or obj.state in ['unknown','unavailable'] or (as_timestamp(now()) - as_timestamp(reported)) > 180 }}
+            for: "00:30:00"
+        condition: "{{ states('input_select.indoor_alert_source_airgradient') != 'critical' }}"
+        action:
+          - if: "{{ states('input_select.indoor_alert_source_airgradient') == 'ok' }}"
+            then:
+              - event: indoor_alert_notification
+                event_data: {incident: source_airgradient, level: warning, path: /indoor}
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_source_airgradient}
+            data: {option: critical}
+          - event: indoor_alert_notification
+            event_data: {incident: source_airgradient, level: critical, path: /indoor}
+
+      - id: indoor_alert_source_airgradient_recovery
+        alias: Indoor alerts - source airgradient recovery
+        trigger:
+          - platform: template
+            value_template: >-
+              {% set obj = (expand(states('input_text.indoor_map_airgradient_co2')) | first | default(none)) %}{% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}{{ obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 180 }}
+            for: "00:05:00"
+        condition: "{{ states('input_select.indoor_alert_source_airgradient') != 'ok' }}"
+        action:
+          - service: input_select.select_option
+            target: {entity_id: input_select.indoor_alert_source_airgradient}
+            data: {option: ok}
+          - event: indoor_alert_notification
+            event_data: {incident: source_airgradient, level: recovery, path: /indoor}
+
       - id: indoor_alert_source_aranet_warning
         alias: Indoor alerts - source aranet warning
         trigger:

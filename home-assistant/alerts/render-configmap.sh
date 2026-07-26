@@ -8,7 +8,9 @@ temp_file="$(mktemp)"
 trap 'rm -f "${temp_file}"' EXIT
 
 {
-  sed -n '1,9p' "${target_file}"
+  # Preserve the independently owned AG-003 airgradient.yaml package and
+  # replace only the generated indoor_alerts.yaml value.
+  sed -n '1,/^  indoor_alerts.yaml: |$/p' "${target_file}"
   sed -e 's/^/    /' -e 's/[[:space:]]*$//' "${source_file}"
 } > "${temp_file}"
 cp "${temp_file}" "${target_file}"

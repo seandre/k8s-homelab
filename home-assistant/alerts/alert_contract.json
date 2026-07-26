@@ -4,6 +4,7 @@
   "notification_url": "https://homepage-preview.lab.seandre.dev/indoor",
   "automatic_equipment_control": false,
   "freshness_seconds": {
+    "airgradient_living_room": 180,
     "aranet_living_room": 180,
     "nest_living_room": 300,
     "coway_living_room": 300,
