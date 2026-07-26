@@ -94,7 +94,7 @@ describe('indoor dashboard', () => {
         points: [
           { timestamp: '2026-07-25T00:00:00.000Z', value: 700 },
           { timestamp: '2026-07-25T00:05:00.000Z', value: 900 },
-          { timestamp: '2026-07-25T00:10:00.000Z', value: 800 },
+          { timestamp: '2026-07-25T00:10:00.000Z', value: 1100 },
         ],
         metadata: { source: 'fixture', observedAt: '2026-07-25T00:10:00.000Z', freshness: 'CURRENT', severity: 'OK' },
       }}
@@ -104,5 +104,9 @@ describe('indoor dashboard', () => {
     expect(markup).toContain('y-axis-label-threshold');
     expect(markup).toContain('threshold-tone-yellow');
     expect(markup).toContain('threshold-tone-red');
+    expect(markup).toContain('history-trace-stop-green');
+    expect(markup).toContain('history-trace-stop-yellow');
+    expect(markup).toContain('history-trace-stop-red');
+    expect(markup).not.toContain('<circle');
   });
 });

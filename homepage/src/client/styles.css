@@ -388,8 +388,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .threshold-line.threshold-tone-dark-blue { stroke: var(--threshold-dark-blue); }
 .threshold-line.threshold-tone-yellow { stroke: var(--threshold-yellow); }
 .threshold-line.threshold-tone-red { stroke: var(--threshold-red); }
+.history-trace-stop-green { stop-color: var(--focus); }
+.history-trace-stop-yellow { stop-color: var(--threshold-yellow); }
+.history-trace-stop-red { stop-color: var(--threshold-red); }
 .history-crosshair { stroke: var(--focus); stroke-width: 1; stroke-dasharray: 3 2; vector-effect: non-scaling-stroke; }
-.history-hover-point { fill: var(--surface); stroke: var(--focus); stroke-width: 2; }
 .history-tooltip { position: absolute; z-index: 2; display: grid; gap: 0.35rem; min-width: max-content; max-width: 12rem; translate: 0.5rem -50%; border: 1px solid var(--divider); border-radius: 0.3rem; background: var(--surface); box-shadow: 0 0.35rem 1rem rgb(0 0 0 / 24%); padding: 0.5rem 0.6rem; pointer-events: none; color: var(--fg); font: 0.62rem/1.25 var(--mono); }
 .history-tooltip-left { translate: calc(-100% - 0.5rem) -50%; }
 .history-tooltip strong { color: var(--title); font-size: 0.6rem; font-weight: 700; }

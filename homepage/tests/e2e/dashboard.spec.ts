@@ -74,7 +74,7 @@ test('renders the responsive indoor dashboard and requires review before control
     const url = new URL(route.request().url());
     const metric = url.searchParams.get('metric')!;
     const unit = metric.endsWith('.co2') ? 'ppm' : metric.endsWith('.temperature') ? '°F' : metric.endsWith('.humidity') ? '%' : 'µg/m³';
-    const values = metric.endsWith('.co2') ? [640, 720, 680] : metric.endsWith('.temperature') ? [70, 72, 71] : metric.endsWith('.humidity') ? [42, 44, 43] : [3, 5, 4];
+    const values = metric.endsWith('.co2') ? [850, 950, 1100] : metric.endsWith('.temperature') ? [70, 72, 71] : metric.endsWith('.humidity') ? [42, 44, 43] : [3, 10, 18];
     const body = {
       requestId: 'e2e-history-request',
       data: {
@@ -113,6 +113,10 @@ test('renders the responsive indoor dashboard and requires review before control
   await co2Graph.hover({ position: { x: 120, y: 60 } });
   await expect(co2Graph.locator('.history-tooltip')).toContainText('ppm');
   await expect(co2Graph.locator('.history-crosshair')).toHaveCount(1);
+  await expect(co2Graph.locator('circle')).toHaveCount(0);
+  await expect(co2Graph.locator('.history-trace-stop-green')).not.toHaveCount(0);
+  await expect(co2Graph.locator('.history-trace-stop-yellow')).not.toHaveCount(0);
+  await expect(co2Graph.locator('.history-trace-stop-red')).not.toHaveCount(0);
   await co2Graph.focus();
   await page.keyboard.press('ArrowLeft');
   await expect(co2Graph.locator('.history-tooltip')).toContainText('ppm');

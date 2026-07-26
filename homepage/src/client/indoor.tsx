@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type {
   Bootstrap, IndoorActionAccepted, IndoorCommand, IndoorState, TimeSeries,
 } from '../shared/contracts.js';
@@ -73,6 +73,7 @@ function historyTooltipTime(timestamp: string) {
 
 export function HistoryGraph({ series, label, thresholds, scale }: { series: TimeSeries | undefined; label: string; thresholds: HistoryThreshold[]; scale: HistoryScale }) {
   const plot = useRef<HTMLDivElement>(null);
+  const gradientId = `history-trace-${useId().replaceAll(':', '')}`;
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   if (!series || series.points.length === 0) return <div className="indoor-no-data" role="status">NO DATA · {label}</div>;
   const values = series.points.map((point) => point.value);
@@ -97,6 +98,33 @@ export function HistoryGraph({ series, label, thresholds, scale }: { series: Tim
   });
   const hoveredPoint = hoveredIndex === null ? null : series.points[hoveredIndex]!;
   const hoveredChartPoint = hoveredIndex === null ? null : chartPoints[hoveredIndex]!;
+  const yellowThreshold = thresholds.find(({ tone }) => tone === 'yellow')?.value;
+  const redThreshold = thresholds.find(({ tone }) => tone === 'red')?.value;
+  const thresholdTrace = yellowThreshold !== undefined && redThreshold !== undefined
+    && ['aranet_living_room.co2', 'coway_living_room.pm25'].includes(series.metric);
+  const traceTone = (value: number) => value >= redThreshold! ? 'red' : value >= yellowThreshold! ? 'yellow' : 'green';
+  const traceStops = thresholdTrace ? chartPoints.flatMap((point, index) => {
+    if (index === chartPoints.length - 1) return [{ offset: point.x, tone: traceTone(values[index]!) }];
+    const nextPoint = chartPoints[index + 1]!;
+    const value = values[index]!;
+    const nextValue = values[index + 1]!;
+    const crossings = [yellowThreshold!, redThreshold!]
+      .filter((threshold) => (value < threshold && nextValue >= threshold) || (value >= threshold && nextValue < threshold))
+      .map((threshold) => ({
+        offset: point.x + ((threshold - value) / (nextValue - value)) * (nextPoint.x - point.x),
+        threshold,
+      }))
+      .sort((a, b) => a.offset - b.offset);
+    const stops = [{ offset: point.x, tone: traceTone(value) }];
+    for (const crossing of crossings) {
+      const direction = nextValue > value ? 0.001 : -0.001;
+      stops.push(
+        { offset: crossing.offset, tone: traceTone(crossing.threshold - direction) },
+        { offset: crossing.offset, tone: traceTone(crossing.threshold + direction) },
+      );
+    }
+    return stops;
+  }) : [];
   const selectNearestPoint = (clientX: number) => {
     const bounds = plot.current?.getBoundingClientRect();
     if (!bounds) return;
@@ -142,6 +170,9 @@ export function HistoryGraph({ series, label, thresholds, scale }: { series: Tim
           }}
         >
           <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            {thresholdTrace ? <defs><linearGradient id={gradientId} gradientUnits="userSpaceOnUse" x1={plotLeft} x2={plotRight}>
+              {traceStops.map((stop, index) => <stop key={`${stop.offset}-${index}`} offset={`${stop.offset}%`} className={`history-trace-stop history-trace-stop-${stop.tone}`} />)}
+            </linearGradient></defs> : null}
             {ticks.map((value) => <line key={value} x1={plotLeft} x2={plotRight} y1={y(value)} y2={y(value)} className="y-axis-grid" />)}
             {xTicks.map(({ x }) => <line key={x} x1={x} x2={x} y1={plotTop} y2={plotBottom} className="x-axis-grid" />)}
             <line x1={plotLeft} x2={plotLeft} y1={plotTop} y2={plotBottom} className="y-axis-line" />
@@ -149,11 +180,10 @@ export function HistoryGraph({ series, label, thresholds, scale }: { series: Tim
               <line key={value} x1={plotLeft} x2={plotRight} y1={y(value)} y2={y(value)} className={`threshold-line threshold-tone-${tone}`} />,
             )}
             {smoothMetric
-              ? <path d={smoothSvgPath(chartPoints)} className="history-line history-line-smoothed" vectorEffect="non-scaling-stroke" />
-              : <polyline points={points} className="history-line" vectorEffect="non-scaling-stroke" />}
+              ? <path d={smoothSvgPath(chartPoints)} className="history-line history-line-smoothed" style={thresholdTrace ? { stroke: `url(#${gradientId})` } : undefined} vectorEffect="non-scaling-stroke" />
+              : <polyline points={points} className="history-line" style={thresholdTrace ? { stroke: `url(#${gradientId})` } : undefined} vectorEffect="non-scaling-stroke" />}
             {hoveredChartPoint ? <>
               <line x1={hoveredChartPoint.x} x2={hoveredChartPoint.x} y1={plotTop} y2={plotBottom} className="history-crosshair" />
-              <circle cx={hoveredChartPoint.x} cy={hoveredChartPoint.y} r="1.35" className="history-hover-point" vectorEffect="non-scaling-stroke" />
             </> : null}
           </svg>
           {hoveredPoint && hoveredChartPoint ? <div
