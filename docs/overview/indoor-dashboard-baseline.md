@@ -1,8 +1,11 @@
 # Indoor Dashboard Architecture and Contract Baseline
 
-Status: **IE-001 complete**. This is the controlling baseline for IE-002 through
-IE-014. Later packages may fill verified capability options and server-side Home
-Assistant mappings, but must not silently change the public names, safety rules,
+Status: **IE-001 complete; AG-001 contract amendment complete**. This is the
+controlling baseline for IE-002 through IE-014 and AG-001 through AG-009. The
+pre-AirGradient IE-011 through IE-014 records describe the deployed schema-v3
+system; the AG packages migrate that public contract to strict schema v4.
+Later packages may fill verified capability options and private Home Assistant
+mappings, but must not silently change the public names, safety rules,
 thresholds, or package acceptance criteria recorded here.
 
 ## Scope and Fixed Platform Choices
@@ -29,6 +32,7 @@ the actual Airmega 250S contract. HACS is not part of this architecture.
 Aranet4 --BLE--> AtomS3 Lite --encrypted ESPHome API--> Home Assistant on k3s
 Nest ------------------------ Google cloud -----------> Home Assistant on k3s
 Airmega 250S units ---------- Coway IoCare+ cloud ----> Home Assistant on k3s
+AirGradient ONE --local HTTP-------------------------> Home Assistant on k3s
                                                          |
                             allowlisted current state <--+
                             allowlisted controls ------->+
@@ -37,7 +41,7 @@ Airmega 250S units ---------- Coway IoCare+ cloud ----> Home Assistant on k3s
                          |                               |
                          +--> Homepage backend <---------+
                                   |
-                         schema-v3 REST/SSE and
+                                  schema-v4 REST/SSE and
                          reviewed action requests
                                   |
                     approved browser source paths only
@@ -45,6 +49,10 @@ Airmega 250S units ---------- Coway IoCare+ cloud ----> Home Assistant on k3s
 
 Threshold automations notify but never operate equipment. Home Assistant remains
 usable without Homepage, and Homepage is never a second device controller.
+The AirGradient ONE target is firmware 3.1.1 or newer, uses the official Home
+Assistant integration over local HTTP, resides on the IoT VLAN, and has cloud
+sharing disabled. Home Assistant may take local configuration authority only
+after the AG-002 owner gate is explicitly confirmed.
 
 ## Inventory, Rooms, and Ownership
 
@@ -57,6 +65,7 @@ are exactly `living_room` and `bedroom`.
 | `aranet_living_room` | Living Room Aranet4 | Living Room | Local BLE through the AtomS3 Lite ESPHome proxy | Home Assistant; local |
 | `coway_living_room` | Living Room Coway | Living Room | Pinned IoCare integration through Coway IoCare+ | Home Assistant; cloud-dependent |
 | `coway_bedroom` | Bedroom Coway | Bedroom | Pinned IoCare integration through Coway IoCare+ | Home Assistant; cloud-dependent |
+| `airgradient_living_room` | Living Room AirGradient ONE | Living Room | Official Home Assistant AirGradient integration over local HTTP on the IoT VLAN | Home Assistant; local |
 
 The AtomS3 Lite is infrastructure, not a fifth public indoor device. Its
 canonical infrastructure alias is `atom_living_room`; it is assigned to Living
@@ -79,6 +88,7 @@ mark an alias unsupported, but may not substitute a raw entity ID.
 | `nest_living_room` | `nest_living_room.current_temperature`, `.humidity` | `.hvac_mode`, `.heat_setpoint`, `.cool_setpoint`, `.fan_timer` |
 | `coway_living_room` | `.aqi`, `.pm25`, `.pm10`, `.filter_life` | `.power`, `.speed`, `.preset`, `.timer`, `.light`, `.button_lock`, `.sensitivity` |
 | `coway_bedroom` | `.aqi`, `.pm25`, `.pm10`, `.filter_life` | `.power`, `.speed`, `.preset`, `.timer`, `.light`, `.button_lock`, `.sensitivity` |
+| `airgradient_living_room` | `.temperature`, `.humidity`, `.co2`, `.pm25`, `.pm10`, `.tvoc_index`, `.nox_index` | `.display_brightness`, `.led_brightness`, `.display_temperature_unit`, `.pm_standard`, `.led_mode` |
 
 In the last two rows, every suffix is prefixed by that row's full device alias.
 `pm25_worst` is a derived Living Room summary value, never a mapped Home Assistant
@@ -91,6 +101,11 @@ Every value carries an observation time, freshness, severity, and normalized
 source. The indoor contract uses only `CURRENT`, `STALE`, `NO_DATA`,
 `NOT_SUPPORTED`, and `UNAVAILABLE`; `NOT_PROVISIONED` remains available in the
 existing infrastructure contract but is invalid for an onboarded indoor device.
+AirGradient is expected to be polled approximately once per minute. Its
+freshness window is 180 seconds: an observation at age 0–180 seconds is
+`CURRENT`, and a missing observation after that window is `STALE` or
+`UNAVAILABLE` according to the source-health state. A stale value is retained
+only as explicitly historical context.
 
 - `CURRENT` is a successfully observed value within its source freshness window.
 - `STALE` is a last known value displayed with its age. It cannot satisfy an
@@ -110,7 +125,9 @@ authoritative connection makes it `UNAVAILABLE`.
 | Failure | Required behavior |
 |---|---|
 | Internet loss | Aranet readings continue locally. Nest and Coway become unavailable after their freshness windows. Only their controls are disabled. |
+| Internet loss with AirGradient local path intact | AirGradient readings and approved local controls continue; cloud sharing is disabled and no cloud path is required. |
 | Atom or ESPHome path loss | Aranet becomes unavailable/stale; Nest and both Coways continue independently. |
+| AirGradient device or Home Assistant local-HTTP path loss | AirGradient readings and controls become unavailable after the 180-second freshness window; Nest, Aranet, and Coways continue independently. |
 | Google/Nest failure | Nest readings and controls become unavailable; Aranet and Coways continue. No cached thermostat state is presented as current. |
 | Coway account/API failure | Only affected Coway devices and controls become unavailable; Nest and Aranet continue. An account-wide failure may affect both Coways without affecting other sources. |
 | One Coway device failure | The other purifier remains independently readable and controllable. |
@@ -131,10 +148,10 @@ handled by the separate source-unavailable incident.
 
 | Signal | Warning | Critical | Recovery |
 |---|---|---|---|
-| Living Room CO2 | `>= 1000 ppm` for 10m | `>= 1500 ppm` for 5m | `< 900 ppm` for 10m |
+| Living Room CO2 (AirGradient primary, Aranet fallback) | `>= 1000 ppm` for 10m | `>= 1500 ppm` for 5m | `< 900 ppm` for 10m |
 | Living Room temperature | `< 60°F` or `> 80°F` for 15m | `< 55°F` or `> 85°F` for 10m | `62–78°F` inclusive for 15m |
-| Living Room humidity | `< 30%` or `> 60%` for 30m | `< 20%` or `> 70%` for 15m | `32–58%` inclusive for 30m |
-| Either Coway PM2.5 | `>= 15 µg/m³` for 15m | `>= 35 µg/m³` for 10m | `< 10 µg/m³` for 15m |
+| Living Room humidity (AirGradient primary, Aranet fallback) | `< 30%` or `> 60%` for 30m | `< 20%` or `> 70%` for 15m | `32–58%` inclusive for 30m |
+| Living Room worst-current PM2.5 (AirGradient or Living Room Coway) | `>= 15 µg/m³` for 15m | `>= 35 µg/m³` for 10m | `< 10 µg/m³` for 15m |
 | Aranet battery | `<= 20%` for 30m | `<= 10%` for 15m | `>= 25%` for 30m |
 | Coway filter life, per unit | `<= 10%` for 1h | `<= 2%` for 1h | `>= 15%` for 1h after replacement |
 | Source unavailable, per device | unavailable for 5m | unavailable for 30m | current for 5m |
@@ -147,18 +164,29 @@ replacement signal instead of percentage life, `on` for 15m is warning and `off`
 for 15m is recovery; that entity cannot generate the percentage-based critical
 state. Unsupported battery/filter entities produce no fabricated alert.
 
+AirGradient TVOC and NOx indexes are informational readings only and have no
+warning, critical, or recovery automation. CO2 and humidity evaluate the current
+AirGradient reading first and use current Aranet only when AirGradient is not
+current. Living Room PM2.5 evaluates the maximum of current AirGradient and
+current Living Room Coway values; a stale high value is excluded, and numeric
+evaluation pauses when neither source is current. Bedroom Coway PM2.5 remains a
+separate incident.
+
 Notifications use the Home Assistant Companion App. Their only mobile action
 opens `/indoor`; notification actions cannot call a service or operate a device.
 
-## Bootstrap Schema v3 Draft
+## Bootstrap Schema v4 Draft
 
-Existing schema-v2 fields remain backward-compatible, except that
-`schemaVersion` becomes literal `3`. Schema v3 adds the required `indoor` member.
-All objects are strict: unknown fields are rejected. ISO timestamps include an
+Schema v4 is a deliberate breaking boundary for the indoor contract. A schema-v3
+client must reject a v4 response before reading any fields; a v4 client must
+reject a v3 response. Existing non-indoor bootstrap fields retain their prior
+meaning only inside their matching schema version. The `indoor` member is
+required in v4. Every object is strict: unknown fields, aliases, source values,
+commands, and capability members are rejected. ISO timestamps include an
 offset; state versions and action IDs are opaque server-generated strings.
 
 The following TypeScript is the normative shape. It is a design contract for
-IE-011, not runtime code added by IE-001.
+AG-006, not runtime code added by AG-001.
 
 ```ts
 type IndoorRoomAlias = "living_room" | "bedroom";
@@ -166,7 +194,8 @@ type IndoorDeviceAlias =
   | "nest_living_room"
   | "aranet_living_room"
   | "coway_living_room"
-  | "coway_bedroom";
+  | "coway_bedroom"
+  | "airgradient_living_room";
 type PurifierAlias = "coway_living_room" | "coway_bedroom";
 type IndoorEntityAlias =
   | "aranet_living_room.temperature"
@@ -174,6 +203,13 @@ type IndoorEntityAlias =
   | "aranet_living_room.pressure"
   | "aranet_living_room.co2"
   | "aranet_living_room.battery"
+  | "airgradient_living_room.temperature"
+  | "airgradient_living_room.humidity"
+  | "airgradient_living_room.co2"
+  | "airgradient_living_room.pm25"
+  | "airgradient_living_room.pm10"
+  | "airgradient_living_room.tvoc_index"
+  | "airgradient_living_room.nox_index"
   | "nest_living_room.current_temperature"
   | "nest_living_room.humidity"
   | "nest_living_room.hvac_mode"
@@ -202,7 +238,17 @@ type IndoorEntityAlias =
   | "coway_bedroom.light"
   | "coway_bedroom.button_lock"
   | "coway_bedroom.sensitivity";
-type IndoorSource = "ARANET_LOCAL" | "NEST_CLOUD" | "COWAY_CLOUD";
+type IndoorControlAlias =
+  | "airgradient_living_room.display_brightness"
+  | "airgradient_living_room.led_brightness"
+  | "airgradient_living_room.display_temperature_unit"
+  | "airgradient_living_room.pm_standard"
+  | "airgradient_living_room.led_mode";
+type IndoorSource =
+  | "ARANET_LOCAL"
+  | "NEST_CLOUD"
+  | "COWAY_CLOUD"
+  | "AIRGRADIENT_LOCAL";
 type IndoorFreshness =
   | "CURRENT"
   | "STALE"
@@ -210,8 +256,12 @@ type IndoorFreshness =
   | "NOT_SUPPORTED"
   | "UNAVAILABLE";
 type IndoorSourceState = "AVAILABLE" | "DEGRADED" | "UNAVAILABLE";
-type ControlDependency = "LOCAL" | "NEST_CLOUD" | "COWAY_CLOUD";
-type IndoorUnit = "°F" | "%" | "hPa" | "ppm" | "µg/m³";
+type ControlDependency =
+  | "LOCAL"
+  | "NEST_CLOUD"
+  | "COWAY_CLOUD"
+  | "AIRGRADIENT_LOCAL";
+type IndoorUnit = "°F" | "%" | "hPa" | "ppm" | "µg/m³" | "index";
 type HistoryWindow = "5m" | "15m" | "1h" | "3h" | "6h" | "24h" | "7d" | "30d" | "custom";
 type IndoorHistoryWindow = "1h" | "3h" | "6h" | "24h" | "7d" | "30d" | "custom";
 
@@ -244,6 +294,14 @@ interface IndoorNumberCapability {
   dependency: ControlDependency;
 }
 
+interface IndoorRangeCapability {
+  supported: boolean;
+  min: number;
+  max: number;
+  step: number;
+  dependency: "AIRGRADIENT_LOCAL";
+}
+
 interface AranetState {
   alias: "aranet_living_room";
   room: "living_room";
@@ -255,6 +313,32 @@ interface AranetState {
     co2: IndoorReading;
     battery: IndoorReading;
   };
+}
+
+interface AirGradientCapabilities {
+  displayBrightness: IndoorRangeCapability; // integer 0–100, step 1
+  ledBrightness: IndoorRangeCapability; // integer 0–100, step 1
+  displayTemperatureUnits: IndoorOptionCapability;
+  pmStandards: IndoorOptionCapability;
+  ledModes: IndoorOptionCapability;
+}
+
+interface AirGradientState {
+  alias: "airgradient_living_room";
+  room: "living_room";
+  stateVersion: string;
+  sourceState: IndoorSourceState;
+  dependency: "AIRGRADIENT_LOCAL";
+  readings: {
+    temperature: IndoorReading;
+    humidity: IndoorReading;
+    co2: IndoorReading;
+    pm25: IndoorReading;
+    pm10: IndoorReading;
+    tvocIndex: IndoorReading;
+    noxIndex: IndoorReading;
+  };
+  capabilities: AirGradientCapabilities;
 }
 
 interface ThermostatCapabilities {
@@ -344,30 +428,42 @@ interface IndoorAlert {
 
 interface IndoorActionStatus {
   actionId: string;
-  target: "nest_living_room" | PurifierAlias;
+  target: "nest_living_room" | PurifierAlias | "airgradient_living_room";
   status: "PENDING" | "SUCCEEDED" | "FAILED" | "TIMED_OUT";
   acceptedAt: string;
   resolvedAt: string | null;
   message?: string; // redacted
 }
 
-interface IndoorStateV3 {
+interface IndoorStateV4 {
   rooms: IndoorRoomSummary[];
-  sensors: [AranetState];
+  sensors: [AranetState, AirGradientState];
   thermostats: [ThermostatState];
   purifiers: [PurifierState, PurifierState];
   alerts: IndoorAlert[];
   actions: IndoorActionStatus[]; // pending and bounded recent results only
 }
 
-interface BootstrapV3 extends Omit<BootstrapV2, "schemaVersion"> {
-  schemaVersion: 3;
-  indoor: IndoorStateV3;
+interface BootstrapV4 extends Omit<BootstrapV2, "schemaVersion"> {
+  schemaVersion: 4;
+  indoor: IndoorStateV4;
 }
 ```
 
 The indoor history endpoint continues to be `GET /api/v1/history`, accepts only
-Git-owned metric aliases and fixed `1h`, `3h`, `6h`, `24h`, `7d`, or `30d`
+these AirGradient metric aliases in addition to the existing Git-owned aliases:
+
+```text
+airgradient_living_room.temperature
+airgradient_living_room.humidity
+airgradient_living_room.co2
+airgradient_living_room.pm25
+airgradient_living_room.pm10
+airgradient_living_room.tvoc_index
+airgradient_living_room.nox_index
+```
+
+It accepts fixed `1h`, `3h`, `6h`, `24h`, `7d`, or `30d`
 windows. A `custom` request additionally requires validated ISO `start` and
 `end` timestamps. Its Prometheus step is calculated server-side to bound the
 response to 360 samples regardless of the retained range. Browser-supplied
@@ -451,11 +547,36 @@ type IndoorCommand =
       type: "COWAY_SET_SENSITIVITY";
       target: PurifierAlias;
       sensitivity: string;
+    }
+  | {
+      type: "AIRGRADIENT_SET_DISPLAY_BRIGHTNESS";
+      target: "airgradient_living_room";
+      brightness: number; // integer 0–100, step 1
+    }
+  | {
+      type: "AIRGRADIENT_SET_LED_BRIGHTNESS";
+      target: "airgradient_living_room";
+      brightness: number; // integer 0–100, step 1
+    }
+  | {
+      type: "AIRGRADIENT_SET_DISPLAY_TEMPERATURE_UNIT";
+      target: "airgradient_living_room";
+      unit: string; // exact current advertised option
+    }
+  | {
+      type: "AIRGRADIENT_SET_PM_STANDARD";
+      target: "airgradient_living_room";
+      standard: string; // exact current advertised option
+    }
+  | {
+      type: "AIRGRADIENT_SET_LED_MODE";
+      target: "airgradient_living_room";
+      mode: string; // exact current advertised option
     };
 
 interface IndoorActionAccepted {
   actionId: string;
-  target: "nest_living_room" | PurifierAlias;
+  target: "nest_living_room" | PurifierAlias | "airgradient_living_room";
   status: "PENDING";
   acceptedAt: string;
 }
@@ -470,9 +591,12 @@ String and numeric command values are not open-ended despite their JSON scalar
 types. Nest mode/setpoint shape, fan duration, setpoint range and step must match
 the current thermostat capabilities. Coway preset, timer, light, and sensitivity
 must exactly match the target purifier's current advertised option/value arrays.
-IE-007 and IE-008 populate those arrays from verified live capabilities. Empty or
-unsupported capability arrays reject the action; the gateway cannot forward a
-caller-provided Home Assistant service or value.
+AirGradient brightness must be an integer from 0 through 100 at step 1, and its
+temperature-unit, PM-standard, and LED-mode strings must exactly match the
+target's current advertised option arrays. AG-002 supplies the redacted
+AirGradient capability evidence; empty or unsupported capability arrays reject
+the action. The gateway cannot forward a caller-provided Home Assistant service,
+entity, or value.
 
 Successful validation returns HTTP `202` and `IndoorActionAccepted`. It does not
 change the bootstrap state optimistically. The result stays `PENDING` until a new
@@ -513,12 +637,46 @@ There is no automatic equipment-control automation, bulk command, arbitrary
 service proxy, notification action that controls a device, or browser-to-Home
 Assistant credential. Rollback or cloud failure cannot replay an accepted action.
 
+## AirGradient acceptance and rollback contract
+
+AG-001 is accepted only when the following fixed contract is documented without
+private identifiers or unverified capability values:
+
+- the Living Room inventory row, canonical aliases, `AIRGRADIENT_LOCAL` source,
+  local-HTTP boundary, firmware 3.1.1 minimum, disabled cloud sharing, and
+  180-second freshness window;
+- strict schema v4 with explicit v3 rejection, seven read aliases, five control
+  aliases, numeric brightness range 0–100 step 1, and runtime-advertised option
+  capabilities;
+- Nest temperature authority, AirGradient CO2/humidity authority with current
+  Aranet fallback, worst-current Living Room PM2.5, independent Bedroom Coway
+  alerts, and informational-only TVOC/NOx;
+- fixed action commands with expected-state version, confirmation, idempotency,
+  convergence, rate limits, and redacted audits; and
+- package dependencies, owner gate, deterministic/live acceptance matrix, and
+  Git-only rollback sequence.
+
+No AG-001 acceptance item claims that the physical ONE is onboarded. The only
+live evidence allowed before AG-002 is `fixture only` or redacted documentation
+of the owner gate. AG-002 must record actual capabilities; its evidence may mark
+an advertised option unsupported, but may not add a new public alias or command.
+
+The AirGradient migration rollback is a versioned Git operation. Before AG-009,
+revert the active package commit and leave the existing pre-AirGradient
+schema-v3 deployment unchanged. During AG-009, revert the digest-pinned v4
+manifests and application configuration through Git/Argo CD, wait for the prior
+image to report healthy, verify that no mixed v3/v4 pods remain, and confirm
+Home Assistant's official integration remains usable. Rollback never sends a
+device-setting reversal and never deletes the reserved address, local
+integration, or retained history. Forward recovery reapplies the validated v4
+revision only after the complete live acceptance matrix passes again.
+
 ## Rollout Sequence and Package Status
 
 `BLOCKED` means blocked by the listed package or owner gate, not that the package
 has been attempted and failed.
 
-| Package | Status at IE-001 close | Dependency / gate | Fixed acceptance outcome |
+| Package | Status at AG-001 amendment | Dependency / gate | Fixed acceptance outcome |
 |---|---|---|---|
 | IE-001 Architecture and contract baseline | **COMPLETE** | none | This document is internally consistent, credential-free, and fixes names, contracts, thresholds, safeguards, sequence, and acceptance rules. |
 | IE-002 Coway compatibility harness | **COMPLETE** | IE-001 | `0.6.1` is SHA/checksum-pinned; unchanged upstream imports and passes config-flow/entity tests on HA `2026.7.2`; exact 250S entities/services are recorded. |
@@ -534,12 +692,34 @@ has been attempted and failed.
 | IE-012 Homepage control gateway | **COMPLETE** | IE-011 complete | The fixed endpoint, private runtime mappings, persistent 24-hour replay journal, convergence tracking, rate/concurrency limits, and source/origin/state/capability safeguards pass 103 tests; the immutable image is live and correctly rejects currently degraded cloud sources without issuing device calls. |
 | IE-013 Indoor dashboard UI | COMPLETE | IE-011 and IE-012 complete | Overview, `/indoor`, four graph windows, capability rendering, review dialogs, truthful pending/failure states, accessibility, responsive, keyboard, and Playwright tests pass. |
 | IE-014 Backup, restore, rollout | COMPLETE | IE-004, IE-009, IE-013 complete | Seven encrypted local archives and least-privilege PBS copies operate; the clean-PVC restore and failure matrix pass; production and rollback are GitOps-proven. |
+| AG-001 Contract baseline | **COMPLETE** | AG-000 documentation publication | AirGradient inventory, aliases, source/freshness policy, strict schema-v4 design, alert authority, five-command allowlist, acceptance matrix, and rollback contract are fixed here; no runtime code changed. |
+| AG-002 Network and HA onboarding | **BLOCKED** | AG-001 plus owner gate | Owner places the ONE, joins IoT Wi-Fi, upgrades firmware 3.1.1+, supplies MAC only to UniFi, and authorizes local HA configuration; local HTTP, one-minute polling, Internet-blocked operation, reboot/restart recovery, stale behavior, and redacted capabilities pass. |
+| AG-003 HA normalization | **BLOCKED** | AG-002 | Canonical AirGradient entities, private mappings, Fahrenheit normalization, 180-second freshness, source rollup, and device contract tests pass. |
+| AG-004 Alert migration | **BLOCKED** | AG-003 | AirGradient CO2/humidity authority, current-source fallback, worst-current Living Room PM2.5, source-loss incidents, deduplication, hysteresis, and deterministic synthetic tests pass. |
+| AG-005 Prometheus history | **BLOCKED** | AG-003 | Seven exact AirGradient aliases are allowlisted for every supported window; arbitrary entities are rejected and manifests/query/log output are redacted. |
+| AG-006 Schema-v4 read path | **BLOCKED** | AG-003 and AG-005 | Strict v4 rejects v3 clients, unknown fields, and arbitrary aliases; all seven readings, capabilities, precedence, freshness, history, fixtures, and adapter/API tests pass. |
+| AG-007 Control gateway | **BLOCKED** | AG-002 and AG-006 | Five fixed commands enforce review, confirmation, expected state version, idempotency, convergence, rate limits, unavailable/capability/origin/network rejection, and redacted audits. |
+| AG-008 Dashboard UI | **BLOCKED** | AG-006 and AG-007 | AirGradient + Nest and compact Aranet cards, six graphs, capability omission, review dialogs, truthful partial state, accessibility, responsive, and E2E tests pass. |
+| AG-009 Production rollout | **BLOCKED** | AG-004 and AG-008 | Outage/control matrix, image scans, digest pin, Argo health, live readings/history/settings, firewall isolation, and Git-only rollback/forward recovery pass; IE-015 evidence is complete. |
+
+The IE-011 through IE-014 rows above are historical evidence for the deployed
+pre-AirGradient schema-v3 dashboard and remain valid for that release. AG-006
+is the controlled v4 migration; no mixed-version rollout is accepted. AG-009
+must supersede the v3 image and update the historical closeout references only
+after v4 live acceptance passes.
 
 IE-006, IE-007, and IE-008 may proceed independently only after their own
 prerequisites. IE-009 and IE-010 may proceed in parallel only after all device
 contracts are stable. IE-011 through IE-014 are sequential because they modify
 shared public contracts, controls, UI, and production state. No package may
 silently absorb another package's implementation.
+
+For the AirGradient migration, AG-002 waits for the AG-001 baseline and the
+owner-operated device gate. AG-003 follows onboarding. AG-004 and AG-005 may
+run in parallel after AG-003. AG-006 follows both read normalization and
+history. AG-007 follows the v4 read path and onboarding; AG-008 follows the
+read path and control gateway; AG-009 follows alert migration and UI. No AG
+package may begin early or modify the pre-AirGradient deployment as a shortcut.
 
 ## Per-Package Handoff and Change Control
 
