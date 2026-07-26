@@ -126,7 +126,7 @@ export class OpenMeteoAdapter {
 
   constructor(options: OpenMeteoOptions) {
     const inactive = !options.enabled;
-    this.conditions = new SourceNormalizer<ConditionsValue>({ source: 'nws-conditions', staleAfterMs: 20 * 60_000, circuitCooldownMs: 5 * 60_000, unsupported: inactive, ...(options.clock ? { clock: options.clock } : {}) });
+    this.conditions = new SourceNormalizer<ConditionsValue>({ source: 'nws-conditions', staleAfterMs: 35 * 60_000, circuitCooldownMs: 5 * 60_000, unsupported: inactive, ...(options.clock ? { clock: options.clock } : {}) });
     this.air = new SourceNormalizer<AirValue>({ source: 'airnow-air-quality', staleAfterMs: 75 * 60_000, circuitCooldownMs: 15 * 60_000, unsupported: inactive, ...(options.clock ? { clock: options.clock } : {}) });
     this.fetcher = options.fetch;
     this.latitude = options.latitude;

@@ -66,6 +66,16 @@ describe('weather provider chain', () => {
     expect(calls.filter((call) => call.url.includes('/points/'))).toHaveLength(1);
   });
 
+  it('treats a quality-controlled NWS observation under 35 minutes old as current', async () => {
+    const calls: Array<{ url: string; headers?: Record<string, string> }> = [];
+    const time = mutableClock();
+    const adapter = new OpenMeteoAdapter({ fetch: providerFetch(calls), latitude: 45.527412, longitude: -122.686270, enabled: true, clock: time.clock });
+    await adapter.read();
+    time.advance(25 * 60_000);
+    const weather = await adapter.read();
+    expect(weather.conditionsMetadata.freshness).toBe('CURRENT');
+  });
+
   it('falls back from a failed NWS observation to its hourly forecast', async () => {
     const calls: Array<{ url: string; headers?: Record<string, string> }> = [];
     const diagnostics: Parameters<WeatherDiagnostic>[0][] = [];
