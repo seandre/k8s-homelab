@@ -54,6 +54,12 @@ spec:
               value: production
             - name: LIVE_TELEMETRY
               value: "true"
+            - name: AIRNOW_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: homepage-airnow-readonly
+                  key: api-key
+                  optional: true
           resources:
             requests:
               cpu: 100m

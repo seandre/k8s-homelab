@@ -48,7 +48,7 @@ export function loadRuntimeConfig(input: unknown): RuntimeConfig {
 }
 
 export const gitOwnedRuntimeConfig: RuntimeConfig = loadRuntimeConfig({
-  allowedHosts: ['argocd.lab.seandre.dev', 'grafana.lab.seandre.dev', 'unifi.ui.com', 'api.ui.com', 'pve-01.lab.seandre.dev', 'pve-02.lab.seandre.dev', 'pbs-01.lab.seandre.dev', 'ha.lab.seandre.dev', 'nexus.lab.seandre.dev', 'docs.lab.seandre.dev', 'nginx-test.lab.seandre.dev', 'github.com', 'api.open-meteo.com', 'argocd-server.argocd.svc', 'kube-prometheus-stack-grafana.monitoring.svc', 'homelab-docs.homelab-docs.svc', 'nginx-test.nginx-test.svc', 'home-assistant.home-assistant.svc', 'kube-prometheus-stack-prometheus.monitoring.svc', 'kube-prometheus-stack-alertmanager.monitoring.svc'],
+  allowedHosts: ['argocd.lab.seandre.dev', 'grafana.lab.seandre.dev', 'unifi.ui.com', 'api.ui.com', 'pve-01.lab.seandre.dev', 'pve-02.lab.seandre.dev', 'pbs-01.lab.seandre.dev', 'ha.lab.seandre.dev', 'nexus.lab.seandre.dev', 'docs.lab.seandre.dev', 'nginx-test.lab.seandre.dev', 'github.com', 'api.weather.gov', 'www.airnowapi.org', 'api.open-meteo.com', 'air-quality-api.open-meteo.com', 'argocd-server.argocd.svc', 'kube-prometheus-stack-grafana.monitoring.svc', 'homelab-docs.homelab-docs.svc', 'nginx-test.nginx-test.svc', 'home-assistant.home-assistant.svc', 'kube-prometheus-stack-prometheus.monitoring.svc', 'kube-prometheus-stack-alertmanager.monitoring.svc'],
   views: ['overview', 'compute', 'network', 'storage-backups', 'kubernetes', 'okd', 'services', 'weather'].map((id) => ({ id, enabled: true })),
   defaultLayout: { navigation: 'expanded', density: 'compact', overview: 'balanced' },
   serviceLinks: [
@@ -57,7 +57,7 @@ export const gitOwnedRuntimeConfig: RuntimeConfig = loadRuntimeConfig({
     ['homelab-docs', 'Homelab Docs', 'https://docs.lab.seandre.dev', 'Apps'], ['nginx-test', 'nginx test', 'https://nginx-test.lab.seandre.dev', 'Apps'], ['repository', 'Repository', 'https://github.com/seandre/k8s-homelab', 'Homelab'], ['homepage-github', 'Homepage GitHub', 'https://github.com/gethomepage/homepage', 'Homelab'],
   ].map(([id, label, href, group]) => ({ id, label, href, group })),
   sources: [
-    { id: 'weather-source', enabled: true, endpoint: 'https://api.open-meteo.com/v1/forecast', timeoutMs: 5_000, stateWhenDisabled: 'NOT_SUPPORTED' },
+    { id: 'weather-source', enabled: true, endpoint: 'https://api.weather.gov', timeoutMs: 5_000, stateWhenDisabled: 'NOT_SUPPORTED' },
     { id: 'service-probes', enabled: true, endpoint: 'https://argocd.lab.seandre.dev', timeoutMs: 3_000, stateWhenDisabled: 'NOT_SUPPORTED' },
     { id: 'prometheus-source', enabled: true, endpoint: 'http://kube-prometheus-stack-prometheus.monitoring.svc:9090', timeoutMs: 5_000, stateWhenDisabled: 'NOT_PROVISIONED' },
     { id: 'argocd-source', enabled: true, endpoint: 'https://argocd.lab.seandre.dev', timeoutMs: 3_000, stateWhenDisabled: 'NOT_SUPPORTED' },
@@ -87,6 +87,7 @@ export const gitOwnedRuntimeConfig: RuntimeConfig = loadRuntimeConfig({
     { id: 'unifi-readonly', namespace: 'homepage', secretName: 'homepage-unifi-readonly', keys: ['server', 'token'] },
     { id: 'home-assistant-readonly', namespace: 'homepage', secretName: 'homepage-home-assistant-readonly', keys: ['token'] },
     { id: 'home-assistant-control', namespace: 'homepage', secretName: 'homepage-home-assistant-control', keys: ['mapping.json'] },
+    { id: 'airnow-readonly', namespace: 'homepage', secretName: 'homepage-airnow-readonly', keys: ['api-key'] },
   ],
   // Validated against Prometheus: one USP-PDU-Pro device and one series for
   // each of the required pve-01 and pve-02 outlet labels.

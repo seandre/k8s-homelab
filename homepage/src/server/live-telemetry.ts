@@ -116,7 +116,13 @@ export class LiveTelemetry {
     ], (url) => this.httpFetch(url) as ReturnType<GlancesFetch>, this.runtimeConfig.featureFlags.proxmox);
     this.prometheus = new PrometheusAdapter(this.sourceEndpoint('prometheus-source'), this.runtimeConfig.featureFlags.prometheus, this.runtimeConfig.pduPower);
     this.alertmanager = new AlertmanagerAdapter('http://kube-prometheus-stack-alertmanager.monitoring.svc:9093', this.runtimeConfig.featureFlags.prometheus);
-    this.weather = new OpenMeteoAdapter({ fetch: (url) => this.httpFetch(url), latitude: runtimeConfig.weatherLocation.latitude, longitude: runtimeConfig.weatherLocation.longitude, enabled: runtimeConfig.featureFlags.weather });
+    this.weather = new OpenMeteoAdapter({
+      fetch: (url, init) => this.httpFetch(url, init),
+      latitude: runtimeConfig.weatherLocation.latitude,
+      longitude: runtimeConfig.weatherLocation.longitude,
+      enabled: runtimeConfig.featureFlags.weather,
+      ...(process.env.AIRNOW_API_KEY ? { airNowApiKey: process.env.AIRNOW_API_KEY } : {}),
+    });
     this.probes = new AllowlistedProbeRunner(runtimeConfig, (url, init) => fetch(url, init), { now: () => new Date() });
   }
 
