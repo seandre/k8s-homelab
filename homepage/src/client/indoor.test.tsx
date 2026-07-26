@@ -9,7 +9,8 @@ import { HistoryGraph, IndoorOverviewCard, IndoorScreen } from './indoor.js';
 describe('indoor dashboard', () => {
   it('renders normalized readings, both purifiers, history windows, and capability controls', () => {
     const markup = renderToStaticMarkup(<IndoorScreen bootstrap={healthyBootstrapFixture} />);
-    expect(markup).toContain('Living Room environment');
+    expect(markup).toContain('AirGradient + Nest');
+    expect(markup).toContain('Living Room Aranet');
     expect(markup).toContain('Living Room Coway');
     expect(markup).toContain('Bedroom Coway');
     expect(markup).toContain('Environmental trends');
@@ -17,9 +18,12 @@ describe('indoor dashboard', () => {
     for (const window of ['1h', '3h', '6h', '24h', '7d', '30d', 'Custom']) expect(markup).toContain(`>${window}<`);
     expect(markup).toContain('HVAC mode');
     expect(markup).toContain('Review power off');
-    expect(markup).toContain('NO DATA · CO₂');
-    expect(markup.indexOf('NO DATA · CO₂')).toBeLessThan(markup.indexOf('NO DATA · Temperature'));
-    expect(markup.indexOf('NO DATA · Living Room PM2.5')).toBeLessThan(markup.indexOf('NO DATA · Humidity'));
+    for (const graph of ['AirGradient CO₂', 'AirGradient PM2.5', 'Nest temperature', 'AirGradient humidity', 'AirGradient TVOC index', 'AirGradient NOx index']) {
+      expect(markup).toContain(`NO DATA · ${graph}`);
+    }
+    expect(markup.indexOf('NO DATA · AirGradient CO₂')).toBeLessThan(markup.indexOf('NO DATA · Nest temperature'));
+    expect(markup.indexOf('NO DATA · AirGradient PM2.5')).toBeLessThan(markup.indexOf('NO DATA · AirGradient humidity'));
+    for (const setting of ['Display brightness', 'LED brightness', 'Display temperature unit', 'PM standard', 'LED mode']) expect(markup).toContain(setting);
     expect(markup.indexOf('Bedroom Coway')).toBeLessThan(markup.indexOf('Living Room Nest'));
   });
 
@@ -35,7 +39,24 @@ describe('indoor dashboard', () => {
     expect(markup).not.toContain('HVAC mode');
     expect(markup).not.toContain('Review power');
     expect(markup).not.toContain('Sensitivity');
+    expect(markup).not.toContain('Display brightness');
+    expect(markup).not.toContain('LED mode');
     expect(markup).toContain('UNAVAILABLE');
+  });
+
+  it('keeps the Aranet comparison visible when the AirGradient source is partial', () => {
+    const bootstrap = structuredClone(healthyBootstrapFixture);
+    bootstrap.indoor.sensors[1].sourceState = 'UNAVAILABLE';
+    for (const reading of Object.values(bootstrap.indoor.sensors[1].readings)) {
+      reading.value = null;
+      reading.metadata.freshness = 'UNAVAILABLE';
+      reading.metadata.sourceState = 'UNAVAILABLE';
+    }
+    const markup = renderToStaticMarkup(<IndoorScreen bootstrap={bootstrap} />);
+    expect(markup).toContain('AirGradient + Nest');
+    expect(markup).toContain('Living Room Aranet');
+    expect(markup).toContain('COMPARISON / FALLBACK');
+    expect(markup).toContain('69.8');
   });
 
   it('adds the compact Living Room summary to overview', () => {
@@ -98,7 +119,7 @@ describe('indoor dashboard', () => {
       thresholds={[{ value: 900, tone: 'yellow' }, { value: 1000, tone: 'red' }]}
       scale={{ fixedMin: 400, fixedMax: 1400, ticks: [400, 600, 800, 1000, 1200, 1400] }}
       series={{
-        metric: 'aranet_living_room.co2',
+        metric: 'airgradient_living_room.co2',
         unit: 'ppm',
         window: '1h',
         points: [
@@ -126,7 +147,7 @@ describe('indoor dashboard', () => {
       thresholds={[{ value: 5, tone: 'yellow' }, { value: 15, tone: 'red' }]}
       scale={{ minSpan: 20, hardMin: 0 }}
       series={{
-        metric: 'coway_living_room.pm25',
+        metric: 'airgradient_living_room.pm25',
         unit: 'µg/m³',
         window: '1h',
         points: [
