@@ -69,9 +69,11 @@ test('has no serious or critical automated accessibility violations', async ({ p
 
 test('renders the responsive indoor dashboard and requires review before controls', async ({ page }) => {
   let historyRequestCount = 0;
+  const customQueries: URL[] = [];
   await page.route(/\/api\/v1\/history\?/, async (route) => {
     historyRequestCount += 1;
     const url = new URL(route.request().url());
+    if (url.searchParams.get('window') === 'custom') customQueries.push(url);
     const metric = url.searchParams.get('metric')!;
     const unit = metric.endsWith('.co2') ? 'ppm' : metric.endsWith('.temperature') ? '°F' : metric.endsWith('.humidity') ? '%' : 'µg/m³';
     const values = metric.endsWith('.co2') ? [850, 950, 1100] : metric.endsWith('.temperature') ? [70, 72, 71] : metric.endsWith('.humidity') ? [42, 44, 43] : [3, 10, 18];
@@ -120,6 +122,20 @@ test('renders the responsive indoor dashboard and requires review before control
   await co2Graph.focus();
   await page.keyboard.press('ArrowLeft');
   await expect(co2Graph.locator('.history-tooltip')).toContainText('ppm');
+  await page.getByRole('button', { name: 'Custom', exact: true }).click();
+  await page.getByLabel('Last').fill('2');
+  await page.getByLabel('Unit').selectOption('days');
+  await page.getByRole('button', { name: 'Apply to all graphs' }).click();
+  await expect.poll(() => historyRequestCount).toBe(8);
+  expect(customQueries).toHaveLength(4);
+  expect(customQueries.every((url) => url.searchParams.has('start') && url.searchParams.has('end'))).toBe(true);
+  await page.getByRole('button', { name: 'Custom', exact: true }).click();
+  await page.getByRole('button', { name: 'Start / end' }).click();
+  await page.getByLabel('Start').fill('2026-07-24T08:00');
+  await page.getByRole('textbox', { name: 'End', exact: true }).fill('2026-07-25T08:00');
+  await page.getByRole('button', { name: 'Apply to all graphs' }).click();
+  await expect.poll(() => historyRequestCount).toBe(12);
+  expect(customQueries).toHaveLength(8);
   expect(await page.evaluate(() => {
     const axis = document.createElement('div');
     axis.className = 'y-axis-labels';
@@ -162,6 +178,10 @@ for (const viewport of [{ name: 'mobile', width: 320, height: 900 }, { name: 'ta
     await page.setViewportSize(viewport);
     await page.goto('/indoor');
     await expect(page.getByRole('heading', { name: 'Indoor environment' })).toBeVisible();
+    if (viewport.name === 'mobile') {
+      await page.getByRole('button', { name: 'Custom', exact: true }).click();
+      await expect(page.getByRole('button', { name: 'Apply to all graphs' })).toBeVisible();
+    }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 }

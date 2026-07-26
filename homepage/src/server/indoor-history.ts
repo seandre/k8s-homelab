@@ -1,8 +1,9 @@
 import { z } from 'zod';
 import type { TimeSeries } from '../shared/contracts.js';
 
-export type IndoorHistoryWindow = '1h' | '24h' | '7d' | '30d';
-export const INDOOR_HISTORY_WINDOWS = ['1h', '24h', '7d', '30d'] as const;
+export type IndoorHistoryWindow = '1h' | '3h' | '6h' | '24h' | '7d' | '30d';
+export const INDOOR_HISTORY_WINDOWS = ['1h', '3h', '6h', '24h', '7d', '30d'] as const;
+export type IndoorHistoryRange = { start: Date; end: Date };
 
 const catalog = {
   'aranet_living_room.temperature': ['indoor_aranet_temperature_fahrenheit', '°F'],
@@ -22,7 +23,8 @@ const catalog = {
   'coway_bedroom.filter_life': ['indoor_coway_bedroom_filter_life_percent', '%'],
 } as const;
 const windows = {
-  '1h': { seconds: 3_600, step: '60' }, '24h': { seconds: 86_400, step: '300' },
+  '1h': { seconds: 3_600, step: '60' }, '3h': { seconds: 10_800, step: '60' },
+  '6h': { seconds: 21_600, step: '120' }, '24h': { seconds: 86_400, step: '300' },
   '7d': { seconds: 604_800, step: '1800' }, '30d': { seconds: 2_592_000, step: '7200' },
 } as const;
 const ResponseSchema = z.object({
@@ -54,14 +56,17 @@ function normalizeHistoryValue(alias: IndoorHistoryAlias, rawValue: string) {
 export class IndoorHistoryAdapter {
   constructor(private readonly server: string, private readonly fetcher: IndoorHistoryFetch, private readonly now: () => Date = () => new Date()) {}
 
-  async read(alias: IndoorHistoryAlias, window: IndoorHistoryWindow): Promise<TimeSeries | null> {
+  async read(alias: IndoorHistoryAlias, window: IndoorHistoryWindow | 'custom', range?: IndoorHistoryRange): Promise<TimeSeries | null> {
+    if (window === 'custom' && !range) return null;
     const [metric, unit] = catalog[alias];
-    const end = Math.floor(this.now().getTime() / 1_000);
+    const end = range ? Math.floor(range.end.getTime() / 1_000) : Math.floor(this.now().getTime() / 1_000);
+    const start = range ? Math.floor(range.start.getTime() / 1_000) : end - windows[window as IndoorHistoryWindow].seconds;
+    const step = range ? String(Math.max(60, Math.ceil((end - start) / 359))) : windows[window as IndoorHistoryWindow].step;
     const endpoint = new URL(`${this.server.replace(/\/$/, '')}/api/v1/query_range`);
     endpoint.searchParams.set('query', `{__name__="${metric}",job="home-assistant-indoor"}`);
-    endpoint.searchParams.set('start', String(end - windows[window].seconds));
+    endpoint.searchParams.set('start', String(start));
     endpoint.searchParams.set('end', String(end));
-    endpoint.searchParams.set('step', windows[window].step);
+    endpoint.searchParams.set('step', step);
     try {
       const response = await this.fetcher(endpoint.toString());
       if (!response.ok) return null;

@@ -13,7 +13,7 @@ describe('indoor dashboard', () => {
     expect(markup).toContain('Living Room Coway');
     expect(markup).toContain('Bedroom Coway');
     expect(markup).toContain('Environmental trends');
-    for (const window of ['1h', '24h', '7d', '30d']) expect(markup).toContain(`>${window}<`);
+    for (const window of ['1h', '3h', '6h', '24h', '7d', '30d', 'Custom']) expect(markup).toContain(`>${window}<`);
     expect(markup).toContain('HVAC mode');
     expect(markup).toContain('Review power off');
     expect(markup).toContain('NO DATA · CO₂');

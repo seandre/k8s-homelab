@@ -212,8 +212,8 @@ type IndoorFreshness =
 type IndoorSourceState = "AVAILABLE" | "DEGRADED" | "UNAVAILABLE";
 type ControlDependency = "LOCAL" | "NEST_CLOUD" | "COWAY_CLOUD";
 type IndoorUnit = "°F" | "%" | "hPa" | "ppm" | "µg/m³";
-type HistoryWindow = "5m" | "15m" | "1h" | "24h" | "7d" | "30d";
-type IndoorHistoryWindow = "1h" | "24h" | "7d" | "30d";
+type HistoryWindow = "5m" | "15m" | "1h" | "3h" | "6h" | "24h" | "7d" | "30d" | "custom";
+type IndoorHistoryWindow = "1h" | "3h" | "6h" | "24h" | "7d" | "30d" | "custom";
 
 interface IndoorMetadata {
   source: IndoorSource;
@@ -367,10 +367,12 @@ interface BootstrapV3 extends Omit<BootstrapV2, "schemaVersion"> {
 ```
 
 The indoor history endpoint continues to be `GET /api/v1/history`, accepts only
-Git-owned metric aliases and `1h`, `24h`, `7d`, or `30d`, and returns the existing
-validated time-series envelope. Browser-supplied PromQL, Home Assistant entity
-IDs, vendor IDs, URLs, and arbitrary metric names are rejected. Existing
-non-indoor `5m` and `15m` history remains compatible.
+Git-owned metric aliases and fixed `1h`, `3h`, `6h`, `24h`, `7d`, or `30d`
+windows. A `custom` request additionally requires validated ISO `start` and
+`end` timestamps. Its Prometheus step is calculated server-side to bound the
+response to 360 samples regardless of the retained range. Browser-supplied
+PromQL, Home Assistant entity IDs, vendor IDs, URLs, and arbitrary metric names
+are rejected. Existing non-indoor `5m` and `15m` history remains compatible.
 
 ## Allowlisted Control Command Shapes
 

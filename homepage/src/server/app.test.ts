@@ -45,18 +45,29 @@ describe('backend shell', () => {
   });
 
   it('serves indoor history through the fixed server-side adapter', async () => {
+    const calls: unknown[][] = [];
     const app = buildApp({
       config,
       indoorHistory: {
-        read: async (metric, window) => ({
+        read: async (metric, window, range) => {
+          calls.push([metric, window, range]);
+          return ({
           metric, window, unit: 'ppm', points: [{ timestamp: '2026-07-24T12:00:00.000Z', value: 612 }],
           metadata: { source: 'prometheus-indoor-history', observedAt: '2026-07-24T12:00:00.000Z', freshness: 'CURRENT', severity: 'OK' },
-        }),
+          });
+        },
       },
     });
     const response = await app.inject({ method: 'GET', url: '/api/v1/history?metric=aranet_living_room.co2&window=30d' });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({ data: { metric: 'aranet_living_room.co2', window: '30d' } });
+    const custom = await app.inject({ method: 'GET', url: '/api/v1/history?metric=aranet_living_room.co2&window=custom&start=2026-01-01T00%3A00%3A00.000Z&end=2026-07-01T00%3A00%3A00.000Z' });
+    expect(custom.statusCode).toBe(200);
+    expect(calls.at(-1)).toEqual(['aranet_living_room.co2', 'custom', {
+      start: new Date('2026-01-01T00:00:00.000Z'),
+      end: new Date('2026-07-01T00:00:00.000Z'),
+    }]);
+    await expect(app.inject({ method: 'GET', url: '/api/v1/history?metric=aranet_living_room.co2&window=custom&start=invalid&end=2026-07-01T00%3A00%3A00.000Z' })).resolves.toMatchObject({ statusCode: 400 });
     await expect(app.inject({ method: 'GET', url: '/api/v1/history?metric=sensor.indoor_aranet_co2&window=30d' })).resolves.toMatchObject({ statusCode: 404 });
     await app.close();
   });

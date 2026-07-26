@@ -35,4 +35,22 @@ describe('indoor history adapter', () => {
       points: [{ value: 72.5 }, { value: 76.82 }],
     });
   });
+
+  it('queries exact custom ranges with a bounded dynamic sample step', async () => {
+    let requestedUrl = '';
+    const adapter = new IndoorHistoryAdapter('http://prometheus.test:9090', async (url) => {
+      requestedUrl = url;
+      return { ok: true, json: async () => ({ status: 'success', data: { resultType: 'matrix', result: [] } }) };
+    });
+    const series = await adapter.read('aranet_living_room.co2', 'custom', {
+      start: new Date('2026-01-01T00:00:00.000Z'),
+      end: new Date('2026-07-01T00:00:00.000Z'),
+    });
+    const query = new URL(requestedUrl).searchParams;
+    expect(query.get('start')).toBe(String(Date.parse('2026-01-01T00:00:00.000Z') / 1000));
+    expect(query.get('end')).toBe(String(Date.parse('2026-07-01T00:00:00.000Z') / 1000));
+    expect(Number(query.get('step'))).toBeGreaterThan(43_000);
+    expect(series).toMatchObject({ window: 'custom', points: [] });
+    await expect(adapter.read('aranet_living_room.co2', 'custom')).resolves.toBeNull();
+  });
 });

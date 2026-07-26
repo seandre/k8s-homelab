@@ -361,6 +361,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .indoor-history .section-heading h2 { margin: 0.15rem 0 0; color: var(--title); font-size: 0.9rem; }
 .history-window { display: flex; gap: 0.25rem; }
 .history-window button[aria-pressed='true'] { border-color: var(--focus); background: color-mix(in srgb, var(--focus) 18%, var(--surface)); color: var(--title); }
+.history-custom-range { display: flex; flex-wrap: wrap; align-items: end; gap: 0.55rem; margin-top: 0.5rem; border: 1px solid var(--divider); background: var(--surface); padding: 0.55rem; }
+.history-custom-mode { display: flex; gap: 0.25rem; }
+.history-custom-range button, .history-custom-range input, .history-custom-range select { min-height: 2rem; border: 1px solid var(--divider); background: var(--surface); color: var(--fg); padding: 0.35rem 0.5rem; font: 0.62rem/1 var(--mono); }
+.history-custom-range button { cursor: pointer; }
+.history-custom-range button[aria-pressed='true'], .history-apply-range { border-color: var(--focus); color: var(--title); }
+.history-custom-fields { display: flex; flex-wrap: wrap; align-items: end; gap: 0.45rem; }
+.history-custom-fields label { display: grid; gap: 0.2rem; color: var(--muted); font-size: 0.57rem; letter-spacing: 0.04em; }
+.history-range-error { flex-basis: 100%; margin: 0; color: var(--crit); font-size: 0.62rem; }
 .indoor-graph-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; margin-top: 0.5rem; }
 .indoor-history-graph { min-width: 0; margin: 0; border: 1px solid var(--divider); background: var(--surface); padding: 0.55rem; }
 .indoor-history-graph figcaption { display: flex; justify-content: space-between; gap: 0.5rem; color: var(--muted); font-size: 0.62rem; }

@@ -90,16 +90,27 @@ export function buildApp(options: AppOptions): FastifyInstance {
   });
 
   app.get('/api/v1/history', async (request, reply) => {
-    const query = request.query as { metric?: string; window?: string };
-    if (!query.metric || !query.window || !['5m', '15m', '1h', ...INDOOR_HISTORY_WINDOWS.filter((window) => window !== '1h')].includes(query.window)) {
+    const query = request.query as { metric?: string; window?: string; start?: string; end?: string };
+    const validWindows = ['5m', '15m', ...INDOOR_HISTORY_WINDOWS, 'custom'];
+    if (!query.metric || !query.window || !validWindows.includes(query.window)) {
       return reply.code(400).send({ error: { code: 'INVALID_HISTORY_QUERY', message: 'A valid metric and window are required.' }, requestId: request.id });
+    }
+    const start = query.start ? new Date(query.start) : null;
+    const end = query.end ? new Date(query.end) : null;
+    const customRange = query.window === 'custom';
+    if (customRange && (!start || !end || !Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || start >= end || end.getTime() > Date.now() + 300_000)) {
+      return reply.code(400).send({ error: { code: 'INVALID_HISTORY_RANGE', message: 'A valid past start and end time are required for a custom range.' }, requestId: request.id });
     }
     try {
       const bootstrap = BootstrapSchema.parse(await bootstrapProvider());
       const allowedMetric = runtimeConfig.historyMetrics.some((candidate) => candidate.metric === query.metric && candidate.windows.includes(query.window as '5m' | '15m' | '1h'));
       if (!allowedMetric) return reply.code(404).send({ error: { code: 'HISTORY_NOT_FOUND', message: 'History is not available for this metric/window.' }, requestId: request.id });
-      if (isIndoorHistoryAlias(query.metric) && INDOOR_HISTORY_WINDOWS.includes(query.window as IndoorHistoryWindow) && options.indoorHistory) {
-        const indoorSeries = await options.indoorHistory.read(query.metric, query.window as IndoorHistoryWindow);
+      if (isIndoorHistoryAlias(query.metric) && (INDOOR_HISTORY_WINDOWS.includes(query.window as IndoorHistoryWindow) || customRange) && options.indoorHistory) {
+        const indoorSeries = await options.indoorHistory.read(
+          query.metric,
+          query.window as IndoorHistoryWindow | 'custom',
+          customRange ? { start: start!, end: end! } : undefined,
+        );
         if (indoorSeries) return { data: indoorSeries, requestId: request.id };
         return reply.code(404).send({ error: { code: 'HISTORY_NOT_FOUND', message: 'History is not available for this metric/window.' }, requestId: request.id });
       }

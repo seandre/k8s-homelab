@@ -41,7 +41,7 @@ export const TimeSeriesPointSchema = z.object({
 export const TimeSeriesSchema = z.object({
   metric: z.string().min(1),
   unit: z.string().min(1),
-  window: z.enum(['5m', '15m', '1h', '24h', '7d', '30d']),
+  window: z.enum(['5m', '15m', '1h', '3h', '6h', '24h', '7d', '30d', 'custom']),
   points: z.array(TimeSeriesPointSchema).max(360),
   metadata: SourceMetadataSchema,
 });

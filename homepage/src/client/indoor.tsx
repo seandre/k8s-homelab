@@ -6,8 +6,9 @@ import { HistoryResponseSchema, IndoorActionAcceptedSchema } from '../shared/con
 import { Metric, Panel, StateBadge } from './components.js';
 import { computeHistoryDomain, smoothSvgPath, type HistoryScale } from './indoor-chart.js';
 
-const WINDOWS = ['1h', '24h', '7d', '30d'] as const;
+const WINDOWS = ['1h', '3h', '6h', '24h', '7d', '30d'] as const;
 type Window = typeof WINDOWS[number];
+type HistorySelection = { window: Window } | { window: 'custom'; start: string; end: string };
 type Review = { command: IndoorCommand; target: string; current: string; requested: string; dependency: 'NEST_CLOUD' | 'COWAY_CLOUD'; stateVersion: string };
 type IndoorReading = IndoorState['sensors'][0]['readings']['temperature'];
 type ThermostatState = IndoorState['thermostats'][0];
@@ -49,11 +50,11 @@ export function IndoorOverviewCard({ indoor }: { indoor: IndoorState }) {
   );
 }
 
-function historyTimeLabel(timestamp: string, window: TimeSeries['window']) {
+function historyTimeLabel(timestamp: string, window: TimeSeries['window'], durationMs = 0) {
   const date = new Date(timestamp);
-  const options: Intl.DateTimeFormatOptions = window === '30d'
+  const options: Intl.DateTimeFormatOptions = window === '30d' || (window === 'custom' && durationMs >= 7 * 86_400_000)
     ? { month: 'short', day: 'numeric' }
-    : window === '7d'
+    : window === '7d' || (window === 'custom' && durationMs >= 2 * 86_400_000)
       ? { weekday: 'short', hour: 'numeric' }
       : { hour: 'numeric', minute: '2-digit' };
   return new Intl.DateTimeFormat('en-US', { ...options, timeZone: 'America/Los_Angeles' }).format(date);
@@ -197,7 +198,7 @@ export function HistoryGraph({ series, label, thresholds, scale }: { series: Tim
           </div> : null}
         </div>
         <div className="x-axis-labels" aria-hidden="true">
-          {xTicks.map(({ x, timestamp }, index) => <span key={x} style={{ left: `${x}%` }}>{index === xTicks.length - 1 ? 'Current' : historyTimeLabel(timestamp, series.window)}</span>)}
+          {xTicks.map(({ x, timestamp }, index) => <span key={x} style={{ left: `${x}%` }}>{index === xTicks.length - 1 ? 'Current' : historyTimeLabel(timestamp, series.window, timeRange)}</span>)}
         </div>
       </div>
     </figure>
@@ -260,8 +261,15 @@ function ReviewDialog({ review, onClose, onSubmit, submitting, error }: { review
 
 export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
   const { indoor } = bootstrap;
-  const [window, setWindow] = useState<Window>('1h');
+  const [selection, setSelection] = useState<HistorySelection>({ window: '1h' });
   const [history, setHistory] = useState<Record<string, TimeSeries>>({});
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customMode, setCustomMode] = useState<'relative' | 'exact'>('relative');
+  const [relativeValue, setRelativeValue] = useState('12');
+  const [relativeUnit, setRelativeUnit] = useState<'hours' | 'days' | 'weeks' | 'months'>('hours');
+  const [exactStart, setExactStart] = useState('');
+  const [exactEnd, setExactEnd] = useState('');
+  const [rangeError, setRangeError] = useState<string | null>(null);
   const [review, setReview] = useState<Review | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -275,15 +283,45 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
   ], []);
   useEffect(() => {
     let active = true;
+    setHistory({});
     void Promise.all(metrics.map(async ({ alias }) => {
       try {
-        const response = await fetch(`/api/v1/history?metric=${encodeURIComponent(alias)}&window=${window}`);
+        const params = new URLSearchParams({ metric: alias, window: selection.window });
+        if (selection.window === 'custom') {
+          params.set('start', selection.start);
+          params.set('end', selection.end);
+        }
+        const response = await fetch(`/api/v1/history?${params.toString()}`);
         const parsed = HistoryResponseSchema.safeParse(await response.json());
         return parsed.success ? [alias, parsed.data.data] as const : null;
       } catch { return null; }
     })).then((items) => { if (active) setHistory(Object.fromEntries(items.filter((item) => item !== null))); });
     return () => { active = false; };
-  }, [metrics, window]);
+  }, [metrics, selection]);
+  const applyCustomRange = () => {
+    setRangeError(null);
+    let start: Date;
+    let end: Date;
+    if (customMode === 'relative') {
+      const value = Number(relativeValue);
+      if (!Number.isFinite(value) || value <= 0) {
+        setRangeError('Enter a duration greater than zero.');
+        return;
+      }
+      const unitMs = { hours: 3_600_000, days: 86_400_000, weeks: 604_800_000, months: 2_592_000_000 }[relativeUnit];
+      end = new Date();
+      start = new Date(end.getTime() - value * unitMs);
+    } else {
+      start = new Date(exactStart);
+      end = new Date(exactEnd);
+      if (!exactStart || !exactEnd || !Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || start >= end || end.getTime() > Date.now()) {
+        setRangeError('Choose a valid start and end time in the past.');
+        return;
+      }
+    }
+    setSelection({ window: 'custom', start: start.toISOString(), end: end.toISOString() });
+    setCustomOpen(false);
+  };
   const submit = async () => {
     if (!review) return;
     setSubmitting(true); setError(null);
@@ -312,7 +350,22 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
         </Panel>
       </section>
       <section className="indoor-history" aria-labelledby="indoor-history-title">
-        <div className="section-heading"><div><span className="panel-eyebrow">PROMETHEUS HISTORY</span><h2 id="indoor-history-title">Environmental trends</h2></div><div className="history-window" role="group" aria-label="History window">{WINDOWS.map((item) => <button type="button" aria-pressed={window === item} onClick={() => setWindow(item)} key={item}>{item}</button>)}</div></div>
+        <div className="section-heading"><div><span className="panel-eyebrow">PROMETHEUS HISTORY</span><h2 id="indoor-history-title">Environmental trends</h2></div><div className="history-window" role="group" aria-label="History window">{WINDOWS.map((item) => <button type="button" aria-pressed={selection.window === item} onClick={() => { setSelection({ window: item }); setCustomOpen(false); }} key={item}>{item}</button>)}<button type="button" aria-pressed={selection.window === 'custom'} aria-expanded={customOpen} onClick={() => setCustomOpen((open) => !open)}>Custom</button></div></div>
+        {customOpen ? <form className="history-custom-range" onSubmit={(event) => { event.preventDefault(); applyCustomRange(); }}>
+          <div className="history-custom-mode" role="group" aria-label="Custom range type">
+            <button type="button" aria-pressed={customMode === 'relative'} onClick={() => setCustomMode('relative')}>Duration</button>
+            <button type="button" aria-pressed={customMode === 'exact'} onClick={() => setCustomMode('exact')}>Start / end</button>
+          </div>
+          {customMode === 'relative' ? <div className="history-custom-fields">
+            <label>Last<input type="number" min="0.01" step="any" value={relativeValue} onChange={(event) => setRelativeValue(event.target.value)} /></label>
+            <label>Unit<select value={relativeUnit} onChange={(event) => setRelativeUnit(event.target.value as typeof relativeUnit)}><option value="hours">Hours</option><option value="days">Days</option><option value="weeks">Weeks</option><option value="months">Months (30 days)</option></select></label>
+          </div> : <div className="history-custom-fields">
+            <label>Start<input type="datetime-local" value={exactStart} onChange={(event) => setExactStart(event.target.value)} /></label>
+            <label>End<input type="datetime-local" value={exactEnd} onChange={(event) => setExactEnd(event.target.value)} /></label>
+          </div>}
+          {rangeError ? <p className="history-range-error" role="alert">{rangeError}</p> : null}
+          <button className="history-apply-range" type="submit">Apply to all graphs</button>
+        </form> : null}
         <div className="indoor-graph-grid">{metrics.map((metric) => <HistoryGraph key={metric.alias} series={history[metric.alias]} label={metric.label} thresholds={metric.thresholds} scale={metric.scale} />)}</div>
       </section>
       <section className="purifier-grid" aria-label="Air purifiers">
