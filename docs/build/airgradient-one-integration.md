@@ -556,6 +556,24 @@ device setting is automatically reversed.
 
 **Next:** AG-008.
 
+**AG-007 handoff evidence (2026-07-26):** COMPLETE in `bf03e74`; evidence is
+fixture only and live mutation remains an AG-009 acceptance gate. The existing
+action endpoint accepts five strict AirGradient commands only: display
+brightness, LED brightness, display temperature unit, PM standard, and LED
+mode. Numeric values enforce integer 0–100 step 1; option values must be present
+in runtime-advertised normalized allowlists and are translated through private
+server mappings. Review confirmation, expected state version, 24-hour
+idempotency, per-source rate limits, per-target concurrency, same-origin/private
+network gates, exact Home Assistant services, observed-state convergence,
+timeouts, failure handling, persistence, and redacted audits apply unchanged.
+Calibration, firmware, cloud sharing, configuration authority, and arbitrary
+Home Assistant actions remain structurally unrepresentable. A separate
+write-capable token mount replaces reuse of the read-only adapter token.
+Both TypeScript builds, 140 tests, IE-004 manifests, and diff/redaction checks
+passed. Rollback is to revert `bf03e74`; before AG-009 the owner must recreate
+the temporary `homepage-home-assistant-control-token` Secret from the retained
+Home Assistant token and AG-009 must install the private five-entity mapping.
+
 ### AG-008 — Dashboard UI
 
 **Objective:** Present the approved AirGradient readings, history, and reviewed
@@ -667,4 +685,5 @@ versions/digests, and redacted capability shapes.
 | AG-004 | COMPLETE | AirGradient CO2/humidity authority, worst-current PM2.5, source-loss incidents, deterministic safety tests, restart, and redacted live rollups recorded above |
 | AG-005 | COMPLETE | Seven exact aliases and metrics, all bounded windows, 132 tests, manifest/redaction checks, and live Prometheus verification recorded above |
 | AG-006 | COMPLETE | Strict schema v4, seven readings, capabilities, precedence/fallback, compatibility rejection, 133 tests, and fixture-only handoff recorded above |
-| AG-007 through AG-009 | NOT STARTED | Awaiting their listed prerequisites |
+| AG-007 | COMPLETE | Five strict commands, runtime capabilities, fixed HA services, convergence/replay/security gates, separate control token, 140 tests, and fixture-only evidence recorded above |
+| AG-008 through AG-009 | NOT STARTED | Awaiting their listed prerequisites |
