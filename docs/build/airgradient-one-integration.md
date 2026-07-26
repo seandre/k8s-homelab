@@ -602,6 +602,20 @@ Home Assistant remains independently usable.
 
 **Next:** AG-009 after AG-004 is also complete.
 
+**AG-008 handoff evidence (2026-07-26):** COMPLETE in `bda61fe`; evidence is
+fixture only pending the AG-009 production rollout. The primary Living Room
+card now combines Nest temperature with AirGradient humidity, CO2, PM2.5,
+PM10, TVOC index, NOx index, local source state, and freshness. Aranet remains
+visible in a compact comparison/fallback card. The six graphs use the required
+aliases, order, fixed ranges, PM2.5 thresholds, smoothing, live refresh, custom
+ranges, hover line, and responsive behavior. All five settings are rendered
+only from advertised capabilities and reuse the reviewed, confirmed,
+non-optimistic action flow. Partial AirGradient state leaves Aranet visible and
+does not fabricate values. Both TypeScript builds, all 141 unit tests, and all
+17 Playwright tests passed, including keyboard cancellation, automated
+accessibility checks, and mobile/tablet/desktop viewport checks. Rollback is to
+revert `bda61fe` and deploy the preceding schema-v4 read/control image.
+
 ### AG-009 — Production rollout
 
 **Objective:** Prove the complete integration and deploy it through GitOps.
@@ -686,4 +700,5 @@ versions/digests, and redacted capability shapes.
 | AG-005 | COMPLETE | Seven exact aliases and metrics, all bounded windows, 132 tests, manifest/redaction checks, and live Prometheus verification recorded above |
 | AG-006 | COMPLETE | Strict schema v4, seven readings, capabilities, precedence/fallback, compatibility rejection, 133 tests, and fixture-only handoff recorded above |
 | AG-007 | COMPLETE | Five strict commands, runtime capabilities, fixed HA services, convergence/replay/security gates, separate control token, 140 tests, and fixture-only evidence recorded above |
-| AG-008 through AG-009 | NOT STARTED | Awaiting their listed prerequisites |
+| AG-008 | COMPLETE | Two sensor cards, six ordered graphs, capability-driven settings, review flow, partial-state behavior, 141 unit tests, and 17 E2E tests recorded above |
+| AG-009 | READY | AG-004 and AG-008 are complete; production rollout and live acceptance remain |

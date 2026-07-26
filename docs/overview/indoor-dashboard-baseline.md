@@ -699,8 +699,8 @@ has been attempted and failed.
 | AG-005 Prometheus history | **COMPLETE** | AG-003 | Seven exact AirGradient aliases and live metric names are allowlisted for every supported window; 132 tests, manifest contracts, arbitrary-identifier rejection, and redaction pass. |
 | AG-006 Schema-v4 read path | **COMPLETE** | AG-003 and AG-005 | Strict v4 rejects v3 clients, unknown fields, missing AirGradient state, and arbitrary aliases; seven readings, fixed/closed capabilities, precedence, freshness, history, fixtures, adapter/API tests, TypeScript builds, and 133 tests pass. |
 | AG-007 Control gateway | **COMPLETE** | AG-002 and AG-006 | Five fixed commands enforce numeric/option capabilities, review, confirmation, expected state version, idempotency, convergence, persistence, rate/concurrency limits, unavailable/capability/origin/network rejection, separate write-token authority, and redacted audits; 140 tests pass. |
-| AG-008 Dashboard UI | **BLOCKED** | AG-006 and AG-007 | AirGradient + Nest and compact Aranet cards, six graphs, capability omission, review dialogs, truthful partial state, accessibility, responsive, and E2E tests pass. |
-| AG-009 Production rollout | **BLOCKED** | AG-004 and AG-008 | Outage/control matrix, image scans, digest pin, Argo health, live readings/history/settings, firewall isolation, and Git-only rollback/forward recovery pass; IE-015 evidence is complete. |
+| AG-008 Dashboard UI | **COMPLETE** | AG-006 and AG-007 | AirGradient + Nest and compact Aranet cards, six ordered graphs, capability omission, review dialogs, truthful partial state, accessibility, responsive, 141 unit tests, and 17 E2E tests pass. |
+| AG-009 Production rollout | **READY** | AG-004 and AG-008 | Outage/control matrix, image scans, digest pin, Argo health, live readings/history/settings, firewall isolation, and Git-only rollback/forward recovery pass; IE-015 evidence is complete. |
 
 The IE-011 through IE-014 rows above are historical evidence for the deployed
 pre-AirGradient schema-v3 dashboard and remain valid for that release. AG-006
