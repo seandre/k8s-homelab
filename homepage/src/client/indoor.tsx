@@ -4,11 +4,15 @@ import type {
 } from '../shared/contracts.js';
 import { HistoryResponseSchema, IndoorActionAcceptedSchema } from '../shared/contracts.js';
 import { Metric, Panel, StateBadge } from './components.js';
-import { computeHistoryDomain, smoothSvgPath, type HistoryScale } from './indoor-chart.js';
+import { computeHistoryDomain, nextHistoryRefreshDelay, smoothSvgPath, type HistoryScale } from './indoor-chart.js';
 
 const WINDOWS = ['1h', '3h', '6h', '24h', '7d', '30d'] as const;
 type Window = typeof WINDOWS[number];
-type HistorySelection = { window: Window } | { window: 'custom'; start: string; end: string };
+type HistorySelection =
+  | { window: Window }
+  | { window: 'custom'; mode: 'relative'; durationMs: number }
+  | { window: 'custom'; mode: 'exact'; start: string; end: string };
+type HistoryUpdateState = { status: 'LOADING' | 'CURRENT' | 'STALE'; updatedAt: string | null };
 type Review = { command: IndoorCommand; target: string; current: string; requested: string; dependency: 'NEST_CLOUD' | 'COWAY_CLOUD'; stateVersion: string };
 type IndoorReading = IndoorState['sensors'][0]['readings']['temperature'];
 type ThermostatState = IndoorState['thermostats'][0];
@@ -65,6 +69,15 @@ function historyTooltipTime(timestamp: string) {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+    timeZone: 'America/Los_Angeles',
+  }).format(new Date(timestamp));
+}
+
+function historyUpdatedTime(timestamp: string) {
+  return new Intl.DateTimeFormat('en-US', {
     hour: 'numeric',
     minute: '2-digit',
     second: '2-digit',
@@ -263,6 +276,7 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
   const { indoor } = bootstrap;
   const [selection, setSelection] = useState<HistorySelection>({ window: '1h' });
   const [history, setHistory] = useState<Record<string, TimeSeries>>({});
+  const [historyUpdate, setHistoryUpdate] = useState<HistoryUpdateState>({ status: 'LOADING', updatedAt: null });
   const [customOpen, setCustomOpen] = useState(false);
   const [customMode, setCustomMode] = useState<'relative' | 'exact'>('relative');
   const [relativeValue, setRelativeValue] = useState('12');
@@ -283,20 +297,52 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
   ], []);
   useEffect(() => {
     let active = true;
+    let timer: number | undefined;
     setHistory({});
-    void Promise.all(metrics.map(async ({ alias }) => {
+    setHistoryUpdate({ status: 'LOADING', updatedAt: null });
+    const refresh = async () => {
+      const now = new Date();
+      const querySelection = selection.window === 'custom' && selection.mode === 'relative'
+        ? { start: new Date(now.getTime() - selection.durationMs).toISOString(), end: now.toISOString() }
+        : selection.window === 'custom'
+          ? { start: selection.start, end: selection.end }
+          : null;
+      const items = await Promise.all(metrics.map(async ({ alias }) => {
       try {
         const params = new URLSearchParams({ metric: alias, window: selection.window });
-        if (selection.window === 'custom') {
-          params.set('start', selection.start);
-          params.set('end', selection.end);
+        if (querySelection) {
+          params.set('start', querySelection.start);
+          params.set('end', querySelection.end);
         }
         const response = await fetch(`/api/v1/history?${params.toString()}`);
+        if (!response.ok) return null;
         const parsed = HistoryResponseSchema.safeParse(await response.json());
         return parsed.success ? [alias, parsed.data.data] as const : null;
       } catch { return null; }
-    })).then((items) => { if (active) setHistory(Object.fromEntries(items.filter((item) => item !== null))); });
-    return () => { active = false; };
+      }));
+      if (!active) return;
+      const successful = items.filter((item) => item !== null);
+      if (successful.length) setHistory((current) => ({ ...current, ...Object.fromEntries(successful) }));
+      setHistoryUpdate((current) => successful.length === metrics.length
+        ? { status: 'CURRENT', updatedAt: now.toISOString() }
+        : { status: 'STALE', updatedAt: current.updatedAt });
+    };
+    const polling = selection.window !== 'custom' || selection.mode === 'relative';
+    const schedule = () => {
+      if (!polling || document.visibilityState === 'hidden' || !active) return;
+      timer = window.setTimeout(() => { void refresh().finally(schedule); }, nextHistoryRefreshDelay(Date.now()));
+    };
+    const onVisibilityChange = () => {
+      if (timer !== undefined) window.clearTimeout(timer);
+      if (document.visibilityState === 'visible' && polling) void refresh().finally(schedule);
+    };
+    void refresh().finally(schedule);
+    if (polling) document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      active = false;
+      if (timer !== undefined) window.clearTimeout(timer);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
   }, [metrics, selection]);
   const applyCustomRange = () => {
     setRangeError(null);
@@ -319,7 +365,9 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
         return;
       }
     }
-    setSelection({ window: 'custom', start: start.toISOString(), end: end.toISOString() });
+    setSelection(customMode === 'relative'
+      ? { window: 'custom', mode: 'relative', durationMs: end.getTime() - start.getTime() }
+      : { window: 'custom', mode: 'exact', start: start.toISOString(), end: end.toISOString() });
     setCustomOpen(false);
   };
   const submit = async () => {
@@ -350,7 +398,7 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
         </Panel>
       </section>
       <section className="indoor-history" aria-labelledby="indoor-history-title">
-        <div className="section-heading"><div><span className="panel-eyebrow">PROMETHEUS HISTORY</span><h2 id="indoor-history-title">Environmental trends</h2></div><div className="history-window" role="group" aria-label="History window">{WINDOWS.map((item) => <button type="button" aria-pressed={selection.window === item} onClick={() => { setSelection({ window: item }); setCustomOpen(false); }} key={item}>{item}</button>)}<button type="button" aria-pressed={selection.window === 'custom'} aria-expanded={customOpen} onClick={() => setCustomOpen((open) => !open)}>Custom</button></div></div>
+        <div className="section-heading"><div><span className="panel-eyebrow">PROMETHEUS HISTORY</span><h2 id="indoor-history-title">Environmental trends</h2><span className={`history-update-status history-update-${historyUpdate.status.toLowerCase()}`} role="status">{historyUpdate.status === 'LOADING' ? 'Loading history…' : historyUpdate.status === 'STALE' ? `Update failed · retaining data${historyUpdate.updatedAt ? ` from ${historyUpdatedTime(historyUpdate.updatedAt)} PT` : ''}` : `Updated ${historyUpdatedTime(historyUpdate.updatedAt!)} PT`}</span></div><div className="history-window" role="group" aria-label="History window">{WINDOWS.map((item) => <button type="button" aria-pressed={selection.window === item} onClick={() => { setSelection({ window: item }); setCustomOpen(false); }} key={item}>{item}</button>)}<button type="button" aria-pressed={selection.window === 'custom'} aria-expanded={customOpen} onClick={() => setCustomOpen((open) => !open)}>Custom</button></div></div>
         {customOpen ? <form className="history-custom-range" onSubmit={(event) => { event.preventDefault(); applyCustomRange(); }}>
           <div className="history-custom-mode" role="group" aria-label="Custom range type">
             <button type="button" aria-pressed={customMode === 'relative'} onClick={() => setCustomMode('relative')}>Duration</button>

@@ -192,6 +192,69 @@ test('supports indoor keyboard cancellation and has no serious accessibility vio
   expect(results.violations.filter(({ impact }) => impact === 'serious' || impact === 'critical')).toEqual([]);
 });
 
+test('refreshes live history on visibility return and retains graphs after failures', async ({ page }) => {
+  let requestCount = 0;
+  let failRefresh = false;
+  await page.route(/\/api\/v1\/history\?/, async (route) => {
+    requestCount += 1;
+    if (failRefresh) {
+      await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: { code: 'UNAVAILABLE' }, requestId: 'e2e-failed-refresh' }) });
+      return;
+    }
+    const url = new URL(route.request().url());
+    const metric = url.searchParams.get('metric')!;
+    const unit = metric.endsWith('.co2') ? 'ppm' : metric.endsWith('.temperature') ? '°F' : metric.endsWith('.humidity') ? '%' : 'µg/m³';
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        requestId: 'e2e-live-refresh',
+        data: {
+          metric,
+          unit,
+          window: url.searchParams.get('window'),
+          points: [
+            { timestamp: '2026-07-26T08:00:00.000Z', value: metric.endsWith('.co2') ? 700 : 10 },
+            { timestamp: '2026-07-26T08:05:00.000Z', value: metric.endsWith('.co2') ? 720 : 11 },
+          ],
+          metadata: { source: 'fixture', observedAt: '2026-07-26T08:05:00.000Z', freshness: 'CURRENT', severity: 'OK' },
+        },
+      }),
+    });
+  });
+  await page.goto('/indoor');
+  await expect.poll(() => requestCount).toBe(4);
+  await expect(page.getByText(/Updated .* PT/)).toBeVisible();
+  const co2Graph = page.getByRole('img', { name: /CO₂, 1h/ });
+  await expect(co2Graph).toBeVisible();
+  failRefresh = true;
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+    document.dispatchEvent(new Event('visibilitychange'));
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await expect.poll(() => requestCount).toBe(8);
+  await expect(page.getByText(/Update failed · retaining data/)).toBeVisible();
+  await expect(co2Graph).toBeVisible();
+
+  failRefresh = false;
+  await page.getByRole('button', { name: 'Custom', exact: true }).click();
+  await page.getByRole('button', { name: 'Start / end' }).click();
+  await page.getByLabel('Start').fill('2026-07-24T08:00');
+  await page.getByRole('textbox', { name: 'End', exact: true }).fill('2026-07-25T08:00');
+  await page.getByRole('button', { name: 'Apply to all graphs' }).click();
+  await expect.poll(() => requestCount).toBe(12);
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+    document.dispatchEvent(new Event('visibilitychange'));
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await page.waitForTimeout(150);
+  expect(requestCount).toBe(12);
+});
+
 for (const viewport of [{ name: 'mobile', width: 320, height: 900 }, { name: 'tablet', width: 768, height: 1024 }, { name: 'desktop', width: 1440, height: 1080 }]) {
   test(`keeps indoor content within the ${viewport.name} viewport`, async ({ page }) => {
     await page.setViewportSize(viewport);

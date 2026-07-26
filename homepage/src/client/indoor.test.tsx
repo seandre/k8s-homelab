@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { healthyBootstrapFixture } from '../shared/fixtures.js';
 import { unsupportedIndoorFixture } from '../shared/indoor-fixtures.js';
-import { computeHistoryDomain } from './indoor-chart.js';
+import { computeHistoryDomain, nextHistoryRefreshDelay } from './indoor-chart.js';
 import { HistoryGraph, IndoorOverviewCard, IndoorScreen } from './indoor.js';
 
 describe('indoor dashboard', () => {
@@ -13,10 +13,17 @@ describe('indoor dashboard', () => {
     expect(markup).toContain('Living Room Coway');
     expect(markup).toContain('Bedroom Coway');
     expect(markup).toContain('Environmental trends');
+    expect(markup).toContain('Loading history');
     for (const window of ['1h', '3h', '6h', '24h', '7d', '30d', 'Custom']) expect(markup).toContain(`>${window}<`);
     expect(markup).toContain('HVAC mode');
     expect(markup).toContain('Review power off');
     expect(markup).toContain('NO DATA · CO₂');
+  });
+
+  it('aligns live history refreshes to the next 30-second scrape boundary', () => {
+    expect(nextHistoryRefreshDelay(0)).toBe(30_500);
+    expect(nextHistoryRefreshDelay(29_000)).toBe(1_500);
+    expect(nextHistoryRefreshDelay(30_000)).toBe(30_500);
   });
 
   it('renders only controls advertised by capabilities', () => {

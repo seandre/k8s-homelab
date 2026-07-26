@@ -374,6 +374,13 @@ response to 360 samples regardless of the retained range. Browser-supplied
 PromQL, Home Assistant entity IDs, vendor IDs, URLs, and arbitrary metric names
 are rejected. Existing non-indoor `5m` and `15m` history remains compatible.
 
+Fixed and relative indoor ranges refresh on the shared 30-second Home Assistant
+Prometheus scrape cadence. Polling pauses while the page is hidden and resumes
+immediately when it becomes visible. Exact historical start/end ranges remain
+static. A failed refresh retains the last successful series and displays its
+successful update time with a degraded indicator instead of replacing the graph
+with an empty state.
+
 ## Allowlisted Control Command Shapes
 
 `POST /api/v1/indoor/actions` accepts exactly one strict envelope and one member

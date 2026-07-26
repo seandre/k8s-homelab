@@ -9,6 +9,11 @@ export type HistoryScale = {
 };
 
 export type ChartPoint = { x: number; y: number };
+export const INDOOR_HISTORY_REFRESH_MS = 30_000;
+
+export function nextHistoryRefreshDelay(nowMs: number) {
+  return INDOOR_HISTORY_REFRESH_MS - (nowMs % INDOOR_HISTORY_REFRESH_MS) + 500;
+}
 
 export function smoothSvgPath(points: ChartPoint[], tension = 0.65) {
   if (points.length === 0) return '';
