@@ -442,6 +442,16 @@ automation configuration, then reload automations and verify incident state.
 
 **Next:** AG-006 waits for AG-005 as well.
 
+**AG-004 handoff evidence (2026-07-26):** COMPLETE in `8d5bf26`. Live
+Home Assistant rollups selected `AIRGRADIENT_LOCAL` for Living Room CO2 and
+humidity and `WORST_CURRENT` for Living Room PM2.5. The generated automations
+retain the existing warning/critical/recovery durations and deduplication,
+add the 180-second AirGradient source-loss incident, preserve Bedroom Coway
+independence, and never operate equipment. Deterministic incident, precedence,
+either-source PM2.5, total-loss, safety, manifest, generated-artifact, startup,
+restart, and redaction checks passed. Rollback is to revert `8d5bf26`, reconcile
+the alert ConfigMap, restart Home Assistant, and verify prior incident state.
+
 ### AG-005 — Prometheus history
 
 **Objective:** Add bounded history for all seven AirGradient readings.
@@ -467,6 +477,17 @@ outputs pass redaction checks.
 remove only AirGradient series if cleanup is intentionally required.
 
 **Next:** AG-006 after AG-003 and AG-005.
+
+**AG-005 handoff evidence (2026-07-26):** COMPLETE in `952a3ec` with the live
+PM2.5 slug correction in `da6a2c0`. The exporter, scrape allowlist, server-side
+query catalog, and bounded history adapter accept exactly the seven AirGradient
+read aliases for `1h`, `3h`, `6h`, `24h`, `7d`, `30d`, and bounded custom
+ranges. Homepage passed 132 tests and typecheck; IE-010 and IE-004 manifest
+contracts and redaction checks passed. Live Prometheus reported exactly seven
+AirGradient metric names after reconciliation, including Fahrenheit temperature
+and PM2.5; arbitrary aliases and source-state history remain excluded. Rollback
+is to revert `da6a2c0` and `952a3ec`, reconcile the four scoped resources, and
+verify the prior 15-series catalog remains available.
 
 ### AG-006 — Schema-v4 read path
 
@@ -630,4 +651,6 @@ versions/digests, and redacted capability shapes.
 | AG-001 | COMPLETE | Contract baseline amendment committed and pushed |
 | AG-002 | COMPLETE | Owner gate, firmware 3.6.2, local integration, cloud sharing off, least-privilege HTTP path, and redacted live evidence recorded above |
 | AG-003 | COMPLETE | Canonical readings, private mappings, Fahrenheit normalization, 180-second freshness, source rollup, contract tests, restart recovery, and redacted live verification recorded above |
-| AG-004 through AG-009 | NOT STARTED | Awaiting their listed prerequisites |
+| AG-004 | COMPLETE | AirGradient CO2/humidity authority, worst-current PM2.5, source-loss incidents, deterministic safety tests, restart, and redacted live rollups recorded above |
+| AG-005 | COMPLETE | Seven exact aliases and metrics, all bounded windows, 132 tests, manifest/redaction checks, and live Prometheus verification recorded above |
+| AG-006 through AG-009 | NOT STARTED | Awaiting their listed prerequisites |
