@@ -60,6 +60,8 @@ for alias in \
 done
 
 grep -Fq 'requires_auth: true' "$home_assistant_render"
+grep -Fq 'sensor.indoor_airgradient_pm2_5' "$home_assistant_render"
+grep -Fq 'override_metric: airgradient_pm25_micrograms_m3' "$home_assistant_render"
 grep -Fq 'kubernetes.io/metadata.name: monitoring' "$home_assistant_render"
 grep -Fq 'operator.prometheus.io/name: kube-prometheus-stack-prometheus' "$home_assistant_render"
 if grep -Fq 'sensor.indoor_airgradient_source' "$home_assistant_render"; then
