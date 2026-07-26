@@ -82,7 +82,7 @@ describe('indoor dashboard', () => {
     expect(markup).toContain('Current');
   });
 
-  it('smooths only the CO₂ trace and emphasizes visible threshold ticks', () => {
+  it('smooths the CO₂ trace and emphasizes visible threshold ticks', () => {
     const markup = renderToStaticMarkup(<HistoryGraph
       label="CO₂"
       thresholds={[{ value: 900, tone: 'yellow' }, { value: 1000, tone: 'red' }]}
@@ -108,5 +108,29 @@ describe('indoor dashboard', () => {
     expect(markup).toContain('history-trace-stop-yellow');
     expect(markup).toContain('history-trace-stop-red');
     expect(markup).not.toContain('<circle');
+  });
+
+  it('smooths the PM2.5 trace without losing threshold-based colors', () => {
+    const markup = renderToStaticMarkup(<HistoryGraph
+      label="Living Room PM2.5"
+      thresholds={[{ value: 5, tone: 'yellow' }, { value: 15, tone: 'red' }]}
+      scale={{ minSpan: 20, hardMin: 0 }}
+      series={{
+        metric: 'coway_living_room.pm25',
+        unit: 'µg/m³',
+        window: '1h',
+        points: [
+          { timestamp: '2026-07-25T00:00:00.000Z', value: 3 },
+          { timestamp: '2026-07-25T00:05:00.000Z', value: 10 },
+          { timestamp: '2026-07-25T00:10:00.000Z', value: 18 },
+        ],
+        metadata: { source: 'fixture', observedAt: '2026-07-25T00:10:00.000Z', freshness: 'CURRENT', severity: 'OK' },
+      }}
+    />);
+    expect(markup).toContain('<path');
+    expect(markup).toContain('history-line-smoothed');
+    expect(markup).toContain('history-trace-stop-green');
+    expect(markup).toContain('history-trace-stop-yellow');
+    expect(markup).toContain('history-trace-stop-red');
   });
 });

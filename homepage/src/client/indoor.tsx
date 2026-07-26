@@ -138,6 +138,7 @@ export function HistoryGraph({ series, label, thresholds, scale }: { series: Tim
     'aranet_living_room.temperature',
     'aranet_living_room.humidity',
     'aranet_living_room.co2',
+    'coway_living_room.pm25',
   ].includes(series.metric) && chartPoints.length > 2;
   const valueLabel = (value: number) => value.toFixed(scale.digits ?? 0);
   const summary = `${label}, ${series.window}, ${values.length} samples, latest ${values.at(-1)} ${series.unit}. Thresholds ${thresholds.map((threshold) => threshold.value).join(', ')} ${series.unit}.`;
