@@ -107,6 +107,37 @@ describe('weather provider chain', () => {
     expect(calls.filter((call) => call.url.includes('/points/'))).toHaveLength(1);
   });
 
+  it('retries air quality promptly after a transient provider failure', async () => {
+    const calls: Array<{ url: string; headers?: Record<string, string> }> = [];
+    const time = mutableClock();
+    let airAttempts = 0;
+    const fetcher: SafeFetch = async (url, init) => {
+      if (url.includes('air-quality-api')) {
+        airAttempts += 1;
+        return airAttempts === 1
+          ? response({}, false, 503)
+          : response({ current: { ...air.current, time: Math.floor(time.clock.now().getTime() / 1_000) } });
+      }
+      return providerFetch(calls)(url, init);
+    };
+    const adapter = new OpenMeteoAdapter({
+      fetch: fetcher,
+      latitude: 45.527412,
+      longitude: -122.686270,
+      enabled: true,
+      clock: time.clock,
+      diagnostic: () => undefined,
+    });
+
+    expect((await adapter.read()).airQualityMetadata.freshness).toBe('NO_DATA');
+    time.advance(59_000);
+    expect((await adapter.read()).airQualityMetadata.freshness).toBe('NO_DATA');
+    expect(airAttempts).toBe(1);
+    time.advance(1_000);
+    expect((await adapter.read()).airQualityMetadata.freshness).toBe('CURRENT');
+    expect(airAttempts).toBe(2);
+  });
+
   it('treats a quality-controlled NWS observation under 35 minutes old as current', async () => {
     const calls: Array<{ url: string; headers?: Record<string, string> }> = [];
     const time = mutableClock();

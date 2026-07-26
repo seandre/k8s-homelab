@@ -5,6 +5,7 @@ import { SourceNormalizer, withTimeout, type Clock } from './normalization.js';
 const NWS_USER_AGENT = 'home.lab.seandre.dev weather dashboard (https://home.lab.seandre.dev)';
 const CONDITIONS_REFRESH_MS = 10 * 60_000;
 const AIR_REFRESH_MS = 30 * 60_000;
+const AIR_RETRY_MS = 60_000;
 const DISCOVERY_REFRESH_MS = 24 * 60 * 60_000;
 
 const NwsPointSchema = z.object({
@@ -192,7 +193,9 @@ export class OpenMeteoAdapter {
       tasks.push(this.refreshConditions());
     }
     if (this.enabled && now >= this.nextAirAt) {
-      this.nextAirAt = now + AIR_REFRESH_MS;
+      // A provider failure should not suppress recovery for the full normal
+      // sampling interval. Keep a short retry scheduled until a sample lands.
+      this.nextAirAt = now + AIR_RETRY_MS;
       tasks.push(this.refreshAirQuality());
     }
     await Promise.all(tasks);
@@ -336,6 +339,7 @@ export class OpenMeteoAdapter {
         pm25: open.current.pm2_5,
         pm10: open.current.pm10,
       }, new Date(open.current.time * 1_000));
+      this.nextAirAt = this.clock.now().getTime() + AIR_REFRESH_MS;
     } catch {
       this.air.recordFailure();
     }
