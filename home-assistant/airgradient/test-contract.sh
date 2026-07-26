@@ -10,6 +10,9 @@ for alias in temperature humidity co2 pm25 pm10 tvoc_index nox_index; do
   grep -Fq "indoor_airgradient_${alias}" "$rendered"
 done
 grep -Fq 'unit_of_measurement: "°F"' "$rendered"
+grep -Fq 'freshness_window_seconds: "{{ 180 }}"' "$rendered"
+test "$(rg -c "'STALE'" "$root_dir/kubernetes/apps/home-assistant/alerts-configmap.yaml")" -ge 7
+test "$(rg -c 'as_timestamp\(obj.last_updated\).*<= 180' "$root_dir/kubernetes/apps/home-assistant/alerts-configmap.yaml")" -ge 15
 
 if rg -n -i 'airgradient[^\n]*(mac address|serial|token|entity_id)' \
   "$root_dir/kubernetes/apps/home-assistant/alerts-configmap.yaml"; then
