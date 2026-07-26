@@ -25,9 +25,25 @@ describe('shared contracts', () => {
     expect(BootstrapSchema.parse(healthyBootstrapFixture)).not.toHaveProperty('token');
   });
 
-  it('requires bootstrap schema version 3 and normalized indoor state', () => {
-    expect(BootstrapSchema.safeParse({ ...healthyBootstrapFixture, schemaVersion: 2 }).success).toBe(false);
-    expect(healthyBootstrapFixture.schemaVersion).toBe(3);
+  it('requires strict bootstrap schema version 4 and normalized AirGradient state', () => {
+    expect(BootstrapSchema.safeParse({ ...healthyBootstrapFixture, schemaVersion: 3 }).success).toBe(false);
+    expect(healthyBootstrapFixture.schemaVersion).toBe(4);
+    expect(BootstrapSchema.safeParse({ ...healthyBootstrapFixture, unexpected: true }).success).toBe(false);
+    expect(BootstrapSchema.safeParse({
+      ...healthyBootstrapFixture,
+      indoor: { ...healthyBootstrapFixture.indoor, sensors: [healthyBootstrapFixture.indoor.sensors[0]] },
+    }).success).toBe(false);
+    const unknownAlias = structuredClone(healthyBootstrapFixture) as unknown as { indoor: { sensors: Array<{ alias: string }> } };
+    unknownAlias.indoor.sensors[1]!.alias = 'airgradient_arbitrary';
+    expect(BootstrapSchema.safeParse(unknownAlias).success).toBe(false);
+    expect(healthyBootstrapFixture.indoor.sensors[1]).toMatchObject({
+      alias: 'airgradient_living_room',
+      dependency: 'AIRGRADIENT_LOCAL',
+      capabilities: {
+        displayBrightness: { min: 0, max: 100, step: 1 },
+        ledBrightness: { min: 0, max: 100, step: 1 },
+      },
+    });
     expect(healthyBootstrapFixture.indoor.sensors[0].alias).toBe('aranet_living_room');
     expect(healthyBootstrapFixture.network.pduPower).toMatchObject({ totalWatts: 143, metadata: { freshness: 'CURRENT' } });
   });

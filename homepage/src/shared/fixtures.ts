@@ -511,7 +511,7 @@ export const fixtureWeather: Weather = {
 };
 
 export const healthyBootstrapFixture: Bootstrap = {
-  schemaVersion: 3,
+  schemaVersion: 4,
   generatedAt: FIXTURE_TIME,
   globalSeverity: 'WARN',
   alerts: fixtureAlerts,

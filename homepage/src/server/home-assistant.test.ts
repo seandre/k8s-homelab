@@ -24,13 +24,31 @@ describe('Home Assistant indoor adapter', () => {
           state('sensor.indoor_aranet_pressure', '1012'), state('sensor.indoor_aranet_co2', '612'),
           state('sensor.indoor_aranet_battery', '92'), state('sensor.indoor_nest_temperature', '70'),
           state('sensor.indoor_nest_humidity', '42'), state('sensor.indoor_coway_living_room_pm25', '7'),
+          state('sensor.indoor_airgradient_temperature', '71.2', undefined, undefined, { freshness: 'CURRENT' }),
+          state('sensor.indoor_airgradient_humidity', '44', undefined, undefined, { freshness: 'CURRENT' }),
+          state('sensor.indoor_airgradient_co2', '618', undefined, undefined, { freshness: 'CURRENT' }),
+          state('sensor.indoor_airgradient_pm2_5', '8', undefined, undefined, { freshness: 'CURRENT' }),
+          state('sensor.indoor_airgradient_pm10', '11', undefined, undefined, { freshness: 'CURRENT' }),
+          state('sensor.indoor_airgradient_tvoc_index', '92', undefined, undefined, { freshness: 'CURRENT' }),
+          state('sensor.indoor_airgradient_nox_index', '4', undefined, undefined, { freshness: 'CURRENT' }),
           state('sensor.indoor_coway_bedroom_pm25', '9'), state('sensor.vendor_serial_123', 'secret'),
         ],
       };
     }, now);
     const indoor = await adapter.read();
-    expect(indoor.rooms[0]).toMatchObject({ temperatureF: 70, humidityPercent: 43, co2Ppm: 612, pm25WorstMicrogramsM3: 7 });
+    expect(indoor.rooms[0]).toMatchObject({ temperatureF: 70, humidityPercent: 44, co2Ppm: 618, pm25WorstMicrogramsM3: 8 });
     expect(indoor.sensors[0].sourceState).toBe('AVAILABLE');
+    expect(indoor.sensors[1]).toMatchObject({
+      alias: 'airgradient_living_room', sourceState: 'AVAILABLE',
+      readings: {
+        temperature: { value: 71.2 }, humidity: { value: 44 }, co2: { value: 618 },
+        pm25: { value: 8 }, pm10: { value: 11 }, tvocIndex: { value: 92 }, noxIndex: { value: 4 },
+      },
+      capabilities: {
+        displayBrightness: { supported: true, min: 0, max: 100, step: 1 },
+        displayTemperatureUnits: { supported: false, options: [] },
+      },
+    });
     const publicBody = JSON.stringify({ ...healthyBootstrapFixture, indoor });
     expect(BootstrapSchema.safeParse({ ...healthyBootstrapFixture, indoor }).success).toBe(true);
     expect(publicBody).not.toMatch(/entity_id|vendor_serial|private-token|sensor\./);
@@ -75,6 +93,23 @@ describe('Home Assistant indoor adapter', () => {
     expect(indoor.purifiers[0].readings.pm25).toMatchObject({
       value: 1,
       metadata: { observedAt: '2026-07-24T12:00:00.000Z', freshness: 'CURRENT', sourceState: 'AVAILABLE' },
+    });
+  });
+
+  it('falls back to Aranet and Coway when AirGradient is stale, and ignores stale high PM2.5', async () => {
+    const adapter = new HomeAssistantIndoorAdapter('http://home-assistant.test:8123', 'token', async () => ({
+      ok: true,
+      json: async () => [
+        state('sensor.indoor_airgradient_co2', '1800', '2026-07-24T11:50:00.000Z', undefined, { freshness: 'STALE' }),
+        state('sensor.indoor_airgradient_humidity', '75', '2026-07-24T11:50:00.000Z', undefined, { freshness: 'STALE' }),
+        state('sensor.indoor_airgradient_pm2_5', '200', '2026-07-24T11:50:00.000Z', undefined, { freshness: 'STALE' }),
+        state('sensor.indoor_aranet_co2', '650', undefined, undefined, { freshness: 'CURRENT' }),
+        state('sensor.indoor_aranet_humidity', '45', undefined, undefined, { freshness: 'CURRENT' }),
+        state('sensor.indoor_coway_living_room_pm25', '12', undefined, undefined, { freshness: 'CURRENT' }),
+      ],
+    }), now);
+    expect((await adapter.read()).rooms[0]).toMatchObject({
+      humidityPercent: 45, co2Ppm: 650, pm25WorstMicrogramsM3: 12,
     });
   });
 

@@ -22,6 +22,13 @@ const readingCatalog = {
   'aranet_living_room.pressure': ['aranet_pressure', 'hPa', 180],
   'aranet_living_room.co2': ['aranet_co2', 'ppm', 180],
   'aranet_living_room.battery': ['aranet_battery', '%', 180],
+  'airgradient_living_room.temperature': ['airgradient_temperature', '°F', 180],
+  'airgradient_living_room.humidity': ['airgradient_humidity', '%', 180],
+  'airgradient_living_room.co2': ['airgradient_co2', 'ppm', 180],
+  'airgradient_living_room.pm25': ['airgradient_pm2_5', 'µg/m³', 180],
+  'airgradient_living_room.pm10': ['airgradient_pm10', 'µg/m³', 180],
+  'airgradient_living_room.tvoc_index': ['airgradient_tvoc_index', 'index', 180],
+  'airgradient_living_room.nox_index': ['airgradient_nox_index', 'index', 180],
   'nest_living_room.current_temperature': ['nest_temperature', '°F', 300],
   'nest_living_room.humidity': ['nest_humidity', '%', 300],
   'coway_living_room.aqi': ['coway_living_room_aqi', '%', 300],
@@ -32,10 +39,10 @@ const readingCatalog = {
   'coway_bedroom.pm25': ['coway_bedroom_pm25', 'µg/m³', 300],
   'coway_bedroom.pm10': ['coway_bedroom_pm10', 'µg/m³', 300],
   'coway_bedroom.filter_life': ['coway_bedroom_filter_life', '%', 300],
-} as const satisfies Partial<Record<IndoorEntityAlias, readonly [string, '°F' | '%' | 'hPa' | 'ppm' | 'µg/m³', number]>>;
+} as const satisfies Partial<Record<IndoorEntityAlias, readonly [string, '°F' | '%' | 'hPa' | 'ppm' | 'µg/m³' | 'index', number]>>;
 
 function source(alias: IndoorEntityAlias) {
-  return alias.startsWith('aranet_') ? 'ARANET_LOCAL' as const : alias.startsWith('nest_') ? 'NEST_CLOUD' as const : 'COWAY_CLOUD' as const;
+  return alias.startsWith('aranet_') ? 'ARANET_LOCAL' as const : alias.startsWith('airgradient_') ? 'AIRGRADIENT_LOCAL' as const : alias.startsWith('nest_') ? 'NEST_CLOUD' as const : 'COWAY_CLOUD' as const;
 }
 
 function normalizedEntityId(slug: string) {
@@ -100,6 +107,26 @@ export class HomeAssistantIndoorAdapter {
       battery: getReading('aranet_living_room.battery'),
     };
     result.sensors[0].sourceState = result.sensors[0].readings.co2.metadata.sourceState;
+    const airgradient = result.sensors[1];
+    airgradient.readings = {
+      temperature: getReading('airgradient_living_room.temperature'),
+      humidity: getReading('airgradient_living_room.humidity'),
+      co2: getReading('airgradient_living_room.co2'),
+      pm25: getReading('airgradient_living_room.pm25'),
+      pm10: getReading('airgradient_living_room.pm10'),
+      tvocIndex: getReading('airgradient_living_room.tvoc_index'),
+      noxIndex: getReading('airgradient_living_room.nox_index'),
+    };
+    airgradient.sourceState = airgradient.readings.co2.metadata.sourceState;
+    airgradient.stateVersion = version(states, 'indoor_airgradient_');
+    const airgradientAvailable = airgradient.sourceState === 'AVAILABLE';
+    airgradient.capabilities = {
+      displayBrightness: { supported: airgradientAvailable, min: 0, max: 100, step: 1, dependency: 'AIRGRADIENT_LOCAL' },
+      ledBrightness: { supported: airgradientAvailable, min: 0, max: 100, step: 1, dependency: 'AIRGRADIENT_LOCAL' },
+      displayTemperatureUnits: { supported: false, options: [], dependency: 'AIRGRADIENT_LOCAL' },
+      pmStandards: { supported: false, options: [], dependency: 'AIRGRADIENT_LOCAL' },
+      ledModes: { supported: false, options: [], dependency: 'AIRGRADIENT_LOCAL' },
+    };
     result.thermostats[0].currentTemperature = getReading('nest_living_room.current_temperature');
     result.thermostats[0].humidity = getReading('nest_living_room.humidity');
     result.thermostats[0].sourceState = result.thermostats[0].currentTemperature.metadata.sourceState;
@@ -144,11 +171,20 @@ export class HomeAssistantIndoorAdapter {
       }
     }
     const aranet = result.sensors[0].readings;
+    const ag = result.sensors[1].readings;
     const nest = result.thermostats[0];
     const living = result.purifiers[0];
     const bedroom = result.purifiers[1];
     result.rooms = [
-      { alias: 'living_room', name: 'Living Room', temperatureF: nest.currentTemperature.value ?? aranet.temperature.value, humidityPercent: aranet.humidity.value, co2Ppm: aranet.co2.value, pm25WorstMicrogramsM3: living.readings.pm25.value, activeAlertCount: 0, freshness: [nest.currentTemperature, aranet.co2, living.readings.pm25].every((item) => item.metadata.freshness === 'CURRENT') ? 'CURRENT' : 'STALE' },
+      {
+        alias: 'living_room', name: 'Living Room',
+        temperatureF: nest.currentTemperature.value ?? aranet.temperature.value,
+        humidityPercent: ag.humidity.value ?? aranet.humidity.value,
+        co2Ppm: ag.co2.value ?? aranet.co2.value,
+        pm25WorstMicrogramsM3: [ag.pm25.value, living.readings.pm25.value].filter((value): value is number => value !== null).reduce<number | null>((worst, value) => worst === null ? value : Math.max(worst, value), null),
+        activeAlertCount: 0,
+        freshness: [nest.currentTemperature, ag.co2.value !== null ? ag.co2 : aranet.co2, ag.pm25.value !== null ? ag.pm25 : living.readings.pm25].every((item) => item.metadata.freshness === 'CURRENT') ? 'CURRENT' : 'STALE',
+      },
       { alias: 'bedroom', name: 'Bedroom', temperatureF: null, humidityPercent: null, co2Ppm: null, pm25WorstMicrogramsM3: bedroom.readings.pm25.value, activeAlertCount: 0, freshness: bedroom.readings.pm25.metadata.freshness },
     ];
     return result;

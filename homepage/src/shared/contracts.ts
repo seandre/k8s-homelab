@@ -217,10 +217,11 @@ export const WeatherSchema = z.object({
 export type Weather = z.infer<typeof WeatherSchema>;
 
 export const IndoorRoomAliasSchema = z.enum(['living_room', 'bedroom']);
-export const IndoorDeviceAliasSchema = z.enum(['nest_living_room', 'aranet_living_room', 'coway_living_room', 'coway_bedroom']);
+export const IndoorDeviceAliasSchema = z.enum(['nest_living_room', 'aranet_living_room', 'coway_living_room', 'coway_bedroom', 'airgradient_living_room']);
 export const PurifierAliasSchema = z.enum(['coway_living_room', 'coway_bedroom']);
 export const IndoorEntityAliasSchema = z.enum([
   'aranet_living_room.temperature', 'aranet_living_room.humidity', 'aranet_living_room.pressure', 'aranet_living_room.co2', 'aranet_living_room.battery',
+  'airgradient_living_room.temperature', 'airgradient_living_room.humidity', 'airgradient_living_room.co2', 'airgradient_living_room.pm25', 'airgradient_living_room.pm10', 'airgradient_living_room.tvoc_index', 'airgradient_living_room.nox_index',
   'nest_living_room.current_temperature', 'nest_living_room.humidity', 'nest_living_room.hvac_mode', 'nest_living_room.heat_setpoint', 'nest_living_room.cool_setpoint', 'nest_living_room.fan_timer',
   'coway_living_room.aqi', 'coway_living_room.pm25', 'coway_living_room.pm10', 'coway_living_room.filter_life', 'coway_living_room.power', 'coway_living_room.speed', 'coway_living_room.preset', 'coway_living_room.timer', 'coway_living_room.light', 'coway_living_room.button_lock', 'coway_living_room.sensitivity',
   'coway_bedroom.aqi', 'coway_bedroom.pm25', 'coway_bedroom.pm10', 'coway_bedroom.filter_life', 'coway_bedroom.power', 'coway_bedroom.speed', 'coway_bedroom.preset', 'coway_bedroom.timer', 'coway_bedroom.light', 'coway_bedroom.button_lock', 'coway_bedroom.sensitivity',
@@ -228,9 +229,9 @@ export const IndoorEntityAliasSchema = z.enum([
 export type IndoorEntityAlias = z.infer<typeof IndoorEntityAliasSchema>;
 export const IndoorFreshnessSchema = z.enum(['CURRENT', 'STALE', 'NO_DATA', 'NOT_SUPPORTED', 'UNAVAILABLE']);
 export const IndoorSourceStateSchema = z.enum(['AVAILABLE', 'DEGRADED', 'UNAVAILABLE']);
-export const IndoorUnitSchema = z.enum(['°F', '%', 'hPa', 'ppm', 'µg/m³']);
+export const IndoorUnitSchema = z.enum(['°F', '%', 'hPa', 'ppm', 'µg/m³', 'index']);
 export const IndoorMetadataSchema = z.object({
-  source: z.enum(['ARANET_LOCAL', 'NEST_CLOUD', 'COWAY_CLOUD']),
+  source: z.enum(['ARANET_LOCAL', 'NEST_CLOUD', 'COWAY_CLOUD', 'AIRGRADIENT_LOCAL']),
   observedAt: z.string().datetime({ offset: true }),
   freshness: IndoorFreshnessSchema,
   sourceState: IndoorSourceStateSchema,
@@ -244,10 +245,14 @@ export const IndoorReadingSchema = z.object({
   unit: IndoorUnitSchema,
   metadata: IndoorMetadataSchema,
 }).strict();
-const ControlDependencySchema = z.enum(['LOCAL', 'NEST_CLOUD', 'COWAY_CLOUD']);
+const ControlDependencySchema = z.enum(['LOCAL', 'NEST_CLOUD', 'COWAY_CLOUD', 'AIRGRADIENT_LOCAL']);
 const OptionCapabilitySchema = z.object({ supported: z.boolean(), options: z.array(z.string().min(1)), dependency: ControlDependencySchema }).strict();
 const NumberCapabilitySchema = z.object({ supported: z.boolean(), values: z.array(z.number().finite()), dependency: ControlDependencySchema }).strict();
 const BooleanCapabilitySchema = z.object({ supported: z.boolean(), dependency: z.literal('COWAY_CLOUD') }).strict();
+const RangeCapabilitySchema = z.object({
+  supported: z.boolean(), min: z.number().int(), max: z.number().int(), step: z.number().int().positive(),
+  dependency: z.literal('AIRGRADIENT_LOCAL'),
+}).strict();
 
 export const AranetStateSchema = z.object({
   alias: z.literal('aranet_living_room'),
@@ -256,6 +261,18 @@ export const AranetStateSchema = z.object({
   readings: z.object({
     temperature: IndoorReadingSchema, humidity: IndoorReadingSchema, pressure: IndoorReadingSchema,
     co2: IndoorReadingSchema, battery: IndoorReadingSchema,
+  }).strict(),
+}).strict();
+export const AirGradientStateSchema = z.object({
+  alias: z.literal('airgradient_living_room'), room: z.literal('living_room'), stateVersion: z.string().min(1),
+  sourceState: IndoorSourceStateSchema, dependency: z.literal('AIRGRADIENT_LOCAL'),
+  readings: z.object({
+    temperature: IndoorReadingSchema, humidity: IndoorReadingSchema, co2: IndoorReadingSchema,
+    pm25: IndoorReadingSchema, pm10: IndoorReadingSchema, tvocIndex: IndoorReadingSchema, noxIndex: IndoorReadingSchema,
+  }).strict(),
+  capabilities: z.object({
+    displayBrightness: RangeCapabilitySchema, ledBrightness: RangeCapabilitySchema,
+    displayTemperatureUnits: OptionCapabilitySchema, pmStandards: OptionCapabilitySchema, ledModes: OptionCapabilitySchema,
   }).strict(),
 }).strict();
 export const ThermostatStateSchema = z.object({
@@ -297,14 +314,14 @@ export const IndoorAlertSchema = z.object({
   severity: z.enum(['WARN', 'CRIT']), summary: z.string().max(240), startedAt: z.string().datetime({ offset: true }),
 }).strict();
 export const IndoorActionStatusSchema = z.object({
-  actionId: z.string().min(1), target: z.enum(['nest_living_room', 'coway_living_room', 'coway_bedroom']),
+  actionId: z.string().min(1), target: z.enum(['nest_living_room', 'coway_living_room', 'coway_bedroom', 'airgradient_living_room']),
   status: z.enum(['PENDING', 'SUCCEEDED', 'FAILED', 'TIMED_OUT']), acceptedAt: z.string().datetime({ offset: true }),
   resolvedAt: z.string().datetime({ offset: true }).nullable(), message: z.string().max(240).optional(),
 }).strict();
 export type IndoorActionStatus = z.infer<typeof IndoorActionStatusSchema>;
 export const IndoorStateSchema = z.object({
   rooms: z.array(IndoorRoomSummarySchema),
-  sensors: z.tuple([AranetStateSchema]),
+  sensors: z.tuple([AranetStateSchema, AirGradientStateSchema]),
   thermostats: z.tuple([ThermostatStateSchema]),
   purifiers: z.tuple([PurifierStateSchema, PurifierStateSchema]),
   alerts: z.array(IndoorAlertSchema),
@@ -345,7 +362,7 @@ export type IndoorActionRequest = z.infer<typeof IndoorActionRequestSchema>;
 export type IndoorActionAccepted = z.infer<typeof IndoorActionAcceptedSchema>;
 
 export const BootstrapSchema = z.object({
-  schemaVersion: z.literal(3),
+  schemaVersion: z.literal(4),
   generatedAt: z.string().datetime({ offset: true }),
   globalSeverity: SeveritySchema,
   alerts: z.array(AlertSchema),

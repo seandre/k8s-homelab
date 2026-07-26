@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import {
-  IndoorActionRequestSchema, IndoorActionStatusSchema, IndoorCommandSchema, type Bootstrap, type IndoorActionAccepted,
+  IndoorActionAcceptedSchema, IndoorActionRequestSchema, IndoorActionStatusSchema, IndoorCommandSchema, type Bootstrap, type IndoorActionAccepted,
   type IndoorActionStatus, type IndoorCommand, type IndoorState,
 } from '../shared/contracts.js';
 
@@ -180,7 +180,7 @@ export class IndoorActionGateway {
       const now = this.now().getTime();
       for (const item of parsed.data) {
         if (item.expiresAt <= now) continue;
-        const accepted = { actionId: item.actionId, target: item.target, status: 'PENDING' as const, acceptedAt: item.acceptedAt };
+        const accepted = IndoorActionAcceptedSchema.parse({ actionId: item.actionId, target: item.target, status: 'PENDING', acceptedAt: item.acceptedAt });
         const restoredStatus = item.status === 'PENDING'
           ? { ...accepted, status: 'FAILED' as const, resolvedAt: this.now().toISOString(), message: 'The gateway restarted before confirmation.' }
           : IndoorActionStatusSchema.parse(item);
