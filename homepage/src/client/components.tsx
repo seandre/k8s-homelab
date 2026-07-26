@@ -52,6 +52,7 @@ export function Panel({
   expanded = false,
   onExpand,
   className = '',
+  id,
 }: {
   title: string;
   eyebrow?: string;
@@ -62,6 +63,7 @@ export function Panel({
   expanded?: boolean;
   onExpand?: () => void;
   className?: string;
+  id?: string;
 }) {
   const titleId = useId();
   const interactive = onExpand !== undefined;
@@ -73,6 +75,7 @@ export function Panel({
   };
   return (
     <section
+      id={id}
       className={`panel ${className} ${expanded ? 'panel-expanded' : ''}`}
       aria-labelledby={titleId}
       tabIndex={interactive ? 0 : undefined}

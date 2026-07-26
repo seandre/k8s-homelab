@@ -15,7 +15,7 @@ export function KubernetesScreen({ bootstrap = healthyBootstrapFixture }: { boot
 
   return <main className="dashboard" id="kubernetes">
     <section className="hero-row"><div><span className="panel-eyebrow">KUBERNETES / READ-ONLY TELEMETRY</span><h1>{cluster.name} workload health</h1></div></section>
-    <section className="cluster-summary-grid" aria-label="k3s capacity summary">
+    <section className="cluster-summary-grid" id="cluster-summary" aria-label="k3s capacity summary">
       <Panel title="Control plane" eyebrow="K3S" severity={cluster.metadata.severity} freshness={cluster.metadata.freshness}><div className="metric-grid"><Metric label="NODES READY" value={`${cluster.readyNodeCount ?? '—'} / ${cluster.nodeCount ?? '—'}`} /><Metric label="WORKLOADS" value={cluster.workloadCount ?? '—'} /></div></Panel>
       <Panel title="Capacity" eyebrow="SCHEDULABLE" severity="OK" freshness={cluster.metadata.freshness}><div className="metric-grid"><Metric label="CPU" value={cluster.cpuUsedCores?.toFixed(1) ?? '—'} unit={` / ${cluster.cpuCapacityCores ?? '—'} cores`} /><Metric label="MEMORY" value={bytesToGiB(cluster.memoryUsedBytes)} unit={` / ${bytesToGiB(cluster.memoryCapacityBytes)} GiB`} /></div></Panel>
     </section>

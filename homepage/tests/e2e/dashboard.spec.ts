@@ -67,6 +67,25 @@ test('has no serious or critical automated accessibility violations', async ({ p
   expect(serious).toEqual([]);
 });
 
+test('lists active alerts and navigates directly to their closest panel', async ({ page }) => {
+  const alertsButton = page.getByRole('button', { name: /WARN · \d+ alerts?/ });
+  await expect(alertsButton).toBeVisible();
+  await alertsButton.click();
+  const alerts = page.locator('#global-alert-menu');
+  await expect(alerts).toBeVisible();
+  await expect(alerts.getByText('K3sWorkerCapacity')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(alerts).toBeHidden();
+  await alertsButton.click();
+  await alerts.getByRole('link', { name: /K3sWorkerCapacity/ }).click();
+  await expect(page).toHaveURL(/\/kubernetes#k3s-health-title$/);
+  await expect(page.locator('#k3s-health-title')).toBeVisible();
+  await expect(alerts).toBeHidden();
+  await alertsButton.click();
+  await page.getByRole('heading', { name: /workload health/ }).click();
+  await expect(alerts).toBeHidden();
+});
+
 test('renders the responsive indoor dashboard and requires review before controls', async ({ page }) => {
   let historyRequestCount = 0;
   const customQueries: URL[] = [];

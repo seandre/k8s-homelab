@@ -102,6 +102,18 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .brand a { color: var(--muted); font-size: 0.7rem; text-decoration: none; }
 .header-status { flex: 1; justify-content: center; gap: 1rem; color: var(--muted); font-size: 0.65rem; letter-spacing: 0.06em; }
 .header-status b { color: var(--title); }
+.global-alert-control { position: relative; display: flex; align-items: center; min-height: 1.15rem; }
+.global-alert-button { display: block; border: 0; background: transparent; padding: 0; cursor: pointer; font: inherit; }
+.global-alert-button:disabled { cursor: default; }
+.global-alert-button:focus-visible { outline: 2px solid var(--focus); outline-offset: 0.2rem; }
+.global-alert-menu { position: absolute; z-index: 20; top: calc(100% + 0.55rem); left: 50%; display: grid; width: min(24rem, calc(100vw - 1rem)); max-height: min(26rem, calc(100vh - 5rem)); translate: -50% 0; overflow-y: auto; border: 1px solid var(--divider); background: var(--surface); box-shadow: 0 0.5rem 1.5rem var(--shadow); letter-spacing: 0; text-align: left; }
+.global-alert-menu-header { position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; border-bottom: 1px solid var(--divider); background: var(--surface); padding: 0.55rem 0.65rem; color: var(--title); }
+.global-alert-menu > a { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 0.55rem; border-bottom: 1px solid var(--divider); padding: 0.55rem 0.65rem; color: var(--fg); text-decoration: none; }
+.global-alert-menu > a:last-child { border-bottom: 0; }
+.global-alert-menu > a:hover, .global-alert-menu > a:focus-visible { background: color-mix(in srgb, var(--focus) 10%, var(--surface)); outline: none; }
+.global-alert-menu > a > span:last-child { display: grid; gap: 0.2rem; min-width: 0; }
+.global-alert-menu > a strong { color: var(--title); font-size: 0.65rem; }
+.global-alert-menu > a small { color: var(--muted); font-size: 0.58rem; line-height: 1.35; }
 .header-actions { flex: 0 0 auto; }
 .search-control { position: relative; }
 .search-box { display: flex; align-items: center; gap: 0.35rem; min-width: 11rem; border: 1px solid var(--divider); color: var(--muted); padding: 0.25rem 0.45rem; }
@@ -212,6 +224,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .core-history-high { color: var(--cpu-end); }
 .core-monitor-unsupported { display: flex; justify-content: space-between; color: var(--muted); font-size: 0.58rem; }
 .panel { min-width: 0; border: 1px solid var(--divider); background: var(--surface); box-shadow: none; }
+.panel, .compute-section, .network-overview, .indoor-current-grid, .cluster-summary-grid, .alert-strip { scroll-margin-top: 1rem; }
 .panel:focus-visible { border-color: var(--focus); }
 .panel-expanded { border-color: var(--focus); }
 .panel-header { display: flex; align-items: start; justify-content: space-between; gap: 0.5rem; padding: 0.45rem 0.55rem 0.3rem; border-bottom: 1px solid var(--divider); }
@@ -427,7 +440,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 @media (max-width: 800px) {
   .global-header { flex-wrap: wrap; gap: 0.6rem; }
-  .header-status { order: 3; flex-basis: 100%; justify-content: start; overflow: hidden; }
+  .header-status { order: 3; flex-basis: 100%; justify-content: start; }
   .header-actions { margin-left: auto; }
   .overview-grid > .panel:nth-child(n) { grid-column: span 6; }
   .indoor-overview-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }

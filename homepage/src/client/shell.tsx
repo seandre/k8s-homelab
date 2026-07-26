@@ -15,6 +15,7 @@ import { useBootstrapData } from './data.js';
 import { buildOverviewModel } from './overview.js';
 import { findRoute, appRoutes, type AppRoute } from './routes.js';
 import { persistAppearance, readStoredAppearance, resolveAppearance, type AppearanceMode } from './theme.js';
+import { buildGlobalAlertItems } from './global-alerts.js';
 
 function useAppearance() {
   const [mode, setMode] = useState<AppearanceMode>(() => readStoredAppearance(window.localStorage));
@@ -75,12 +76,15 @@ export function AppShell() {
   const [selectedSearchIndex, setSelectedSearchIndex] = useState(0);
   const [showHelp, setShowHelp] = useState(false);
   const [showLayout, setShowLayout] = useState(false);
+  const [alertsOpen, setAlertsOpen] = useState(false);
   const [layout, setLayout] = useState<DashboardLayout>(() => readDashboardLayout(window.localStorage));
   const searchInput = useRef<HTMLInputElement>(null);
+  const alertsMenu = useRef<HTMLDivElement>(null);
   const clock = usePortlandClock();
   const bootstrap = useBootstrapData();
   const route = findRoute(pathname);
   const overview = buildOverviewModel(bootstrap);
+  const globalAlerts = buildGlobalAlertItems(bootstrap);
 
   useEffect(() => {
     const onPopState = () => setPathname(window.location.pathname);
@@ -89,9 +93,16 @@ export function AppShell() {
   }, []);
 
   const navigateTo = useCallback((path: string) => {
-    window.history.pushState({}, '', path);
-    setPathname(path);
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    const destination = new URL(path, window.location.origin);
+    window.history.pushState({}, '', `${destination.pathname}${destination.hash}`);
+    setPathname(destination.pathname);
+    if (destination.hash) {
+      window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+        document.getElementById(destination.hash.slice(1))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }));
+    } else {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
   }, []);
   const navigate = (event: MouseEvent<HTMLAnchorElement>, path: string) => {
     if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -109,12 +120,20 @@ export function AppShell() {
 
   useEffect(() => { setSelectedSearchIndex(0); }, [search]);
   useEffect(() => {
+    if (!alertsOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!alertsMenu.current?.contains(event.target as Node)) setAlertsOpen(false);
+    };
+    window.addEventListener('pointerdown', onPointerDown);
+    return () => window.removeEventListener('pointerdown', onPointerDown);
+  }, [alertsOpen]);
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       const typing = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable;
       if (event.key === '/' && !typing) { event.preventDefault(); searchInput.current?.focus(); setSearchOpen(true); return; }
       if (event.key === '?' && !typing) { event.preventDefault(); setShowHelp(true); return; }
-      if (event.key === 'Escape') { if (showHelp) setShowHelp(false); else if (showLayout) setShowLayout(false); else { setSearch(''); setSearchOpen(false); } return; }
+      if (event.key === 'Escape') { if (showHelp) setShowHelp(false); else if (showLayout) setShowLayout(false); else if (alertsOpen) setAlertsOpen(false); else { setSearch(''); setSearchOpen(false); } return; }
       if (!searchOpen || searchResults.length === 0) return;
       if (event.key === 'ArrowDown' || (!typing && (event.key === 'j' || event.key === 'l'))) { event.preventDefault(); setSelectedSearchIndex((index) => nextSearchIndex(index, searchResults.length, 1)); return; }
       if (event.key === 'ArrowUp' || (!typing && (event.key === 'k' || event.key === 'h'))) { event.preventDefault(); setSelectedSearchIndex((index) => nextSearchIndex(index, searchResults.length, -1)); return; }
@@ -123,13 +142,13 @@ export function AppShell() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [searchOpen, searchResults, selectedSearchIndex, selectSearchResult, showHelp, showLayout]);
+  }, [alertsOpen, searchOpen, searchResults, selectedSearchIndex, selectSearchResult, showHelp, showLayout]);
 
   return (
     <div className={`app-frame layout-navigation-${layout.navigation} layout-density-${layout.density} layout-overview-${layout.overview}`}>
       <header className="global-header">
         <div className="brand"><span className="brand-mark">◈</span><strong>Homelab</strong><span className="product-switcher">DASHBOARD</span><a href="https://docs.lab.seandre.dev" target="_blank" rel="noreferrer">Docs ↗</a></div>
-        <div className="header-status"><span>CLUSTER <b>{overview.k3s?.name ?? '—'}</b></span><StateBadge severity={overview.globalSeverity} label={`${overview.globalSeverity} · ${overview.alerts.length} alert`} /><span>PORTLAND · {clock}</span></div>
+        <div className="header-status"><span>CLUSTER <b>{overview.k3s?.name ?? '—'}</b></span><div className="global-alert-control" ref={alertsMenu}><button type="button" className="global-alert-button" aria-haspopup="true" aria-expanded={alertsOpen} aria-controls="global-alert-menu" disabled={globalAlerts.length === 0} onClick={() => { setAlertsOpen((open) => !open); setSearchOpen(false); }}><StateBadge severity={overview.globalSeverity} label={`${overview.globalSeverity} · ${globalAlerts.length} alert${globalAlerts.length === 1 ? '' : 's'}`} /></button>{alertsOpen ? <div className="global-alert-menu" id="global-alert-menu" role="region" aria-label="Active alerts"><div className="global-alert-menu-header"><strong>Active alerts</strong><span>{globalAlerts.length}</span></div>{globalAlerts.map((alert) => <a href={alert.href} key={alert.id} onClick={(event) => { navigate(event, alert.href); setAlertsOpen(false); }}><StateBadge severity={alert.severity} /><span><strong>{alert.name}</strong><small>{alert.summary}</small></span></a>)}</div> : null}</div><span>PORTLAND · {clock}</span></div>
         <div className="header-actions">
           <div className="search-control"><label className="search-box"><span aria-hidden="true">⌕</span><input ref={searchInput} aria-label="Search local dashboard" placeholder="Search /" value={search} onFocus={() => setSearchOpen(true)} onChange={(event) => setSearch(event.target.value)} /></label>{searchOpen ? <SearchResults results={searchResults} selectedIndex={selectedSearchIndex} onSelect={selectSearchResult} /> : null}</div>
           <label className="appearance-select"><span className="sr-only">Appearance</span><select aria-label="Appearance" value={appearance.mode} onChange={(event) => appearance.update(event.target.value as AppearanceMode)}><option value="auto">AUTO</option><option value="dark">DARK</option><option value="light">LIGHT</option></select></label>
