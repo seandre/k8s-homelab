@@ -514,6 +514,19 @@ image; do not leave mixed v3/v4 pods behind.
 
 **Next:** AG-007.
 
+**AG-006 handoff evidence (2026-07-26):** COMPLETE in `890c677`; evidence is
+fixture only pending the AG-009 image rollout. Bootstrap is a strict
+schema-v4 literal and rejects schema-v3 payloads, unknown fields, missing
+AirGradient state, and arbitrary identifiers. The read adapter exposes the
+seven fixed AirGradient aliases with 180-second freshness, redacted metadata,
+Fahrenheit temperature, AirGradient-first CO2/humidity with Aranet fallback,
+worst-current AirGradient/Coway PM2.5, source state, state version, fixed 0–100
+brightness ranges, and closed option capabilities until runtime mappings are
+added by AG-007. Both TypeScript builds and 133 tests passed, including stale,
+unavailable, malformed, precedence, history, API, and compatibility cases.
+Rollback is to revert `890c677`; schema-v3 clients must remain pinned to their
+previous image and must not consume v4 responses. AG-007 is now unblocked.
+
 ### AG-007 — Control gateway
 
 **Objective:** Safely expose only the five approved AirGradient settings.
@@ -653,4 +666,5 @@ versions/digests, and redacted capability shapes.
 | AG-003 | COMPLETE | Canonical readings, private mappings, Fahrenheit normalization, 180-second freshness, source rollup, contract tests, restart recovery, and redacted live verification recorded above |
 | AG-004 | COMPLETE | AirGradient CO2/humidity authority, worst-current PM2.5, source-loss incidents, deterministic safety tests, restart, and redacted live rollups recorded above |
 | AG-005 | COMPLETE | Seven exact aliases and metrics, all bounded windows, 132 tests, manifest/redaction checks, and live Prometheus verification recorded above |
-| AG-006 through AG-009 | NOT STARTED | Awaiting their listed prerequisites |
+| AG-006 | COMPLETE | Strict schema v4, seven readings, capabilities, precedence/fallback, compatibility rejection, 133 tests, and fixture-only handoff recorded above |
+| AG-007 through AG-009 | NOT STARTED | Awaiting their listed prerequisites |
