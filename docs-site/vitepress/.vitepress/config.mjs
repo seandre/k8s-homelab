@@ -48,6 +48,7 @@ export default defineConfig({
           {text: 'Architecture Decisions', link: '/overview/architecture-decisions'},
           {text: 'Homepage Architecture', link: '/overview/homepage-architecture'},
           {text: 'Homepage Build Plan', link: '/build/homepage-rework'},
+          {text: 'AirGradient ONE Build Plan', link: '/build/airgradient-one-integration'},
         ],
       },
       {

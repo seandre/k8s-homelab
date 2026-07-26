@@ -13,6 +13,13 @@ Read the [complete documentation order](overview/documentation-order.md) for opt
 
 The approved [Homelab Homepage Architecture](overview/homepage-architecture.md) defines the btop-inspired private Homepage, including its views, telemetry sources, security boundary, k3s rollout, deferred OKD migration, and rollback gates. The custom app now serves production; the [Homepage Rework Build Plan](build/homepage-rework.md), [operations runbook](operations/homepage-rework.md), and [v1 evidence index](overview/homepage-v1-evidence.md) record implementation, operation, and closeout status.
 
+The [AirGradient ONE Integration Build
+Plan](build/airgradient-one-integration.md) defines the ordered agent packages,
+strict schema-v4 contract, local Home Assistant onboarding gate, alert and
+control safety rules, dashboard changes, acceptance matrix, and Git-only
+rollback for adding the Living Room monitor. Only its documentation publication
+package is complete; implementation packages remain gated and unstarted.
+
 The live-source rollout, persistent Prometheus configuration, and host
 node_exporter prerequisite are documented in [Homepage Observability
 Expansion](operations/homepage-observability.md). UniFi PDU Pro power is live

@@ -10,6 +10,7 @@ Use the explicit VitePress sidebar and the numbered entries below as the navigat
 4. [Architecture Decisions](architecture-decisions.md) records durable design choices and rationale.
 5. [Homelab Homepage Architecture](homepage-architecture.md) defines the approved product, telemetry, security, deployment, and migration design for the custom btop-inspired homepage. **Implemented on k3s and serving production after the approved HP-029 cutover; the stock deployment remains the rollback target.**
 6. [Homelab Homepage Rework Build Plan](../build/homepage-rework.md) divides the implementation into bounded agent-sized tasks with prerequisites, start and end states, acceptance criteria, human approval gates, preview deployment, cutover, and rollback. **HP-029 cutover, HP-030 rollback/forward recovery, HP-031 documentation closeout, and the owner-approved visual baseline update are complete.**
+7. [AirGradient ONE Integration Build Plan](../build/airgradient-one-integration.md) is the self-contained controlling plan for the Living Room AirGradient monitor, including schema v4, local Home Assistant onboarding, source precedence, alerts, history, reviewed controls, UI, production acceptance, and rollback. **AG-000 documentation publication is complete; AG-001 through AG-009 remain unstarted and dependency-gated.**
 
 ## Required Build Sequence
 
