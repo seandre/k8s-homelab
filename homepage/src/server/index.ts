@@ -24,7 +24,7 @@ async function loadIndoorActions() {
   if (!liveTelemetryEnabled) return undefined;
   try {
     const [token, mappingJson] = await Promise.all([
-      readFile('/var/run/homepage-secrets/home-assistant/token', 'utf8'),
+      readFile('/var/run/homepage-secrets/home-assistant-control-token/token', 'utf8'),
       readFile('/var/run/homepage-secrets/home-assistant-control/mapping.json', 'utf8'),
     ]);
     const source = gitOwnedRuntimeConfig.sources.find((item) => item.id === 'home-assistant-source')!;

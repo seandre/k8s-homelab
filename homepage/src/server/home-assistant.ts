@@ -118,14 +118,36 @@ export class HomeAssistantIndoorAdapter {
       noxIndex: getReading('airgradient_living_room.nox_index'),
     };
     airgradient.sourceState = airgradient.readings.co2.metadata.sourceState;
-    airgradient.stateVersion = version(states, 'indoor_airgradient_');
+    const airgradientControls = this.controls?.airgradient_living_room;
+    const airgradientControlIds = airgradientControls ? new Set([
+      airgradientControls.displayBrightness, airgradientControls.ledBrightness,
+      airgradientControls.displayTemperatureUnit, airgradientControls.pmStandard, airgradientControls.ledMode,
+    ]) : new Set<string>();
+    const airgradientControlStates = states.filter((state) => airgradientControlIds.has(state.entity_id));
+    airgradient.stateVersion = airgradientControls ? version(airgradientControlStates, '') : version(states, 'indoor_airgradient_');
     const airgradientAvailable = airgradient.sourceState === 'AVAILABLE';
+    const controlState = (id: string | undefined) => id ? byId.get(id) : undefined;
+    const numericSetting = (id: string | undefined) => {
+      const value = Number(controlState(id)?.state);
+      return Number.isInteger(value) && value >= 0 && value <= 100 ? value : null;
+    };
+    const optionSetting = (id: string | undefined, options: Record<string, string> | undefined) => {
+      const raw = controlState(id)?.state;
+      return raw === undefined || !options ? null : Object.entries(options).find(([, value]) => value === raw)?.[0] ?? null;
+    };
+    airgradient.settings = {
+      displayBrightness: numericSetting(airgradientControls?.displayBrightness),
+      ledBrightness: numericSetting(airgradientControls?.ledBrightness),
+      displayTemperatureUnit: optionSetting(airgradientControls?.displayTemperatureUnit, airgradientControls?.displayTemperatureUnitOptions),
+      pmStandard: optionSetting(airgradientControls?.pmStandard, airgradientControls?.pmStandardOptions),
+      ledMode: optionSetting(airgradientControls?.ledMode, airgradientControls?.ledModeOptions),
+    };
     airgradient.capabilities = {
-      displayBrightness: { supported: airgradientAvailable, min: 0, max: 100, step: 1, dependency: 'AIRGRADIENT_LOCAL' },
-      ledBrightness: { supported: airgradientAvailable, min: 0, max: 100, step: 1, dependency: 'AIRGRADIENT_LOCAL' },
-      displayTemperatureUnits: { supported: false, options: [], dependency: 'AIRGRADIENT_LOCAL' },
-      pmStandards: { supported: false, options: [], dependency: 'AIRGRADIENT_LOCAL' },
-      ledModes: { supported: false, options: [], dependency: 'AIRGRADIENT_LOCAL' },
+      displayBrightness: { supported: airgradientAvailable && airgradient.settings.displayBrightness !== null, min: 0, max: 100, step: 1, dependency: 'AIRGRADIENT_LOCAL' },
+      ledBrightness: { supported: airgradientAvailable && airgradient.settings.ledBrightness !== null, min: 0, max: 100, step: 1, dependency: 'AIRGRADIENT_LOCAL' },
+      displayTemperatureUnits: { supported: airgradientAvailable && !!airgradientControls && Object.keys(airgradientControls.displayTemperatureUnitOptions).length > 0, options: airgradientControls ? Object.keys(airgradientControls.displayTemperatureUnitOptions) : [], dependency: 'AIRGRADIENT_LOCAL' },
+      pmStandards: { supported: airgradientAvailable && !!airgradientControls && Object.keys(airgradientControls.pmStandardOptions).length > 0, options: airgradientControls ? Object.keys(airgradientControls.pmStandardOptions) : [], dependency: 'AIRGRADIENT_LOCAL' },
+      ledModes: { supported: airgradientAvailable && !!airgradientControls && Object.keys(airgradientControls.ledModeOptions).length > 0, options: airgradientControls ? Object.keys(airgradientControls.ledModeOptions) : [], dependency: 'AIRGRADIENT_LOCAL' },
     };
     result.thermostats[0].currentTemperature = getReading('nest_living_room.current_temperature');
     result.thermostats[0].humidity = getReading('nest_living_room.humidity');

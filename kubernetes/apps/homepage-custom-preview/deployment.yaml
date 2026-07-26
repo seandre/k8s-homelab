@@ -125,6 +125,9 @@ spec:
             - name: home-assistant-control-map
               mountPath: /var/run/homepage-secrets/home-assistant-control
               readOnly: true
+            - name: home-assistant-control-token
+              mountPath: /var/run/homepage-secrets/home-assistant-control-token
+              readOnly: true
             - name: action-state
               mountPath: /var/lib/homepage
       volumes:
@@ -165,6 +168,10 @@ spec:
         - name: home-assistant-control-map
           secret:
             secretName: homepage-home-assistant-control
+            optional: true
+        - name: home-assistant-control-token
+          secret:
+            secretName: homepage-home-assistant-control-token
             optional: true
         - name: action-state
           persistentVolumeClaim:

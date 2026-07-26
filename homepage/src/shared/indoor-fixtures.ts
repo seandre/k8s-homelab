@@ -64,6 +64,13 @@ export function indoorFixture(state: FixtureState = 'healthy'): IndoorState {
       tvocIndex: reading('airgradient_living_room.tvoc_index', 92, 'index', airgradientState),
       noxIndex: reading('airgradient_living_room.nox_index', 4, 'index', airgradientState),
     },
+    settings: {
+      displayBrightness: airgradientState === 'healthy' ? 80 : null,
+      ledBrightness: airgradientState === 'healthy' ? 60 : null,
+      displayTemperatureUnit: airgradientState === 'healthy' ? 'fahrenheit' : null,
+      pmStandard: airgradientState === 'healthy' ? 'us_aqi' : null,
+      ledMode: airgradientState === 'healthy' ? 'co2' : null,
+    },
     capabilities: {
       displayBrightness: { supported: state !== 'unsupported', min: 0, max: 100, step: 1, dependency: 'AIRGRADIENT_LOCAL' as const },
       ledBrightness: { supported: state !== 'unsupported', min: 0, max: 100, step: 1, dependency: 'AIRGRADIENT_LOCAL' as const },

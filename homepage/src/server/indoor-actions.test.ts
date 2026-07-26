@@ -22,6 +22,24 @@ function fixture() {
   return state;
 }
 
+function airgradientFixture() {
+  const state = structuredClone(healthyBootstrapFixture);
+  const target = state.indoor.sensors[1];
+  target.sourceState = 'AVAILABLE';
+  target.stateVersion = 'fixture-airgradient-control-1';
+  target.settings.displayBrightness = 80;
+  target.settings.ledBrightness = 60;
+  target.settings.displayTemperatureUnit = 'fahrenheit';
+  target.settings.pmStandard = 'us_aqi';
+  target.settings.ledMode = 'co2';
+  target.capabilities.displayBrightness.supported = true;
+  target.capabilities.ledBrightness.supported = true;
+  target.capabilities.displayTemperatureUnits = { supported: true, options: ['celsius', 'fahrenheit'], dependency: 'AIRGRADIENT_LOCAL' };
+  target.capabilities.pmStandards = { supported: true, options: ['ugm3', 'us_aqi'], dependency: 'AIRGRADIENT_LOCAL' };
+  target.capabilities.ledModes = { supported: true, options: ['co2', 'pm', 'off'], dependency: 'AIRGRADIENT_LOCAL' };
+  return state;
+}
+
 describe('indoor action gateway', () => {
   it('accepts once, waits for observed convergence, and emits a redacted normalized audit', async () => {
     const state = fixture();
@@ -70,5 +88,40 @@ describe('indoor action gateway', () => {
     const gateway = new IndoorActionGateway(() => fixture(), { execute: async () => {} }, () => {});
     for (let index = 0; index < 10; index += 1) await gateway.accept({}, { ...context, sourceIp: '192.168.2.4' });
     expect(await gateway.accept({}, { ...context, sourceIp: '192.168.2.4' })).toMatchObject({ ok: false, code: 'RATE_LIMITED' });
+  });
+
+  it('enforces AirGradient capabilities, convergence, replay, stale state, and redacted audit', async () => {
+    const state = airgradientFixture();
+    const audit = vi.fn();
+    const command = { type: 'AIRGRADIENT_SET_DISPLAY_BRIGHTNESS', target: 'airgradient_living_room', value: 75 } as const;
+    const input = {
+      idempotencyKey: '97540632-ea31-4d61-9db5-b5fd6d27793e',
+      expectedStateVersion: state.indoor.sensors[1].stateVersion,
+      confirmed: true,
+      command,
+    } as const;
+    const executor = { execute: vi.fn(async () => { state.indoor.sensors[1].settings.displayBrightness = 75; }) };
+    const gateway = new IndoorActionGateway(() => state, executor, audit, () => new Date('2026-07-24T12:00:00Z'), async () => {}, 1, 10);
+    expect(await gateway.accept(input, context)).toMatchObject({ ok: true, replay: false, action: { target: 'airgradient_living_room' } });
+    expect(await gateway.accept(input, context)).toMatchObject({ ok: true, replay: true });
+    await vi.waitFor(() => expect(gateway.statuses()[0]?.status).toBe('SUCCEEDED'));
+    expect(executor.execute).toHaveBeenCalledTimes(1);
+    expect(audit).toHaveBeenCalledWith(expect.objectContaining({
+      target: 'airgradient_living_room',
+      command: 'AIRGRADIENT_SET_DISPLAY_BRIGHTNESS',
+      oldState: { displayBrightness: 80 },
+      requestedState: { displayBrightness: 75 },
+      result: 'SUCCEEDED',
+    }));
+    expect(JSON.stringify(audit.mock.calls)).not.toMatch(/entity_id|token|authorization|number\.|select\./i);
+
+    const stale = airgradientFixture();
+    stale.indoor.sensors[1].sourceState = 'DEGRADED';
+    expect(await new IndoorActionGateway(() => stale, executor, () => {}).accept({ ...input, idempotencyKey: '168421b6-bbfd-4cf9-a661-b96da9e6c92a' }, context)).toMatchObject({ ok: false, code: 'SOURCE_UNAVAILABLE' });
+    expect(await new IndoorActionGateway(() => airgradientFixture(), executor, () => {}).accept({
+      ...input,
+      idempotencyKey: '442ef0ef-f366-468e-a118-a10508fc2d5b',
+      command: { type: 'AIRGRADIENT_SET_LED_MODE', target: 'airgradient_living_room', option: 'calibrate' },
+    }, context)).toMatchObject({ ok: false, code: 'UNSUPPORTED_COMMAND' });
   });
 });

@@ -87,6 +87,7 @@ export const gitOwnedRuntimeConfig: RuntimeConfig = loadRuntimeConfig({
     { id: 'unifi-readonly', namespace: 'homepage', secretName: 'homepage-unifi-readonly', keys: ['server', 'token'] },
     { id: 'home-assistant-readonly', namespace: 'homepage', secretName: 'homepage-home-assistant-readonly', keys: ['token'] },
     { id: 'home-assistant-control', namespace: 'homepage', secretName: 'homepage-home-assistant-control', keys: ['mapping.json'] },
+    { id: 'home-assistant-control-token', namespace: 'homepage', secretName: 'homepage-home-assistant-control-token', keys: ['token'] },
     { id: 'airnow-readonly', namespace: 'homepage', secretName: 'homepage-airnow-readonly', keys: ['api-key'] },
     { id: 'weatherapi-readonly', namespace: 'homepage', secretName: 'homepage-weatherapi-readonly', keys: ['api-key'] },
   ],

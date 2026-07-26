@@ -10,6 +10,16 @@ const controls = HomeAssistantControlMapSchema.parse({
   nest_living_room: { primary: 'climate.private_nest' },
   coway_living_room: { primary: 'fan.private_living' },
   coway_bedroom: { primary: 'fan.private_bedroom' },
+  airgradient_living_room: {
+    displayBrightness: 'number.private_display_brightness',
+    ledBrightness: 'number.private_led_brightness',
+    displayTemperatureUnit: 'select.private_temperature_unit',
+    pmStandard: 'select.private_pm_standard',
+    ledMode: 'select.private_led_mode',
+    displayTemperatureUnitOptions: { fahrenheit: 'F', celsius: 'C' },
+    pmStandardOptions: { us_aqi: 'US AQI' },
+    ledModeOptions: { co2: 'CO2', off: 'Off' },
+  },
 });
 
 describe('Home Assistant indoor adapter', () => {
@@ -31,10 +41,15 @@ describe('Home Assistant indoor adapter', () => {
           state('sensor.indoor_airgradient_pm10', '11', undefined, undefined, { freshness: 'CURRENT' }),
           state('sensor.indoor_airgradient_tvoc_index', '92', undefined, undefined, { freshness: 'CURRENT' }),
           state('sensor.indoor_airgradient_nox_index', '4', undefined, undefined, { freshness: 'CURRENT' }),
+          state('number.private_display_brightness', '80'),
+          state('number.private_led_brightness', '60'),
+          state('select.private_temperature_unit', 'F'),
+          state('select.private_pm_standard', 'US AQI'),
+          state('select.private_led_mode', 'CO2'),
           state('sensor.indoor_coway_bedroom_pm25', '9'), state('sensor.vendor_serial_123', 'secret'),
         ],
       };
-    }, now);
+    }, now, controls);
     const indoor = await adapter.read();
     expect(indoor.rooms[0]).toMatchObject({ temperatureF: 70, humidityPercent: 44, co2Ppm: 618, pm25WorstMicrogramsM3: 8 });
     expect(indoor.sensors[0].sourceState).toBe('AVAILABLE');
@@ -46,7 +61,11 @@ describe('Home Assistant indoor adapter', () => {
       },
       capabilities: {
         displayBrightness: { supported: true, min: 0, max: 100, step: 1 },
-        displayTemperatureUnits: { supported: false, options: [] },
+        displayTemperatureUnits: { supported: true, options: ['fahrenheit', 'celsius'] },
+      },
+      settings: {
+        displayBrightness: 80, ledBrightness: 60, displayTemperatureUnit: 'fahrenheit',
+        pmStandard: 'us_aqi', ledMode: 'co2',
       },
     });
     const publicBody = JSON.stringify({ ...healthyBootstrapFixture, indoor });

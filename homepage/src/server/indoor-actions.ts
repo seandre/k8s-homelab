@@ -78,6 +78,11 @@ function requested(command: IndoorCommand): unknown {
     case 'COWAY_SET_LIGHT': return { light: command.light };
     case 'COWAY_SET_BUTTON_LOCK': return { buttonLock: command.locked };
     case 'COWAY_SET_SENSITIVITY': return { sensitivity: command.sensitivity };
+    case 'AIRGRADIENT_SET_DISPLAY_BRIGHTNESS': return { displayBrightness: command.value };
+    case 'AIRGRADIENT_SET_LED_BRIGHTNESS': return { ledBrightness: command.value };
+    case 'AIRGRADIENT_SET_DISPLAY_TEMPERATURE_UNIT': return { displayTemperatureUnit: command.option };
+    case 'AIRGRADIENT_SET_PM_STANDARD': return { pmStandard: command.option };
+    case 'AIRGRADIENT_SET_LED_MODE': return { ledMode: command.option };
   }
 }
 
@@ -93,10 +98,32 @@ function oldState(indoor: IndoorState, command: IndoorCommand): unknown {
     case 'COWAY_SET_LIGHT': return { light: indoor.purifiers.find((item) => item.alias === command.target)!.light };
     case 'COWAY_SET_BUTTON_LOCK': return { buttonLock: indoor.purifiers.find((item) => item.alias === command.target)!.buttonLock };
     case 'COWAY_SET_SENSITIVITY': return { sensitivity: indoor.purifiers.find((item) => item.alias === command.target)!.sensitivity };
+    case 'AIRGRADIENT_SET_DISPLAY_BRIGHTNESS': return { displayBrightness: indoor.sensors[1].settings.displayBrightness };
+    case 'AIRGRADIENT_SET_LED_BRIGHTNESS': return { ledBrightness: indoor.sensors[1].settings.ledBrightness };
+    case 'AIRGRADIENT_SET_DISPLAY_TEMPERATURE_UNIT': return { displayTemperatureUnit: indoor.sensors[1].settings.displayTemperatureUnit };
+    case 'AIRGRADIENT_SET_PM_STANDARD': return { pmStandard: indoor.sensors[1].settings.pmStandard };
+    case 'AIRGRADIENT_SET_LED_MODE': return { ledMode: indoor.sensors[1].settings.ledMode };
   }
 }
 
 function supported(indoor: IndoorState, command: IndoorCommand) {
+  if (command.target === 'airgradient_living_room') {
+    const target = indoor.sensors[1];
+    switch (command.type) {
+      case 'AIRGRADIENT_SET_DISPLAY_BRIGHTNESS': {
+        const cap = target.capabilities.displayBrightness;
+        return cap.supported && command.value >= cap.min && command.value <= cap.max && (command.value - cap.min) % cap.step === 0;
+      }
+      case 'AIRGRADIENT_SET_LED_BRIGHTNESS': {
+        const cap = target.capabilities.ledBrightness;
+        return cap.supported && command.value >= cap.min && command.value <= cap.max && (command.value - cap.min) % cap.step === 0;
+      }
+      case 'AIRGRADIENT_SET_DISPLAY_TEMPERATURE_UNIT': return target.capabilities.displayTemperatureUnits.supported && target.capabilities.displayTemperatureUnits.options.includes(command.option);
+      case 'AIRGRADIENT_SET_PM_STANDARD': return target.capabilities.pmStandards.supported && target.capabilities.pmStandards.options.includes(command.option);
+      case 'AIRGRADIENT_SET_LED_MODE': return target.capabilities.ledModes.supported && target.capabilities.ledModes.options.includes(command.option);
+      default: return false;
+    }
+  }
   if (command.target === 'nest_living_room') {
     const target = indoor.thermostats[0];
     if (command.type === 'NEST_SET_HVAC_MODE') return target.capabilities.hvacModes.supported && target.capabilities.hvacModes.options.includes(command.mode);
@@ -128,6 +155,17 @@ function supported(indoor: IndoorState, command: IndoorCommand) {
 }
 
 function converged(indoor: IndoorState, command: IndoorCommand, acceptedAt: Date) {
+  if (command.target === 'airgradient_living_room') {
+    const settings = indoor.sensors[1].settings;
+    switch (command.type) {
+      case 'AIRGRADIENT_SET_DISPLAY_BRIGHTNESS': return settings.displayBrightness === command.value;
+      case 'AIRGRADIENT_SET_LED_BRIGHTNESS': return settings.ledBrightness === command.value;
+      case 'AIRGRADIENT_SET_DISPLAY_TEMPERATURE_UNIT': return settings.displayTemperatureUnit === command.option;
+      case 'AIRGRADIENT_SET_PM_STANDARD': return settings.pmStandard === command.option;
+      case 'AIRGRADIENT_SET_LED_MODE': return settings.ledMode === command.option;
+      default: return false;
+    }
+  }
   if (command.target === 'nest_living_room') {
     const target = indoor.thermostats[0];
     if (command.type === 'NEST_SET_HVAC_MODE') return target.hvacMode === command.mode;
@@ -225,7 +263,9 @@ export class IndoorActionGateway {
     const prior = this.actions.get(parsed.data.idempotencyKey);
     if (prior) return { ok: true, action: prior.accepted, replay: true };
     const snapshot = (await this.bootstrap()).indoor;
-    const target = parsed.data.command.target === 'nest_living_room' ? snapshot.thermostats[0] : snapshot.purifiers.find((item) => item.alias === parsed.data.command.target);
+    const target = parsed.data.command.target === 'nest_living_room' ? snapshot.thermostats[0]
+      : parsed.data.command.target === 'airgradient_living_room' ? snapshot.sensors[1]
+      : snapshot.purifiers.find((item) => item.alias === parsed.data.command.target);
     if (!target || target.stateVersion !== parsed.data.expectedStateVersion) return reject(409, 'STATE_CONFLICT');
     if (target.sourceState !== 'AVAILABLE') return reject(409, 'SOURCE_UNAVAILABLE');
     if (!supported(snapshot, parsed.data.command)) return reject(422, 'UNSUPPORTED_COMMAND');
@@ -252,7 +292,9 @@ export class IndoorActionGateway {
       while (this.now().getTime() - started < this.timeoutMs) {
         await this.wait(this.pollMs);
         const indoor = (await this.bootstrap()).indoor;
-        const target = action.command.target === 'nest_living_room' ? indoor.thermostats[0] : indoor.purifiers.find((item) => item.alias === action.command.target);
+        const target = action.command.target === 'nest_living_room' ? indoor.thermostats[0]
+          : action.command.target === 'airgradient_living_room' ? indoor.sensors[1]
+          : indoor.purifiers.find((item) => item.alias === action.command.target);
         if (!target || target.sourceState !== 'AVAILABLE') break;
         if (converged(indoor, action.command, new Date(action.accepted.acceptedAt))) { result = 'SUCCEEDED'; break; }
         result = 'TIMED_OUT';

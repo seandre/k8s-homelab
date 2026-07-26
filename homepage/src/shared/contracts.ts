@@ -270,6 +270,13 @@ export const AirGradientStateSchema = z.object({
     temperature: IndoorReadingSchema, humidity: IndoorReadingSchema, co2: IndoorReadingSchema,
     pm25: IndoorReadingSchema, pm10: IndoorReadingSchema, tvocIndex: IndoorReadingSchema, noxIndex: IndoorReadingSchema,
   }).strict(),
+  settings: z.object({
+    displayBrightness: z.number().int().min(0).max(100).nullable(),
+    ledBrightness: z.number().int().min(0).max(100).nullable(),
+    displayTemperatureUnit: z.string().min(1).max(32).nullable(),
+    pmStandard: z.string().min(1).max(32).nullable(),
+    ledMode: z.string().min(1).max(32).nullable(),
+  }).strict(),
   capabilities: z.object({
     displayBrightness: RangeCapabilitySchema, ledBrightness: RangeCapabilitySchema,
     displayTemperatureUnits: OptionCapabilitySchema, pmStandards: OptionCapabilitySchema, ledModes: OptionCapabilitySchema,
@@ -329,7 +336,7 @@ export const IndoorStateSchema = z.object({
 }).strict();
 export type IndoorState = z.infer<typeof IndoorStateSchema>;
 
-export const IndoorTargetAliasSchema = z.enum(['nest_living_room', 'coway_living_room', 'coway_bedroom']);
+export const IndoorTargetAliasSchema = z.enum(['nest_living_room', 'coway_living_room', 'coway_bedroom', 'airgradient_living_room']);
 const NestSetpointSchema = z.discriminatedUnion('shape', [
   z.object({ shape: z.literal('HEAT'), temperatureF: z.number().finite() }).strict(),
   z.object({ shape: z.literal('COOL'), temperatureF: z.number().finite() }).strict(),
@@ -346,6 +353,11 @@ export const IndoorCommandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('COWAY_SET_LIGHT'), target: PurifierAliasSchema, light: z.string().min(1).max(32) }).strict(),
   z.object({ type: z.literal('COWAY_SET_BUTTON_LOCK'), target: PurifierAliasSchema, locked: z.boolean() }).strict(),
   z.object({ type: z.literal('COWAY_SET_SENSITIVITY'), target: PurifierAliasSchema, sensitivity: z.string().min(1).max(32) }).strict(),
+  z.object({ type: z.literal('AIRGRADIENT_SET_DISPLAY_BRIGHTNESS'), target: z.literal('airgradient_living_room'), value: z.number().int().min(0).max(100) }).strict(),
+  z.object({ type: z.literal('AIRGRADIENT_SET_LED_BRIGHTNESS'), target: z.literal('airgradient_living_room'), value: z.number().int().min(0).max(100) }).strict(),
+  z.object({ type: z.literal('AIRGRADIENT_SET_DISPLAY_TEMPERATURE_UNIT'), target: z.literal('airgradient_living_room'), option: z.string().min(1).max(32) }).strict(),
+  z.object({ type: z.literal('AIRGRADIENT_SET_PM_STANDARD'), target: z.literal('airgradient_living_room'), option: z.string().min(1).max(32) }).strict(),
+  z.object({ type: z.literal('AIRGRADIENT_SET_LED_MODE'), target: z.literal('airgradient_living_room'), option: z.string().min(1).max(32) }).strict(),
 ]);
 export const IndoorActionRequestSchema = z.object({
   idempotencyKey: z.string().uuid(),
