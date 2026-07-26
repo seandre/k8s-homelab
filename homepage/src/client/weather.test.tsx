@@ -11,6 +11,7 @@ describe('Weather fixture view', () => {
     expect(html).toContain('68°F');
     expect(html).toContain('SUNRISE');
     expect(html).toContain('U.S. AQI');
+    expect(html).toContain('Outdoor air quality for Portland, OR 97209');
     expect(html).toContain('µg/m³');
   });
 
