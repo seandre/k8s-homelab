@@ -26,4 +26,4 @@ spec:
     - sourceLabels:
         - __name__
       action: keep
-      regex: indoor_(aranet_(temperature_fahrenheit|humidity_percent|pressure_hpa|co2_ppm|battery_percent)|nest_(temperature_fahrenheit|humidity_percent)|coway_(living_room|bedroom)_(aqi|pm25_micrograms_m3|pm10_micrograms_m3|filter_life_percent))
+      regex: indoor_(aranet_(temperature_fahrenheit|humidity_percent|pressure_hpa|co2_ppm|battery_percent)|nest_(temperature_fahrenheit|humidity_percent)|coway_(living_room|bedroom)_(aqi|pm25_micrograms_m3|pm10_micrograms_m3|filter_life_percent)|airgradient_(temperature_fahrenheit|humidity_percent|co2_ppm|pm25_micrograms_m3|pm10_micrograms_m3|tvoc_index|nox_index))

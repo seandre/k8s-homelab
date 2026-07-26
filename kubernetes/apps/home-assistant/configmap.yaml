@@ -46,7 +46,6 @@ data:
           - sensor.indoor_coway_bedroom_pm25
           - sensor.indoor_coway_bedroom_pm10
           - sensor.indoor_coway_bedroom_filter_life
-          - sensor.indoor_airgradient_source
           - sensor.indoor_airgradient_temperature
           - sensor.indoor_airgradient_humidity
           - sensor.indoor_airgradient_co2
@@ -85,3 +84,17 @@ data:
           override_metric: coway_bedroom_pm10_micrograms_m3
         sensor.indoor_coway_bedroom_filter_life:
           override_metric: coway_bedroom_filter_life_percent
+        sensor.indoor_airgradient_temperature:
+          override_metric: airgradient_temperature_fahrenheit
+        sensor.indoor_airgradient_humidity:
+          override_metric: airgradient_humidity_percent
+        sensor.indoor_airgradient_co2:
+          override_metric: airgradient_co2_ppm
+        sensor.indoor_airgradient_pm25:
+          override_metric: airgradient_pm25_micrograms_m3
+        sensor.indoor_airgradient_pm10:
+          override_metric: airgradient_pm10_micrograms_m3
+        sensor.indoor_airgradient_tvoc_index:
+          override_metric: airgradient_tvoc_index
+        sensor.indoor_airgradient_nox_index:
+          override_metric: airgradient_nox_index

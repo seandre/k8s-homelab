@@ -21,6 +21,13 @@ const catalog = {
   'coway_bedroom.pm25': ['indoor_coway_bedroom_pm25_micrograms_m3', 'µg/m³'],
   'coway_bedroom.pm10': ['indoor_coway_bedroom_pm10_micrograms_m3', 'µg/m³'],
   'coway_bedroom.filter_life': ['indoor_coway_bedroom_filter_life_percent', '%'],
+  'airgradient_living_room.temperature': ['indoor_airgradient_temperature_fahrenheit', '°F'],
+  'airgradient_living_room.humidity': ['indoor_airgradient_humidity_percent', '%'],
+  'airgradient_living_room.co2': ['indoor_airgradient_co2_ppm', 'ppm'],
+  'airgradient_living_room.pm25': ['indoor_airgradient_pm25_micrograms_m3', 'µg/m³'],
+  'airgradient_living_room.pm10': ['indoor_airgradient_pm10_micrograms_m3', 'µg/m³'],
+  'airgradient_living_room.tvoc_index': ['indoor_airgradient_tvoc_index', 'index'],
+  'airgradient_living_room.nox_index': ['indoor_airgradient_nox_index', 'index'],
 } as const;
 const windows = {
   '1h': { seconds: 3_600, step: '60' }, '3h': { seconds: 10_800, step: '60' },
@@ -44,7 +51,9 @@ export function isIndoorHistoryAlias(value: string): value is IndoorHistoryAlias
 function normalizeHistoryValue(alias: IndoorHistoryAlias, rawValue: string) {
   const value = Number(rawValue);
   if (!Number.isFinite(value)) return null;
-  if (alias === 'aranet_living_room.temperature' || alias === 'nest_living_room.current_temperature') {
+  if (alias === 'aranet_living_room.temperature'
+    || alias === 'nest_living_room.current_temperature'
+    || alias === 'airgradient_living_room.temperature') {
     // Home Assistant's Prometheus exporter emits temperature samples in its
     // canonical Celsius unit even when override_metric contains "fahrenheit".
     const fahrenheit = value * 9 / 5 + 32;
