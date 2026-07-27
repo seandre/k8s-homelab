@@ -20,6 +20,8 @@ spec:
       app.kubernetes.io/instance: preview
   template:
     metadata:
+      annotations:
+        homelab.seandre.dev/runtime-secret-revision: "airgradient-control-v1"
       labels:
         app.kubernetes.io/name: homepage-custom
         app.kubernetes.io/instance: preview
