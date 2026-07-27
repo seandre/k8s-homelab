@@ -20,18 +20,18 @@ function KubernetesNodeGraphs({ node, timeSeries }: { node: Host; timeSeries: Ti
   const diskHistory = timeSeries.some((series) => series.metric === `${node.name} DISK`);
   const rxHistory = timeSeries.some((series) => series.metric === `${node.name} RX`);
   const txHistory = timeSeries.some((series) => series.metric === `${node.name} TX`);
-  return <div className="k8s-graph-grid">
-    <DotGraph label="CPU" values={seriesValues(timeSeries, `${node.name} CPU`, node.cpuPercent)} unit="%" tone="cpu" height={2} width={28} />
-    <DotGraph label="MEMORY" values={seriesValues(timeSeries, `${node.name} MEMORY`, node.memoryPercent)} unit="%" tone="memory" height={2} width={28} />
-    {diskHistory ? <DotGraph label="DISK" values={seriesValues(timeSeries, `${node.name} DISK`, node.diskTotalBytes && node.diskUsedBytes !== null ? node.diskUsedBytes / node.diskTotalBytes * 100 : null)} unit="%" tone="disk" height={2} width={28} /> : null}
-    {rxHistory || txHistory ? <div className="k8s-network-graphs">{rxHistory ? <DotGraph label="DOWN" values={seriesValues(timeSeries, `${node.name} RX`, node.networkIngressBitsPerSecond === null ? null : node.networkIngressBitsPerSecond / 1_000_000)} unit="Mb/s" tone="download" height={1} width={28} /> : null}{txHistory ? <DotGraph label="UP" values={seriesValues(timeSeries, `${node.name} TX`, node.networkEgressBitsPerSecond === null ? null : node.networkEgressBitsPerSecond / 1_000_000)} unit="Mb/s" tone="upload" height={1} width={28} /> : null}</div> : null}
+  return <div className="k8s-graph-grid k8s-node-graph-grid">
+    <DotGraph label="CPU" values={seriesValues(timeSeries, `${node.name} CPU`, node.cpuPercent)} unit="%" tone="cpu" height={4} width={28} />
+    <DotGraph label="MEMORY" values={seriesValues(timeSeries, `${node.name} MEMORY`, node.memoryPercent)} unit="%" tone="memory" height={4} width={28} />
+    {diskHistory ? <DotGraph label="DISK" values={seriesValues(timeSeries, `${node.name} DISK`, node.diskTotalBytes && node.diskUsedBytes !== null ? node.diskUsedBytes / node.diskTotalBytes * 100 : null)} unit="%" tone="disk" height={4} width={28} /> : null}
+    {rxHistory || txHistory ? <div className="k8s-network-graphs">{rxHistory ? <DotGraph label="DOWN" values={seriesValues(timeSeries, `${node.name} RX`, node.networkIngressBitsPerSecond === null ? null : node.networkIngressBitsPerSecond / 1_000_000)} unit="Mb/s" tone="download" height={2} width={28} /> : null}{txHistory ? <DotGraph label="UP" values={seriesValues(timeSeries, `${node.name} TX`, node.networkEgressBitsPerSecond === null ? null : node.networkEgressBitsPerSecond / 1_000_000)} unit="Mb/s" tone="upload" height={2} width={28} /> : null}</div> : null}
   </div>;
 }
 
 function CapacityGraphs({ cluster, timeSeries }: { cluster: NonNullable<ReturnType<typeof buildOverviewModel>['k3s']>; timeSeries: TimeSeries[] }) {
   return <div className="k8s-graph-grid">
-    <DotGraph label="CPU" values={seriesValues(timeSeries, 'k3s CPU', utilization(cluster.cpuUsedCores, cluster.cpuCapacityCores))} unit="%" tone="cpu" height={2} width={28} />
-    <DotGraph label="MEMORY" values={seriesValues(timeSeries, 'k3s MEMORY', utilization(cluster.memoryUsedBytes, cluster.memoryCapacityBytes))} unit="%" tone="memory" height={2} width={28} />
+    <DotGraph label="CPU" values={seriesValues(timeSeries, 'k3s CPU', utilization(cluster.cpuUsedCores, cluster.cpuCapacityCores))} unit="%" tone="cpu" height={4} width={28} />
+    <DotGraph label="MEMORY" values={seriesValues(timeSeries, 'k3s MEMORY', utilization(cluster.memoryUsedBytes, cluster.memoryCapacityBytes))} unit="%" tone="memory" height={4} width={28} />
   </div>;
 }
 

@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import type { Bootstrap, Host, ServiceStatus, SourceMetadata, TimeSeries } from '../shared/contracts.js';
+import type { Bootstrap, Cluster, Host, ServiceStatus, SourceMetadata, TimeSeries } from '../shared/contracts.js';
 import { healthyBootstrapFixture } from '../shared/fixtures.js';
 import { GlancesAdapter, type GlancesFetch } from './glances.js';
 import { AlertmanagerAdapter } from './alertmanager.js';
@@ -270,10 +270,6 @@ export class LiveTelemetry {
     const glancesById = byId(glances);
     const pduWatts: Record<string, number | null> = { 'pve-01': pduPower.pve01Watts, 'pve-02': pduPower.pve02Watts };
     const proxmoxHosts = ['pve-01', 'pve-02'].map((id) => ({ ...mergedHost(id, id, proxmoxById.get(id), glancesById.get(id), now), powerWatts: pduWatts[id] ?? null }));
-    if (recordGraphSample) {
-      const sampleTimestamp = this.nextSampleTimestamp(now);
-      for (const host of proxmoxHosts) this.recordHost(host, sampleTimestamp);
-    }
     const base = this.emptyBootstrap();
     base.generatedAt = now;
     base.hosts = [...proxmoxHosts, ...(k3s?.hosts ?? []) , ...base.hosts.filter((host) => host.kind === 'OKD_NODE')];
@@ -290,7 +286,14 @@ export class LiveTelemetry {
     });
     base.workloads = k3s?.workloads ?? [];
     base.alerts = alerts;
-    base.timeSeries = this.timeSeries(proxmoxHosts);
+    const k3sHosts = k3s?.hosts ?? [];
+    const k3sCluster = base.clusters.find((cluster) => cluster.platform === 'K3S');
+    if (recordGraphSample) {
+      const sampleTimestamp = this.nextSampleTimestamp(now);
+      for (const host of [...proxmoxHosts, ...k3sHosts]) this.recordHost(host, sampleTimestamp);
+      if (k3sCluster) this.recordCluster(k3sCluster, sampleTimestamp);
+    }
+    base.timeSeries = this.timeSeries([...proxmoxHosts, ...k3sHosts], k3sCluster);
     if (pbs) { base.storage = pbs.storage; base.storageBackups = pbs.backups; }
     base.network = { ...base.network, udm, pduPower: { totalWatts: pduPower.totalWatts, metadata: pduPower.metadata } };
     if (unifi) base.network = { ...base.network, ...unifi, metadata: unifi.unifi.metadata };
@@ -319,12 +322,15 @@ export class LiveTelemetry {
       return { ...mergedHost(id, id, previous, glancesById.get(id), now), powerWatts: previous?.powerWatts ?? null };
     });
     const sampleTimestamp = this.nextSampleTimestamp(now);
-    for (const host of proxmoxHosts) this.recordHost(host, sampleTimestamp);
+    const k3sHosts = this.latest.hosts.filter((host) => host.kind === 'K3S_NODE');
+    const k3sCluster = this.latest.clusters.find((cluster) => cluster.platform === 'K3S');
+    for (const host of [...proxmoxHosts, ...k3sHosts]) this.recordHost(host, sampleTimestamp);
+    if (k3sCluster) this.recordCluster(k3sCluster, sampleTimestamp);
 
     const base = structuredClone(this.latest);
     base.generatedAt = now;
     base.hosts = [...proxmoxHosts, ...base.hosts.filter((host) => host.kind !== 'PROXMOX')];
-    base.timeSeries = this.timeSeries(proxmoxHosts);
+    base.timeSeries = this.timeSeries([...proxmoxHosts, ...k3sHosts], k3sCluster);
     base.globalSeverity = aggregateGlobalSeverity([
       ...base.hosts.map((host) => ({ metadata: host.metadata })),
       ...base.clusters.map((cluster) => ({ metadata: cluster.metadata })),
@@ -376,17 +382,34 @@ export class LiveTelemetry {
     }
   }
 
+  private recordCluster(cluster: Cluster, timestamp: string) {
+    const metrics: Array<[string, number | null]> = [
+      ['k3s CPU', cluster.cpuUsedCores !== null && cluster.cpuCapacityCores
+        ? cluster.cpuUsedCores / cluster.cpuCapacityCores * 100
+        : null],
+      ['k3s MEMORY', cluster.memoryUsedBytes !== null && cluster.memoryCapacityBytes
+        ? cluster.memoryUsedBytes / cluster.memoryCapacityBytes * 100
+        : null],
+    ];
+    for (const [metric, sample] of metrics) {
+      if (sample === null || !Number.isFinite(sample)) continue;
+      const points = this.history.get(metric) ?? [];
+      points.push({ timestamp, value: Number(sample.toFixed(2)) });
+      this.history.set(metric, points.slice(-HISTORY_LIMIT));
+    }
+  }
+
   private nextSampleTimestamp(observedAt: string) {
     const timestampMs = Math.max(Date.parse(observedAt), this.lastSampleTimestampMs + 1);
     this.lastSampleTimestampMs = timestampMs;
     return new Date(timestampMs).toISOString();
   }
 
-  private timeSeries(hosts: Host[]): TimeSeries[] {
+  private timeSeries(hosts: Host[], cluster?: Cluster): TimeSeries[] {
     const current = new Map(hosts.map((host) => [host.name, host]));
     return [...this.history.entries()].map(([metric, points]) => {
       const host = current.get(metric.split(' ')[0]!);
-      return { metric, unit: metric.endsWith('RX') || metric.endsWith('TX') ? 'Mb/s' : '%', window: '15m', points, metadata: host?.metadata ?? { source: 'proxmox+glances', observedAt: new Date().toISOString(), freshness: 'NO_DATA', severity: 'INFO' } };
+      return { metric, unit: metric.endsWith('RX') || metric.endsWith('TX') ? 'Mb/s' : '%', window: '15m', points, metadata: host?.metadata ?? (metric.startsWith('k3s ') && cluster ? cluster.metadata : { source: 'live-telemetry', observedAt: new Date().toISOString(), freshness: 'NO_DATA', severity: 'INFO' }) };
     });
   }
 }

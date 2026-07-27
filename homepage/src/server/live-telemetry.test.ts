@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { GLANCES_TIMEOUT_MS } from './glances.js';
 import { LiveTelemetry, POLL_INTERVAL_MS } from './live-telemetry.js';
 import { gitOwnedRuntimeConfig } from './runtime-config.js';
+import { healthyBootstrapFixture } from '../shared/fixtures.js';
 
 const runtimeConfig = {
   ...gitOwnedRuntimeConfig,
@@ -62,5 +63,30 @@ describe('live telemetry', () => {
     expect(points).toHaveLength(2);
     expect(points?.map((point) => point.value)).toEqual([42, 42]);
     expect(points?.[0]?.timestamp).not.toBe(points?.[1]?.timestamp);
+  });
+
+  it('records Kubernetes node and aggregate utilization history', async () => {
+    const telemetry = new LiveTelemetry(
+      runtimeConfig,
+      () => undefined,
+      async () => null,
+      async (url) => url.includes('192.168.40')
+        ? { ok: true, json: async () => ({ cpu: { total: 42 }, mem: { percent: 58, used: 58, total: 100 } }) }
+        : { ok: true, json: async () => ({ data: [] }) },
+    );
+    const hosts = healthyBootstrapFixture.hosts.filter((host) => host.kind === 'K3S_NODE');
+    const cluster = healthyBootstrapFixture.clusters.find((candidate) => candidate.platform === 'K3S')!;
+    (telemetry as unknown as { k3s: { read(): Promise<{ hosts: typeof hosts; cluster: typeof cluster; workloads: [] }> } }).k3s = {
+      read: async () => ({ hosts, cluster, workloads: [] }),
+    };
+
+    await telemetry.refresh();
+    await telemetry.refresh();
+
+    const series = telemetry.bootstrap().timeSeries;
+    expect(series.find((candidate) => candidate.metric === 'k3s-worker-01 CPU')?.points).toHaveLength(2);
+    expect(series.find((candidate) => candidate.metric === 'k3s-worker-01 MEMORY')?.points).toHaveLength(2);
+    expect(series.find((candidate) => candidate.metric === 'k3s CPU')?.points).toHaveLength(2);
+    expect(series.find((candidate) => candidate.metric === 'k3s MEMORY')?.points).toHaveLength(2);
   });
 });

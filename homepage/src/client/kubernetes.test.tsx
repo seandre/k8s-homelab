@@ -12,7 +12,7 @@ describe('Kubernetes fixture views', () => {
     expect(html).toContain('koreader-sync');
     expect(html).toContain('https://argocd.lab.seandre.dev');
     expect(html.match(/class="dot-graph /g)).toHaveLength(8);
-    expect(html).toContain('CPU: 36%; 1 samples');
+    expect(html).toContain('CPU: 36%; 1 samples; 16 vertical Braille dot levels');
     expect(html).toContain('MEMORY: 86%; 1 samples');
     expect(html).toContain('READY');
   });

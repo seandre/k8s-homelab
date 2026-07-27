@@ -286,6 +286,21 @@ for (const viewport of [{ name: 'mobile', width: 320, height: 900 }, { name: 'ta
 }
 
 for (const viewport of [{ name: 'mobile', width: 320, height: 900 }, { name: 'tablet', width: 768, height: 1024 }, { name: 'desktop', width: 1440, height: 1080 }]) {
+  test(`keeps Kubernetes graphs readable at ${viewport.name} width`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto('/kubernetes');
+    const nodeGraphs = page.locator('.k8s-node-graph-grid .dot-graph-trace');
+    await expect(nodeGraphs).toHaveCount(6);
+    const dimensions = await nodeGraphs.evaluateAll((graphs) => graphs.map((graph) => {
+      const bounds = graph.getBoundingClientRect();
+      return { width: bounds.width, height: bounds.height };
+    }));
+    expect(dimensions.every(({ width, height }) => width >= 185 && height >= 25), JSON.stringify(dimensions)).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
+}
+
+for (const viewport of [{ name: 'mobile', width: 320, height: 900 }, { name: 'tablet', width: 768, height: 1024 }, { name: 'desktop', width: 1440, height: 1080 }]) {
   for (const appearance of ['dark', 'light'] as const) {
     test(`matches the ${appearance} overview at ${viewport.name} width`, async ({ page }) => {
       await page.setViewportSize(viewport);

@@ -195,10 +195,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .cluster-summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
 .workload-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
 .k8s-graph-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.35rem; margin-top: 0.55rem; border-top: 1px solid var(--divider); padding-top: 0.45rem; }
+.k8s-node-graph-grid { grid-template-columns: minmax(0, 1fr); }
 .k8s-graph-grid .dot-graph { min-width: 0; gap: 0.12rem; }
-.k8s-graph-grid .dot-graph-trace { padding-inline-end: 0.55rem; }
-.k8s-graph-grid .dot-graph-row { font-size: 0.62rem; line-height: 0.74; }
-.k8s-graph-grid .dot-graph small { font-size: 0.5rem; }
+.k8s-graph-grid .dot-graph-trace { min-width: 0; padding-inline-end: 0.35rem; }
+.k8s-graph-grid .dot-graph-row { font-size: clamp(0.4rem, calc(96cqi / var(--graph-columns)), 0.72rem); line-height: 1; }
+.k8s-graph-grid .dot-graph small { font-size: 0.56rem; }
 .k8s-network-graphs { display: grid; gap: 0.2rem; min-width: 0; }
 .network-overview { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 0.5rem; }
 .network-latency { grid-column: span 7; }
@@ -511,6 +512,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .pve-cpu-summary { grid-template-columns: repeat(4, minmax(0, 1fr)); border-left: 0; border-top: 1px dotted var(--divider); padding: 0.35rem 0 0; }
   .pve-cpu-summary > strong { grid-column: 1 / -1; }
   .pve-resource-grid { grid-template-columns: 1fr; }
+  .k8s-graph-grid { grid-template-columns: 1fr; }
+  .k8s-graph-grid .dot-graph { --graph-label-width: 8ch; }
   .pve-resource { border-right: 0; border-bottom: 1px solid var(--divider); }
   .pve-resource:last-child { border-bottom: 0; }
   .pve-workload-row { grid-template-columns: 1fr; }
