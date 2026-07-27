@@ -215,7 +215,7 @@ readings usable and label stale, unavailable, or missing data truthfully.
 Graphs appear in this exact order:
 
 1. AirGradient CO2, fixed 400–1400 ppm.
-2. AirGradient PM2.5, smoothed, with yellow at 5 and red at 15 µg/m³.
+2. AirGradient particulate matter, with a smoothed PM2.5 primary trace, yellow at 5 and red at 15 µg/m³, plus a dotted PM10 comparison trace and an explicit PM2.5/PM10 legend on the same axis. PM10 is comparative only and does not add alert thresholds.
 3. Nest temperature, fixed 60–80°F.
 4. AirGradient humidity, fixed 0–100%.
 5. AirGradient TVOC index, fixed 0–500, with informational event bands at

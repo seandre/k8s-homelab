@@ -19,7 +19,7 @@ type ThermostatState = IndoorState['thermostats'][0];
 type PurifierState = IndoorState['purifiers'][number];
 type ThresholdTone = 'blue' | 'light-blue' | 'dark-blue' | 'yellow' | 'red';
 type HistoryThreshold = { value: number; tone: ThresholdTone };
-type HistoryMetric = { alias: string; label: string; thresholds: HistoryThreshold[]; scale: HistoryScale };
+type HistoryMetric = { alias: string; label: string; thresholds: HistoryThreshold[]; scale: HistoryScale; secondaryAlias?: string; secondaryLabel?: string };
 
 function display(reading: IndoorReading, digits = 0) {
   return reading.value === null ? '—' : reading.value.toFixed(digits);
@@ -85,12 +85,22 @@ function historyUpdatedTime(timestamp: string) {
   }).format(new Date(timestamp));
 }
 
-export function HistoryGraph({ series, label, thresholds, scale }: { series: TimeSeries | undefined; label: string; thresholds: HistoryThreshold[]; scale: HistoryScale }) {
+export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, thresholds, scale }: {
+  series: TimeSeries | undefined;
+  secondarySeries?: TimeSeries;
+  label: string;
+  secondaryLabel?: string;
+  thresholds: HistoryThreshold[];
+  scale: HistoryScale;
+}) {
   const plot = useRef<HTMLDivElement>(null);
   const gradientId = `history-trace-${useId().replaceAll(':', '')}`;
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  if (!series || series.points.length === 0) return <div className="indoor-no-data" role="status">NO DATA · {label}</div>;
-  const values = series.points.map((point) => point.value);
+  const interactionSeries = series?.points.length ? series : secondarySeries;
+  if (!interactionSeries?.points.length) return <div className="indoor-no-data" role="status">NO DATA · {label}</div>;
+  const primaryValues = series?.points.map((point) => point.value) ?? [];
+  const secondaryValues = secondarySeries?.points.map((point) => point.value) ?? [];
+  const values = [...primaryValues, ...secondaryValues];
   const { min, max, ticks } = computeHistoryDomain(values, scale);
   const range = max - min;
   const plotLeft = 0;
@@ -98,23 +108,33 @@ export function HistoryGraph({ series, label, thresholds, scale }: { series: Tim
   const plotTop = 8;
   const plotBottom = 92;
   const y = (value: number) => plotBottom - ((value - min) / range) * (plotBottom - plotTop);
-  const firstTimestamp = Date.parse(series.points[0]!.timestamp);
-  const lastTimestamp = Date.parse(series.points.at(-1)!.timestamp);
+  const timestamps = [...(series?.points ?? []), ...(secondarySeries?.points ?? [])].map((point) => Date.parse(point.timestamp));
+  const firstTimestamp = Math.min(...timestamps);
+  const lastTimestamp = Math.max(...timestamps);
   const timeRange = Math.max(lastTimestamp - firstTimestamp, 1);
-  const chartPoints = series.points.map((point) => {
+  const chart = (input: TimeSeries | undefined) => input?.points.map((point) => {
     const x = values.length === 1 ? (plotLeft + plotRight) / 2 : plotLeft + ((Date.parse(point.timestamp) - firstTimestamp) / timeRange) * (plotRight - plotLeft);
     return { x, y: y(point.value) };
-  });
+  }) ?? [];
+  const chartPoints = chart(series);
+  const secondaryChartPoints = chart(secondarySeries);
   const xTicks = Array.from({ length: 5 }, (_, index) => {
     const ratio = index / 4;
     const timestamp = new Date(firstTimestamp + timeRange * ratio).toISOString();
     return { x: plotLeft + ratio * (plotRight - plotLeft), timestamp };
   });
-  const hoveredPoint = hoveredIndex === null ? null : series.points[hoveredIndex]!;
-  const hoveredChartPoint = hoveredIndex === null ? null : chartPoints[hoveredIndex]!;
+  const hoveredPoint = hoveredIndex === null ? null : interactionSeries.points[hoveredIndex]!;
+  const interactionChartPoints = series?.points.length ? chartPoints : secondaryChartPoints;
+  const hoveredChartPoint = hoveredIndex === null ? null : interactionChartPoints[hoveredIndex]!;
+  const hoveredSecondaryIndex = hoveredPoint && secondarySeries?.points.length
+    ? secondarySeries.points.reduce((best, point, index) =>
+      Math.abs(Date.parse(point.timestamp) - Date.parse(hoveredPoint.timestamp))
+        < Math.abs(Date.parse(secondarySeries.points[best]!.timestamp) - Date.parse(hoveredPoint.timestamp)) ? index : best, 0)
+    : null;
+  const hoveredSecondaryPoint = hoveredSecondaryIndex === null ? null : secondarySeries!.points[hoveredSecondaryIndex]!;
   const yellowThreshold = thresholds.find(({ tone }) => tone === 'yellow')?.value;
   const redThreshold = thresholds.find(({ tone }) => tone === 'red')?.value;
-  const thresholdTrace = yellowThreshold !== undefined && redThreshold !== undefined
+  const thresholdTrace = series && yellowThreshold !== undefined && redThreshold !== undefined
     && [
       'airgradient_living_room.co2',
       'airgradient_living_room.pm25',
@@ -148,11 +168,13 @@ export function HistoryGraph({ series, label, thresholds, scale }: { series: Tim
     const bounds = plot.current?.getBoundingClientRect();
     if (!bounds) return;
     const x = Math.min(Math.max((clientX - bounds.left) / bounds.width, 0), 1) * 100;
-    const nearest = chartPoints.reduce((best, point, index) =>
-      Math.abs(point.x - x) < Math.abs(chartPoints[best]!.x - x) ? index : best, 0);
+    const interactionPoints = series?.points.length ? chartPoints : secondaryChartPoints;
+    const nearest = interactionPoints.reduce((best, point, index) =>
+      Math.abs(point.x - x) < Math.abs(interactionPoints[best]!.x - x) ? index : best, 0);
     setHoveredIndex(nearest);
   };
   const points = chartPoints.map((point) => `${point.x},${point.y}`).join(' ');
+  const secondaryPoints = secondaryChartPoints.map((point) => `${point.x},${point.y}`).join(' ');
   const smoothMetric = [
     'aranet_living_room.temperature',
     'aranet_living_room.humidity',
@@ -164,15 +186,21 @@ export function HistoryGraph({ series, label, thresholds, scale }: { series: Tim
     'airgradient_living_room.tvoc_index',
     'airgradient_living_room.nox_index',
     'nest_living_room.current_temperature',
-  ].includes(series.metric) && chartPoints.length > 2;
+    ].includes(series?.metric ?? '') && chartPoints.length > 2;
   const valueLabel = (value: number) => value.toFixed(scale.digits ?? 0);
-  const summary = `${label}, ${series.window}, ${values.length} samples, latest ${values.at(-1)} ${series.unit}. Thresholds ${thresholds.map((threshold) => threshold.value).join(', ')} ${series.unit}.`;
+  const summary = `${label}, ${interactionSeries.window}, ${interactionSeries.points.length} samples, latest ${interactionSeries.points.at(-1)!.value} ${interactionSeries.unit}.`
+    + (secondarySeries?.points.length ? ` ${secondaryLabel}, ${secondarySeries.points.length} samples, latest ${secondarySeries.points.at(-1)!.value} ${secondarySeries.unit}.` : '')
+    + ` Thresholds ${thresholds.map((threshold) => threshold.value).join(', ')} ${interactionSeries.unit}.`;
   return (
     <figure className="indoor-history-graph">
-      <figcaption><strong>{label}</strong><span>{valueLabel(values.at(-1)!)} {series.unit}</span></figcaption>
+      <figcaption><strong>{label}</strong><span>{valueLabel(interactionSeries.points.at(-1)!.value)} {interactionSeries.unit}</span></figcaption>
+      {secondaryLabel ? <div className="history-legend" aria-label={`${label} graph legend`}>
+        <span><i className="history-legend-primary" aria-hidden="true" />PM2.5</span>
+        <span><i className="history-legend-secondary" aria-hidden="true" />{secondaryLabel}</span>
+      </div> : null}
       <div className="history-chart">
         <div className="y-axis-labels" aria-hidden="true">
-          <span className="y-axis-unit">{series.unit}</span>
+          <span className="y-axis-unit">{interactionSeries.unit}</span>
           {ticks.map((value) => {
             const threshold = thresholds.find((item) => item.value === value);
             return <span key={value} className={`y-axis-label${threshold ? ` y-axis-label-threshold threshold-tone-${threshold.tone}` : ''}`} style={{ top: `${y(value)}%` }}>{valueLabel(value)}</span>;
@@ -186,13 +214,13 @@ export function HistoryGraph({ series, label, thresholds, scale }: { series: Tim
           aria-label={summary}
           onPointerMove={(event) => selectNearestPoint(event.clientX)}
           onPointerLeave={() => setHoveredIndex(null)}
-          onFocus={() => setHoveredIndex((current) => current ?? series.points.length - 1)}
+          onFocus={() => setHoveredIndex((current) => current ?? interactionSeries.points.length - 1)}
           onBlur={() => setHoveredIndex(null)}
           onKeyDown={(event) => {
             if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
             event.preventDefault();
             const direction = event.key === 'ArrowLeft' ? -1 : 1;
-            setHoveredIndex((current) => Math.min(Math.max((current ?? series.points.length - 1) + direction, 0), series.points.length - 1));
+            setHoveredIndex((current) => Math.min(Math.max((current ?? interactionSeries.points.length - 1) + direction, 0), interactionSeries.points.length - 1));
           }}
         >
           <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
@@ -205,9 +233,12 @@ export function HistoryGraph({ series, label, thresholds, scale }: { series: Tim
             {thresholds.filter(({ value }) => value >= min && value <= max).map(({ value, tone }) =>
               <line key={value} x1={plotLeft} x2={plotRight} y1={y(value)} y2={y(value)} className={`threshold-line threshold-tone-${tone}`} />,
             )}
-            {smoothMetric
+            {chartPoints.length && smoothMetric
               ? <path d={smoothSvgPath(chartPoints)} className="history-line history-line-smoothed" style={thresholdTrace ? { stroke: `url(#${gradientId})` } : undefined} vectorEffect="non-scaling-stroke" />
-              : <polyline points={points} className="history-line" style={thresholdTrace ? { stroke: `url(#${gradientId})` } : undefined} vectorEffect="non-scaling-stroke" />}
+              : chartPoints.length ? <polyline points={points} className="history-line" style={thresholdTrace ? { stroke: `url(#${gradientId})` } : undefined} vectorEffect="non-scaling-stroke" /> : null}
+            {secondaryChartPoints.length > 2
+              ? <path d={smoothSvgPath(secondaryChartPoints)} className="history-line history-line-secondary" vectorEffect="non-scaling-stroke" />
+              : secondaryChartPoints.length ? <polyline points={secondaryPoints} className="history-line history-line-secondary" vectorEffect="non-scaling-stroke" /> : null}
             {hoveredChartPoint ? <>
               <line x1={hoveredChartPoint.x} x2={hoveredChartPoint.x} y1={plotTop} y2={plotBottom} className="history-crosshair" />
             </> : null}
@@ -218,11 +249,12 @@ export function HistoryGraph({ series, label, thresholds, scale }: { series: Tim
             role="status"
           >
             <strong>{historyTooltipTime(hoveredPoint.timestamp)}</strong>
-            <span><i aria-hidden="true" />{valueLabel(hoveredPoint.value)} {series.unit}</span>
+            <span><i aria-hidden="true" />{valueLabel(hoveredPoint.value)} {interactionSeries.unit}</span>
+            {hoveredSecondaryPoint ? <span><i className="history-tooltip-secondary" aria-hidden="true" />{secondaryLabel}: {valueLabel(hoveredSecondaryPoint.value)} {secondarySeries!.unit}</span> : null}
           </div> : null}
         </div>
         <div className="x-axis-labels" aria-hidden="true">
-          {xTicks.map(({ x, timestamp }, index) => <span key={x} style={{ left: `${x}%` }}>{index === xTicks.length - 1 ? 'Current' : historyTimeLabel(timestamp, series.window, timeRange)}</span>)}
+          {xTicks.map(({ x, timestamp }, index) => <span key={x} style={{ left: `${x}%` }}>{index === xTicks.length - 1 ? 'Current' : historyTimeLabel(timestamp, interactionSeries.window, timeRange)}</span>)}
         </div>
       </div>
     </figure>
@@ -336,7 +368,7 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
   const thermostat = indoor.thermostats[0];
   const metrics = useMemo<HistoryMetric[]>(() => [
     { alias: 'airgradient_living_room.co2', label: 'AirGradient CO₂', thresholds: [{ value: 900, tone: 'yellow' }, { value: 1000, tone: 'red' }], scale: { fixedMin: 400, fixedMax: 1400, ticks: [400, 600, 800, 1000, 1200, 1400], digits: 0 } },
-    { alias: 'airgradient_living_room.pm25', label: 'AirGradient PM2.5', thresholds: [{ value: 5, tone: 'yellow' }, { value: 15, tone: 'red' }], scale: { minSpan: 20, hardMin: 0, digits: 0 } },
+    { alias: 'airgradient_living_room.pm25', secondaryAlias: 'airgradient_living_room.pm10', secondaryLabel: 'PM10', label: 'AirGradient particulate matter', thresholds: [{ value: 5, tone: 'yellow' }, { value: 15, tone: 'red' }], scale: { minSpan: 20, hardMin: 0, digits: 0 } },
     { alias: 'nest_living_room.current_temperature', label: 'Nest temperature', thresholds: [{ value: 60, tone: 'blue' }, { value: 80, tone: 'red' }], scale: { fixedMin: 60, fixedMax: 80, ticks: [60, 65, 70, 75, 80], digits: 0 } },
     { alias: 'airgradient_living_room.humidity', label: 'AirGradient humidity', thresholds: [], scale: { fixedMin: 0, fixedMax: 100, ticks: [0, 20, 40, 60, 80, 100], digits: 0 } },
     { alias: 'airgradient_living_room.tvoc_index', label: 'AirGradient TVOC index', thresholds: [{ value: 150, tone: 'yellow' }, { value: 250, tone: 'red' }], scale: { fixedMin: 0, fixedMax: 500, ticks: [0, 100, 200, 300, 400, 500], digits: 0 } },
@@ -354,7 +386,8 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
         : selection.window === 'custom'
           ? { start: selection.start, end: selection.end }
           : null;
-      const items = await Promise.all(metrics.map(async ({ alias }) => {
+      const historyAliases = metrics.flatMap(({ alias, secondaryAlias }) => secondaryAlias ? [alias, secondaryAlias] : [alias]);
+      const items = await Promise.all(historyAliases.map(async (alias) => {
       try {
         const params = new URLSearchParams({ metric: alias, window: selection.window });
         if (querySelection) {
@@ -370,7 +403,7 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
       if (!active) return;
       const successful = items.filter((item) => item !== null);
       if (successful.length) setHistory((current) => ({ ...current, ...Object.fromEntries(successful) }));
-      setHistoryUpdate((current) => successful.length === metrics.length
+      setHistoryUpdate((current) => successful.length === historyAliases.length
         ? { status: 'CURRENT', updatedAt: now.toISOString() }
         : { status: 'STALE', updatedAt: current.updatedAt });
     };
@@ -464,7 +497,15 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
           {rangeError ? <p className="history-range-error" role="alert">{rangeError}</p> : null}
           <button className="history-apply-range" type="submit">Apply to all graphs</button>
         </form> : null}
-        <div className="indoor-graph-grid">{metrics.map((metric) => <HistoryGraph key={metric.alias} series={history[metric.alias]} label={metric.label} thresholds={metric.thresholds} scale={metric.scale} />)}</div>
+        <div className="indoor-graph-grid">{metrics.map((metric) => <HistoryGraph
+          key={metric.alias}
+          series={history[metric.alias]}
+          label={metric.label}
+          thresholds={metric.thresholds}
+          scale={metric.scale}
+          {...(metric.secondaryAlias && history[metric.secondaryAlias] ? { secondarySeries: history[metric.secondaryAlias] } : {})}
+          {...(metric.secondaryLabel ? { secondaryLabel: metric.secondaryLabel } : {})}
+        />)}</div>
       </section>
       <section className="purifier-grid" aria-label="Air purifiers">
         {indoor.purifiers.map((purifier) => <Panel key={purifier.alias} title={`${purifier.room === 'living_room' ? 'Living Room' : 'Bedroom'} Coway`} eyebrow="AIRMEGA 250S / CLOUD" severity={sourceSeverity(purifier.sourceState)} freshness={panelFreshness(purifier.readings.pm25.metadata.freshness)}><div className="indoor-reading-grid"><Metric label="PM2.5" value={display(purifier.readings.pm25)} unit="µg/m³" /><Metric label="PM10" value={display(purifier.readings.pm10)} unit="µg/m³" /><Metric label="AQI" value={display(purifier.readings.aqi)} /><Metric label="FILTER" value={display(purifier.readings.filterLife)} unit="%" /></div><div className="device-state-line"><strong>{purifier.sourceState}</strong><span>{purifier.power === null ? 'NO DATA' : purifier.power ? 'ON' : 'OFF'} · {purifier.preset ?? '—'} · speed {purifier.speed ?? '—'}</span></div><PurifierControls purifier={purifier} review={setReview} /></Panel>)}

@@ -389,11 +389,16 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .indoor-history-graph { min-width: 0; margin: 0; border: 1px solid var(--divider); background: var(--surface); padding: 0.55rem; }
 .indoor-history-graph figcaption { display: flex; justify-content: space-between; gap: 0.5rem; color: var(--muted); font-size: 0.62rem; }
 .indoor-history-graph figcaption strong { color: var(--title); font-size: 0.82rem; font-weight: 700; line-height: 1.15; }
+.history-legend { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.35rem; color: var(--muted); font: 0.56rem/1 var(--mono); }
+.history-legend span { display: inline-flex; align-items: center; gap: 0.3rem; }
+.history-legend i { width: 1.25rem; border-top: 2px solid var(--focus); }
+.history-legend-secondary { border-top-style: dotted !important; border-top-color: var(--muted) !important; }
 .history-chart { display: grid; grid-template: minmax(9rem, 1fr) 1.15rem / 2.25rem minmax(0, 1fr); margin-top: 0.4rem; }
 .history-plot { position: relative; min-width: 0; cursor: crosshair; outline: none; touch-action: pan-y; }
 .history-plot:focus-visible { box-shadow: 0 0 0 2px var(--focus); }
 .history-chart svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .history-line { fill: none; stroke: var(--focus); stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
+.history-line-secondary { stroke: var(--muted); stroke-dasharray: 2 4; stroke-width: 1.75; }
 .y-axis-labels { position: relative; min-width: 0; color: var(--muted); font: 400 0.62rem/1 var(--mono); letter-spacing: 0.06em; }
 .y-axis-label { position: absolute; right: 0.3rem; translate: 0 -50%; white-space: nowrap; }
 .y-axis-label-threshold { font-weight: 700; }
@@ -421,6 +426,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .history-tooltip strong { color: var(--title); font-size: 0.6rem; font-weight: 700; }
 .history-tooltip span { display: flex; align-items: center; gap: 0.4rem; }
 .history-tooltip i { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--focus); }
+.history-tooltip .history-tooltip-secondary { border: 1px solid var(--muted); background: transparent; }
 .x-axis-labels { position: relative; grid-column: 2; padding-top: 0.25rem; color: var(--muted); font: 0.52rem/1 var(--mono); }
 .x-axis-labels span { position: absolute; translate: -50% 0; white-space: nowrap; }
 .x-axis-labels span:first-child { translate: 0 0; }

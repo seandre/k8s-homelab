@@ -95,8 +95,8 @@ test('renders the responsive indoor dashboard and requires review before control
     const url = new URL(route.request().url());
     if (url.searchParams.get('window') === 'custom') customQueries.push(url);
     const metric = url.searchParams.get('metric')!;
-    const unit = metric.endsWith('.co2') ? 'ppm' : metric.endsWith('.temperature') ? '°F' : metric.endsWith('.humidity') ? '%' : metric.endsWith('.pm25') ? 'µg/m³' : 'index';
-    const values = metric.endsWith('.co2') ? [850, 950, 1100] : metric.endsWith('.temperature') ? [70, 72, 71] : metric.endsWith('.humidity') ? [42, 44, 43] : metric.endsWith('.pm25') ? [3, 10, 18] : [20, 40, 30];
+    const unit = metric.endsWith('.co2') ? 'ppm' : metric.endsWith('.temperature') ? '°F' : metric.endsWith('.humidity') ? '%' : metric.endsWith('.pm25') || metric.endsWith('.pm10') ? 'µg/m³' : 'index';
+    const values = metric.endsWith('.co2') ? [850, 950, 1100] : metric.endsWith('.temperature') ? [70, 72, 71] : metric.endsWith('.humidity') ? [42, 44, 43] : metric.endsWith('.pm25') ? [3, 10, 18] : metric.endsWith('.pm10') ? [5, 14, 24] : [20, 40, 30];
     const body = {
       requestId: 'e2e-history-request',
       data: {
@@ -131,7 +131,7 @@ test('renders the responsive indoor dashboard and requires review before control
   await expect(page.getByRole('heading', { name: 'Living Room Aranet' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Living Room Coway' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Bedroom Coway' })).toBeVisible();
-  await expect.poll(() => historyRequestCount).toBe(6);
+  await expect.poll(() => historyRequestCount).toBe(7);
   const co2Graph = page.getByRole('img', { name: /CO₂, 1h/ });
   await expect(co2Graph).toBeVisible();
   await co2Graph.hover({ position: { x: 120, y: 60 } });
@@ -141,6 +141,12 @@ test('renders the responsive indoor dashboard and requires review before control
   await expect(co2Graph.locator('.history-trace-stop-green')).not.toHaveCount(0);
   await expect(co2Graph.locator('.history-trace-stop-yellow')).not.toHaveCount(0);
   await expect(co2Graph.locator('.history-trace-stop-red')).not.toHaveCount(0);
+  const particulateGraph = page.getByRole('img', { name: /AirGradient particulate matter, 1h/ });
+  await expect(particulateGraph).toBeVisible();
+  await expect(page.getByLabel('AirGradient particulate matter graph legend')).toContainText('PM2.5');
+  await expect(page.getByLabel('AirGradient particulate matter graph legend')).toContainText('PM10');
+  await expect(particulateGraph.locator('.history-line-secondary')).toHaveCount(1);
+  await expect(particulateGraph.locator('.history-line-secondary')).toHaveCSS('stroke-dasharray', '2px, 4px');
   await co2Graph.focus();
   await page.keyboard.press('ArrowLeft');
   await expect(co2Graph.locator('.history-tooltip')).toContainText('ppm');
@@ -148,16 +154,16 @@ test('renders the responsive indoor dashboard and requires review before control
   await page.getByLabel('Last').fill('2');
   await page.locator('.history-custom-range select').selectOption('days');
   await page.getByRole('button', { name: 'Apply to all graphs' }).click();
-  await expect.poll(() => historyRequestCount).toBe(12);
-  expect(customQueries).toHaveLength(6);
+  await expect.poll(() => historyRequestCount).toBe(14);
+  expect(customQueries).toHaveLength(7);
   expect(customQueries.every((url) => url.searchParams.has('start') && url.searchParams.has('end'))).toBe(true);
   await page.getByRole('button', { name: 'Custom', exact: true }).click();
   await page.getByRole('button', { name: 'Start / end' }).click();
   await page.getByLabel('Start').fill('2026-07-24T08:00');
   await page.getByRole('textbox', { name: 'End', exact: true }).fill('2026-07-25T08:00');
   await page.getByRole('button', { name: 'Apply to all graphs' }).click();
-  await expect.poll(() => historyRequestCount).toBe(18);
-  expect(customQueries).toHaveLength(12);
+  await expect.poll(() => historyRequestCount).toBe(21);
+  expect(customQueries).toHaveLength(14);
   expect(await page.evaluate(() => {
     const axis = document.createElement('div');
     axis.className = 'y-axis-labels';
@@ -226,7 +232,7 @@ test('refreshes live history on visibility return and retains graphs after failu
     });
   });
   await page.goto('/indoor');
-  await expect.poll(() => requestCount).toBe(6);
+  await expect.poll(() => requestCount).toBe(7);
   await expect(page.getByText(/Updated .* PT/)).toBeVisible();
   const co2Graph = page.getByRole('img', { name: /CO₂, 1h/ });
   await expect(co2Graph).toBeVisible();
@@ -237,7 +243,7 @@ test('refreshes live history on visibility return and retains graphs after failu
     Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
     document.dispatchEvent(new Event('visibilitychange'));
   });
-  await expect.poll(() => requestCount).toBe(12);
+  await expect.poll(() => requestCount).toBe(14);
   await expect(page.getByText(/Update failed · retaining data/)).toBeVisible();
   await expect(co2Graph).toBeVisible();
 
@@ -247,7 +253,7 @@ test('refreshes live history on visibility return and retains graphs after failu
   await page.getByLabel('Start').fill('2026-07-24T08:00');
   await page.getByRole('textbox', { name: 'End', exact: true }).fill('2026-07-25T08:00');
   await page.getByRole('button', { name: 'Apply to all graphs' }).click();
-  await expect.poll(() => requestCount).toBe(18);
+  await expect.poll(() => requestCount).toBe(21);
   await page.evaluate(() => {
     Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
     document.dispatchEvent(new Event('visibilitychange'));
@@ -255,7 +261,7 @@ test('refreshes live history on visibility return and retains graphs after failu
     document.dispatchEvent(new Event('visibilitychange'));
   });
   await page.waitForTimeout(150);
-  expect(requestCount).toBe(18);
+  expect(requestCount).toBe(21);
 });
 
 for (const viewport of [{ name: 'mobile', width: 320, height: 900 }, { name: 'tablet', width: 768, height: 1024 }, { name: 'desktop', width: 1440, height: 1080 }]) {

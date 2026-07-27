@@ -18,11 +18,11 @@ describe('indoor dashboard', () => {
     for (const window of ['1h', '3h', '6h', '24h', '7d', '30d', 'Custom']) expect(markup).toContain(`>${window}<`);
     expect(markup).toContain('HVAC mode');
     expect(markup).toContain('Review power off');
-    for (const graph of ['AirGradient CO₂', 'AirGradient PM2.5', 'Nest temperature', 'AirGradient humidity', 'AirGradient TVOC index', 'AirGradient NOx index']) {
+    for (const graph of ['AirGradient CO₂', 'AirGradient particulate matter', 'Nest temperature', 'AirGradient humidity', 'AirGradient TVOC index', 'AirGradient NOx index']) {
       expect(markup).toContain(`NO DATA · ${graph}`);
     }
     expect(markup.indexOf('NO DATA · AirGradient CO₂')).toBeLessThan(markup.indexOf('NO DATA · Nest temperature'));
-    expect(markup.indexOf('NO DATA · AirGradient PM2.5')).toBeLessThan(markup.indexOf('NO DATA · AirGradient humidity'));
+    expect(markup.indexOf('NO DATA · AirGradient particulate matter')).toBeLessThan(markup.indexOf('NO DATA · AirGradient humidity'));
     for (const setting of ['Display brightness', 'LED brightness', 'Display temperature unit', 'PM standard', 'LED mode']) expect(markup).toContain(setting);
     expect(markup.indexOf('Bedroom Coway')).toBeLessThan(markup.indexOf('Living Room Nest'));
   });
@@ -141,9 +141,10 @@ describe('indoor dashboard', () => {
     expect(markup).not.toContain('<circle');
   });
 
-  it('smooths the PM2.5 trace without losing threshold-based colors', () => {
+  it('combines smoothed PM2.5 and dotted PM10 traces with a legend', () => {
     const markup = renderToStaticMarkup(<HistoryGraph
-      label="Living Room PM2.5"
+      label="AirGradient particulate matter"
+      secondaryLabel="PM10"
       thresholds={[{ value: 5, tone: 'yellow' }, { value: 15, tone: 'red' }]}
       scale={{ minSpan: 20, hardMin: 0 }}
       series={{
@@ -157,9 +158,25 @@ describe('indoor dashboard', () => {
         ],
         metadata: { source: 'fixture', observedAt: '2026-07-25T00:10:00.000Z', freshness: 'CURRENT', severity: 'OK' },
       }}
+      secondarySeries={{
+        metric: 'airgradient_living_room.pm10',
+        unit: 'µg/m³',
+        window: '1h',
+        points: [
+          { timestamp: '2026-07-25T00:00:00.000Z', value: 5 },
+          { timestamp: '2026-07-25T00:05:00.000Z', value: 14 },
+          { timestamp: '2026-07-25T00:10:00.000Z', value: 24 },
+        ],
+        metadata: { source: 'fixture', observedAt: '2026-07-25T00:10:00.000Z', freshness: 'CURRENT', severity: 'OK' },
+      }}
     />);
     expect(markup).toContain('<path');
     expect(markup).toContain('history-line-smoothed');
+    expect(markup).toContain('history-line-secondary');
+    expect(markup).toContain('graph legend');
+    expect(markup).toContain('PM2.5');
+    expect(markup).toContain('PM10');
+    expect(markup).toContain('PM10, 3 samples, latest 24 µg/m³');
     expect(markup).toContain('history-trace-stop-green');
     expect(markup).toContain('history-trace-stop-yellow');
     expect(markup).toContain('history-trace-stop-red');
