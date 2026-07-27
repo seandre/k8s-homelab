@@ -17,6 +17,8 @@ spec:
       app.kubernetes.io/name: home-assistant
   template:
     metadata:
+      annotations:
+        homelab.seandre.dev/config-revision: "airgradient-last-reported-v1"
       labels:
         app.kubernetes.io/name: home-assistant
         app.kubernetes.io/component: control-hub
