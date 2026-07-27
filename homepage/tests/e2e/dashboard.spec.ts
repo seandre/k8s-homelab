@@ -148,7 +148,7 @@ test('renders the responsive indoor dashboard and requires review before control
     'AirGradient particulate matter',
     'AirGradient TVOC index',
     'AirGradient NOx index',
-    'Nest temperature',
+    'AirGradient temperature',
     'AirGradient humidity',
   ]);
   await expect(page.getByLabel('AirGradient particulate matter graph legend')).toContainText('PM2.5');
