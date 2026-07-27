@@ -32,6 +32,8 @@ describe('overview network tile', () => {
     expect(markup).toContain('CLIENTS');
     expect(markup).not.toContain('UniFi Site Manager');
     expect(markup).not.toContain('PVE-01 / GLANCES');
+    expect(markup).not.toContain('Component states');
+    expect(markup).not.toContain('HP-007');
   });
 });
 

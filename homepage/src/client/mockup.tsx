@@ -1,6 +1,6 @@
 import React from 'react';
 import { useMemo, useState } from 'react';
-import { ComponentGallery, Metric, Panel, StateBadge } from './components.js';
+import { Metric, Panel, StateBadge } from './components.js';
 import { healthyBootstrapFixture } from '../shared/fixtures.js';
 import { buildOverviewModel, servicePanelSeverity } from './overview.js';
 import { ProxmoxPanel } from './proxmox.js';
@@ -46,7 +46,6 @@ export function OverviewScreen({ search, bootstrap = healthyBootstrapFixture }: 
             <Panel title="Portland weather" eyebrow="UTILITY / 97209" severity={overview.weather.metadata.severity} freshness={overview.weather.metadata.freshness}><div className="weather-readout"><strong>{overview.weather.temperatureFahrenheit}°F</strong><span>{overview.weather.condition}</span></div><div className="metric-grid"><Metric label="AQI" value={overview.weather.usAqi} detail="U.S. AQI" /><Metric label="PM2.5" value={overview.weather.pm25} unit="µg/m³" /><Metric label="SUNSET" value={overview.weather.sunset?.slice(11, 16) ?? '—'} unit="PT" /></div></Panel>
           </div>
         </div>
-        <ComponentGallery />
       </main>
     </>
   );

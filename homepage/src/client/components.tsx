@@ -140,18 +140,3 @@ export function MirroredTrafficGraph({ upload, download, unit, height = 3, width
     <small><span className="traffic-upload-label">UP {upCurrent}</span><span className="traffic-download-label">DOWN {downCurrent}</span></small>
   </div>;
 }
-
-export function ComponentGallery() {
-  return (
-    <section className="gallery" aria-labelledby="gallery-title">
-      <div className="section-heading"><span className="panel-eyebrow">HP-007</span><h2 id="gallery-title">Component states</h2></div>
-      <div className="gallery-grid">
-        <Panel title="Healthy panel" severity="OK"><Metric label="Current" value="42" unit="%" /></Panel>
-        <Panel title="Warning panel" severity="WARN" freshness="STALE"><Metric label="Last value" value="76" unit="%" detail="Muted until recovery" /></Panel>
-        <Panel title="Critical panel" severity="CRIT" freshness="NO_DATA"><Metric label="Current" value="—" detail="No successful sample" /></Panel>
-        <Panel title="Planned panel" severity="INFO" freshness="NOT_PROVISIONED"><Metric label="Status" value="N/P" detail="Future system" /></Panel>
-        <Panel title="Unsupported panel" severity="INFO" freshness="NOT_SUPPORTED"><Metric label="Status" value="N/S" detail="Adapter not verified" /></Panel>
-      </div>
-    </section>
-  );
-}

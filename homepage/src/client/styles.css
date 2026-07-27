@@ -343,11 +343,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .weather-hero strong { color: var(--title); font-size: 1.7rem; }
 .weather-hero small, .weather-source-note { color: var(--muted); font-size: 0.62rem; }
 .weather-source-note { margin: 0.75rem 0 0; border-top: 1px dotted var(--divider); padding-top: 0.45rem; line-height: 1.4; }
-.gallery { margin-top: 1rem; border-top: 1px solid var(--divider); padding-top: 0.65rem; }
 .section-heading { display: flex; align-items: baseline; gap: 0.7rem; margin-bottom: 0.7rem; }
 .section-heading h2 { margin: 0; color: var(--title); font-size: 1rem; }
-.gallery-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.6rem; }
-.gallery .panel-body { min-height: 5rem; }
 .drawer, .help-card { position: fixed; z-index: 5; right: 1rem; bottom: 1rem; width: min(26rem, calc(100vw - 2rem)); border: 1px solid var(--focus); background: var(--surface); box-shadow: 0 0 0 100vmax var(--shadow); padding: 0.85rem; }
 .drawer-header { justify-content: space-between; }
 .drawer-header h2 { margin: 0; color: var(--title); font-size: 0.95rem; }
@@ -476,7 +473,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .cluster-summary-grid, .workload-list { grid-template-columns: 1fr; }
   .network-latency, .network-throughput { grid-column: span 6; }
   .network-ingress, .network-unifi, .network-speedtest { grid-column: span 4; }
-  .gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .service-launcher-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (min-width: 521px) {
@@ -521,7 +517,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .network-latency, .network-throughput, .network-ingress, .network-unifi, .network-speedtest, .network-planned { grid-column: 1 / -1; }
   .planned-endpoint { grid-template-columns: 1fr; gap: 0.2rem; }
   .storage-summary-grid, .storage-backup-grid { grid-template-columns: 1fr; }
-  .gallery-grid { grid-template-columns: 1fr; }
   .service-launcher-grid { grid-template-columns: 1fr; }
   .weather-screen-grid { grid-template-columns: 1fr; }
   .panel-header { min-width: 0; }
