@@ -155,6 +155,15 @@ test('renders the responsive indoor dashboard and requires review before control
   await expect(page.getByLabel('AirGradient particulate matter graph legend')).toContainText('PM10');
   await expect(particulateGraph.locator('.history-line-secondary')).toHaveCount(1);
   await expect(particulateGraph.locator('.history-line-secondary')).toHaveCSS('stroke-dasharray', '2px, 4px');
+  const temperatureGraph = page.getByRole('img', { name: /AirGradient temperature, 1h/ });
+  await temperatureGraph.focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect(temperatureGraph.locator('.history-tooltip-marker-yellow')).toHaveCount(1);
+  const temperatureYellowColors = await temperatureGraph.evaluate((graph) => ({
+    marker: getComputedStyle(graph.querySelector('.history-tooltip-marker-yellow')!).backgroundColor,
+    trace: getComputedStyle(graph.querySelector('.history-trace-stop-yellow')!).stopColor,
+  }));
+  expect(temperatureYellowColors.marker).toBe(temperatureYellowColors.trace);
   await co2Graph.focus();
   await page.keyboard.press('ArrowLeft');
   await expect(co2Graph.locator('.history-tooltip')).toContainText('ppm');

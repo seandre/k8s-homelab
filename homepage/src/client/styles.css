@@ -429,6 +429,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .threshold-line.threshold-tone-red { stroke: var(--threshold-red); }
 .history-trace-stop-green { stop-color: var(--focus); }
 .history-trace-stop-blue { stop-color: var(--threshold-blue); }
+.history-trace-stop-light-blue { stop-color: var(--threshold-light-blue); }
+.history-trace-stop-dark-blue { stop-color: var(--threshold-dark-blue); }
 .history-trace-stop-yellow { stop-color: var(--threshold-yellow); }
 .history-trace-stop-red { stop-color: var(--threshold-red); }
 .history-crosshair { stroke: var(--focus); stroke-width: 1; stroke-dasharray: 3 2; vector-effect: non-scaling-stroke; }
@@ -437,6 +439,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .history-tooltip strong { color: var(--title); font-size: 0.6rem; font-weight: 700; }
 .history-tooltip span { display: flex; align-items: center; gap: 0.4rem; }
 .history-tooltip i { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--focus); }
+.history-tooltip .history-tooltip-marker-blue { background: var(--threshold-blue); }
+.history-tooltip .history-tooltip-marker-light-blue { background: var(--threshold-light-blue); }
+.history-tooltip .history-tooltip-marker-dark-blue { background: var(--threshold-dark-blue); }
+.history-tooltip .history-tooltip-marker-yellow { background: var(--threshold-yellow); }
+.history-tooltip .history-tooltip-marker-red { background: var(--threshold-red); }
+.history-tooltip .history-tooltip-marker-secondary { background: var(--muted); }
 .history-tooltip .history-tooltip-secondary { border: 1px solid var(--muted); background: transparent; }
 .x-axis-labels { position: relative; grid-column: 2; padding-top: 0.25rem; color: var(--muted); font: 0.52rem/1 var(--mono); }
 .x-axis-labels span { position: absolute; translate: -50% 0; white-space: nowrap; }

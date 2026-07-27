@@ -118,6 +118,33 @@ describe('indoor dashboard', () => {
     expect(markup).toContain('Current');
   });
 
+  it('colors the AirGradient temperature trace across blue, green, yellow, and red zones', () => {
+    const markup = renderToStaticMarkup(<HistoryGraph
+      label="AirGradient temperature"
+      thresholds={[{ value: 65, tone: 'dark-blue' }, { value: 68, tone: 'light-blue' }, { value: 72, tone: 'yellow' }, { value: 75, tone: 'red' }]}
+      scale={{ fixedMin: 60, fixedMax: 80, ticks: [60, 65, 70, 75, 80] }}
+      series={{
+        metric: 'airgradient_living_room.temperature',
+        unit: '°F',
+        window: '1h',
+        points: [
+          { timestamp: '2026-07-25T00:00:00.000Z', value: 64 },
+          { timestamp: '2026-07-25T00:05:00.000Z', value: 66 },
+          { timestamp: '2026-07-25T00:10:00.000Z', value: 70 },
+          { timestamp: '2026-07-25T00:15:00.000Z', value: 73 },
+          { timestamp: '2026-07-25T00:20:00.000Z', value: 76 },
+        ],
+        metadata: { source: 'fixture', observedAt: '2026-07-25T00:20:00.000Z', freshness: 'CURRENT', severity: 'OK' },
+      }}
+    />);
+    expect(markup).toContain('style="stroke:url(#history-trace-');
+    expect(markup).toContain('history-trace-stop-dark-blue');
+    expect(markup).toContain('history-trace-stop-light-blue');
+    expect(markup).toContain('history-trace-stop-green');
+    expect(markup).toContain('history-trace-stop-yellow');
+    expect(markup).toContain('history-trace-stop-red');
+  });
+
   it('smooths the CO₂ trace and emphasizes visible threshold ticks', () => {
     const markup = renderToStaticMarkup(<HistoryGraph
       label="CO₂"

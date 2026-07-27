@@ -18,6 +18,7 @@ type IndoorReading = IndoorState['sensors'][0]['readings']['temperature'];
 type ThermostatState = IndoorState['thermostats'][0];
 type PurifierState = IndoorState['purifiers'][number];
 type ThresholdTone = 'blue' | 'light-blue' | 'dark-blue' | 'yellow' | 'red';
+type TraceTone = 'green' | ThresholdTone | 'secondary';
 type HistoryThreshold = { value: number; tone: ThresholdTone };
 type HistoryMetric = { alias: string; label: string; thresholds: HistoryThreshold[]; scale: HistoryScale; secondaryAlias?: string; secondaryLabel?: string };
 
@@ -135,24 +136,37 @@ export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, t
   const yellowThreshold = thresholds.find(({ tone }) => tone === 'yellow')?.value;
   const redThreshold = thresholds.find(({ tone }) => tone === 'red')?.value;
   const humidityTrace = series?.metric === 'airgradient_living_room.humidity';
+  const temperatureTrace = series?.metric === 'airgradient_living_room.temperature';
   const humidityLow = humidityTrace ? thresholds[0]?.value : undefined;
   const humidityHigh = humidityTrace ? thresholds.at(-1)?.value : undefined;
-  const thresholdTrace = series && (humidityTrace || (yellowThreshold !== undefined && redThreshold !== undefined
+  const temperatureDarkBlue = thresholds.find(({ tone }) => tone === 'dark-blue')?.value;
+  const temperatureLightBlue = thresholds.find(({ tone }) => tone === 'light-blue')?.value;
+  const thresholdTrace = series && (humidityTrace || temperatureTrace || (yellowThreshold !== undefined && redThreshold !== undefined
     && [
       'airgradient_living_room.co2',
       'airgradient_living_room.pm25',
       'airgradient_living_room.tvoc_index',
       'airgradient_living_room.nox_index',
     ].includes(series.metric)));
-  const traceTone = (value: number) => humidityTrace
-    ? (value < humidityLow! || value > humidityHigh! ? 'blue' : 'green')
-    : value >= redThreshold! ? 'red' : value >= yellowThreshold! ? 'yellow' : 'green';
+  const traceTone = (value: number): TraceTone => {
+    if (humidityTrace) return value < humidityLow! || value > humidityHigh! ? 'blue' : 'green';
+    if (temperatureTrace) {
+      if (value < temperatureDarkBlue!) return 'dark-blue';
+      if (value < temperatureLightBlue!) return 'light-blue';
+    }
+    return value >= redThreshold! ? 'red' : value >= yellowThreshold! ? 'yellow' : 'green';
+  };
+  const traceBoundaries = humidityTrace
+    ? [humidityLow!, humidityHigh!]
+    : temperatureTrace
+      ? [temperatureDarkBlue!, temperatureLightBlue!, yellowThreshold!, redThreshold!]
+      : [yellowThreshold!, redThreshold!];
   const traceStops = thresholdTrace ? chartPoints.flatMap((point, index) => {
-    if (index === chartPoints.length - 1) return [{ offset: point.x, tone: traceTone(values[index]!) }];
+    if (index === chartPoints.length - 1) return [{ offset: point.x, tone: traceTone(primaryValues[index]!) }];
     const nextPoint = chartPoints[index + 1]!;
-    const value = values[index]!;
-    const nextValue = values[index + 1]!;
-    const crossings = (humidityTrace ? [humidityLow!, humidityHigh!] : [yellowThreshold!, redThreshold!])
+    const value = primaryValues[index]!;
+    const nextValue = primaryValues[index + 1]!;
+    const crossings = traceBoundaries
       .filter((threshold) => (value < threshold && nextValue >= threshold) || (value >= threshold && nextValue < threshold))
       .map((threshold) => ({
         offset: point.x + ((threshold - value) / (nextValue - value)) * (nextPoint.x - point.x),
@@ -169,6 +183,9 @@ export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, t
     }
     return stops;
   }) : [];
+  const hoveredTraceTone: TraceTone = series?.points.length
+    ? thresholdTrace && hoveredPoint ? traceTone(hoveredPoint.value) : 'green'
+    : 'secondary';
   const selectNearestPoint = (clientX: number) => {
     const bounds = plot.current?.getBoundingClientRect();
     if (!bounds) return;
@@ -254,7 +271,7 @@ export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, t
             role="status"
           >
             <strong>{historyTooltipTime(hoveredPoint.timestamp)}</strong>
-            <span><i aria-hidden="true" />{valueLabel(hoveredPoint.value)} {interactionSeries.unit}</span>
+            <span><i className={`history-tooltip-marker-${hoveredTraceTone}`} aria-hidden="true" />{valueLabel(hoveredPoint.value)} {interactionSeries.unit}</span>
             {hoveredSecondaryPoint ? <span><i className="history-tooltip-secondary" aria-hidden="true" />{secondaryLabel}: {valueLabel(hoveredSecondaryPoint.value)} {secondarySeries!.unit}</span> : null}
           </div> : null}
         </div>
