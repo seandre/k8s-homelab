@@ -104,7 +104,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .brand a { color: var(--muted); font-size: 0.7rem; text-decoration: none; }
 .header-status { flex: 1; justify-content: center; gap: 1rem; color: var(--muted); font-size: 0.65rem; letter-spacing: 0.06em; }
 .header-status b { color: var(--title); }
-.header-location { white-space: nowrap; }
+.header-location { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .header-weather { color: var(--muted); }
 .global-alert-control { position: relative; display: flex; align-items: center; min-height: 1.15rem; }
 .global-alert-button { display: block; border: 0; background: transparent; padding: 0; cursor: pointer; font: inherit; }
@@ -484,6 +484,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 @media (max-width: 520px) {
   .global-header { padding: 0.65rem; }
   .brand a { display: none; }
+  .header-status { gap: 0.4rem; font-size: 0.55rem; }
+  .header-location { font-size: 0.55rem; }
   .header-weather { display: inline; }
   .header-weather-condition { display: none; }
   .header-actions { min-width: 0; }
