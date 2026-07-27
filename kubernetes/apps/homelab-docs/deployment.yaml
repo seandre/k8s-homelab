@@ -19,7 +19,7 @@ spec:
         - name: ghcr-pull
       containers:
         - name: docs
-          image: ghcr.io/seandre/k8s-homelab-docs:sha-71325e7
+          image: ghcr.io/seandre/k8s-homelab-docs:sha-0612c8b
           imagePullPolicy: Always
           securityContext:
             allowPrivilegeEscalation: false
