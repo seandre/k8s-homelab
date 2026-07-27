@@ -1,6 +1,7 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
+import { healthyBootstrapFixture } from '../shared/fixtures.js';
 import { KubernetesScreen, OkdScreen } from './kubernetes.js';
 
 describe('Kubernetes fixture views', () => {
@@ -10,6 +11,25 @@ describe('Kubernetes fixture views', () => {
     expect(html).toContain('k3s-worker-02');
     expect(html).toContain('koreader-sync');
     expect(html).toContain('https://argocd.lab.seandre.dev');
+    expect(html.match(/class="dot-graph /g)).toHaveLength(8);
+    expect(html).toContain('CPU: 36%; 1 samples');
+    expect(html).toContain('MEMORY: 86%; 1 samples');
+    expect(html).toContain('READY');
+  });
+
+  it('adds disk and network graphs only when matching history exists', () => {
+    const bootstrap = structuredClone(healthyBootstrapFixture);
+    const baseSeries = bootstrap.timeSeries[0]!;
+    bootstrap.timeSeries = [
+      ...bootstrap.timeSeries,
+      { ...baseSeries, metric: 'k3s-worker-01 DISK', unit: '%', points: [{ ...baseSeries.points[0]!, value: 44 }] },
+      { ...baseSeries, metric: 'k3s-worker-01 RX', unit: 'Mb/s', points: [{ ...baseSeries.points[0]!, value: 12 }] },
+      { ...baseSeries, metric: 'k3s-worker-01 TX', unit: 'Mb/s', points: [{ ...baseSeries.points[0]!, value: 5 }] },
+    ];
+    const html = renderToStaticMarkup(<KubernetesScreen bootstrap={bootstrap} />);
+    expect(html).toContain('DISK: 44%');
+    expect(html).toContain('DOWN: 12Mb/s');
+    expect(html).toContain('UP: 5Mb/s');
   });
 
   it('renders the future OKD state as neutral, not as an error', () => {
