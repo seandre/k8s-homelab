@@ -221,7 +221,8 @@ Graphs appear in this exact order:
 4. AirGradient NOx index, fixed 0–500, with a threshold-colored primary trace
    and informational event bands at yellow 20 and red 150.
 5. Nest temperature, fixed 60–80°F.
-6. AirGradient humidity, fixed 0–100%.
+6. AirGradient humidity, fixed 0–100%, with dotted low/high bands at 30% and
+   60% and very-low/very-high bands at 20% and 70%.
 
 Existing live refresh, custom time ranges, hover line, responsive behavior, and
 non-optimistic action state remain unchanged. Settings are keyboard operable,
