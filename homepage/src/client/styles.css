@@ -75,7 +75,7 @@
   --upload-end: #873c8a;
   --muted: #536158;
   --info: #304f8e;
-  --warn: #d48208;
+  --warn: #8a6500;
   --crit: #c92a2a;
   /* Darker light-mode chart colors retain the semantic palette while meeting
      contrast on the white surface for both traces and dotted thresholds. */
