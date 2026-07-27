@@ -372,7 +372,7 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
     { alias: 'airgradient_living_room.tvoc_index', label: 'AirGradient TVOC index', thresholds: [{ value: 150, tone: 'yellow' }, { value: 250, tone: 'red' }], scale: { fixedMin: 0, fixedMax: 500, ticks: [0, 100, 200, 300, 400, 500], digits: 0 } },
     { alias: 'airgradient_living_room.nox_index', label: 'AirGradient NOx index', thresholds: [{ value: 20, tone: 'yellow' }, { value: 150, tone: 'red' }], scale: { fixedMin: 0, fixedMax: 500, ticks: [0, 100, 200, 300, 400, 500], digits: 0 } },
     { alias: 'nest_living_room.current_temperature', label: 'Nest temperature', thresholds: [{ value: 60, tone: 'blue' }, { value: 80, tone: 'red' }], scale: { fixedMin: 60, fixedMax: 80, ticks: [60, 65, 70, 75, 80], digits: 0 } },
-    { alias: 'airgradient_living_room.humidity', label: 'AirGradient humidity', thresholds: [{ value: 20, tone: 'red' }, { value: 30, tone: 'yellow' }, { value: 60, tone: 'yellow' }, { value: 70, tone: 'red' }], scale: { fixedMin: 0, fixedMax: 100, ticks: [0, 20, 40, 60, 80, 100], digits: 0 } },
+    { alias: 'airgradient_living_room.humidity', label: 'AirGradient humidity', thresholds: [{ value: 20, tone: 'dark-blue' }, { value: 30, tone: 'light-blue' }, { value: 60, tone: 'light-blue' }, { value: 70, tone: 'dark-blue' }], scale: { fixedMin: 0, fixedMax: 100, ticks: [0, 20, 40, 60, 80, 100], digits: 0 } },
   ], []);
   useEffect(() => {
     let active = true;
@@ -471,13 +471,8 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
       {indoor.alerts.length ? <section className="indoor-alerts" aria-label="Indoor alerts">{indoor.alerts.map((alert) => <div key={alert.id}><StateBadge severity={alert.severity} /><strong>{alert.kind.replaceAll('_', ' ')}</strong><span>{alert.summary}</span></div>)}</section> : null}
       <section className="indoor-current-grid" id="indoor-current" aria-label="Current indoor readings">
         <Panel title="AirGradient + Nest" eyebrow="LIVING ROOM / LOCAL PRIMARY" severity={sourceSeverity(airgradient.sourceState)} freshness={panelFreshness(airgradient.readings.co2.metadata.freshness)}>
-          <div className="indoor-reading-grid"><Metric label="NEST TEMPERATURE" value={display(thermostat.currentTemperature, 1)} unit="°F" detail={thermostat.currentTemperature.metadata.freshness} /><Metric label="HUMIDITY" value={display(airgradient.readings.humidity)} unit="%" detail={airgradient.readings.humidity.metadata.freshness} /><Metric label="CO₂" value={display(airgradient.readings.co2)} unit="ppm" detail={airgradient.readings.co2.metadata.freshness} /><Metric label="PM2.5" value={display(airgradient.readings.pm25)} unit="µg/m³" detail={airgradient.readings.pm25.metadata.freshness} /><Metric label="PM10" value={display(airgradient.readings.pm10)} unit="µg/m³" detail={airgradient.readings.pm10.metadata.freshness} /><Metric label="TVOC INDEX" value={display(airgradient.readings.tvocIndex)} detail={airgradient.readings.tvocIndex.metadata.freshness} /><Metric label="NOx INDEX" value={display(airgradient.readings.noxIndex)} detail={airgradient.readings.noxIndex.metadata.freshness} /></div>
+          <div className="indoor-reading-grid indoor-primary-readings"><Metric label="NEST TEMPERATURE" value={display(thermostat.currentTemperature, 1)} unit="°F" detail={thermostat.currentTemperature.metadata.freshness} /><Metric label="HUMIDITY" value={display(airgradient.readings.humidity)} unit="%" detail={airgradient.readings.humidity.metadata.freshness} /><Metric label="CO₂" value={display(airgradient.readings.co2)} unit="ppm" detail={airgradient.readings.co2.metadata.freshness} /><Metric label="PM2.5" value={display(airgradient.readings.pm25)} unit="µg/m³" detail={airgradient.readings.pm25.metadata.freshness} /><Metric label="PM10" value={display(airgradient.readings.pm10)} unit="µg/m³" detail={airgradient.readings.pm10.metadata.freshness} /><Metric label="TVOC INDEX" value={display(airgradient.readings.tvocIndex)} detail={airgradient.readings.tvocIndex.metadata.freshness} /><Metric label="NOx INDEX" value={display(airgradient.readings.noxIndex)} detail={airgradient.readings.noxIndex.metadata.freshness} /></div>
           <div className="device-state-line"><strong>{airgradient.sourceState}</strong><span>Local HTTP · {airgradient.readings.co2.metadata.freshness}</span></div>
-          <AirGradientControls device={airgradient} review={setReview} />
-        </Panel>
-        <Panel title="Living Room Aranet" eyebrow="COMPARISON / FALLBACK" severity={sourceSeverity(aranet.sourceState)} freshness={panelFreshness(aranet.readings.co2.metadata.freshness)}>
-          <div className="indoor-reading-grid"><Metric label="TEMPERATURE" value={display(aranet.readings.temperature, 1)} unit="°F" /><Metric label="HUMIDITY" value={display(aranet.readings.humidity)} unit="%" /><Metric label="PRESSURE" value={display(aranet.readings.pressure)} unit="hPa" /><Metric label="CO₂" value={display(aranet.readings.co2)} unit="ppm" /><Metric label="BATTERY" value={display(aranet.readings.battery)} unit="%" /></div>
-          <div className="device-state-line"><strong>{aranet.sourceState}</strong><span>{aranet.readings.co2.metadata.freshness}</span></div>
         </Panel>
       </section>
       <section className="indoor-history" aria-labelledby="indoor-history-title">
@@ -506,6 +501,17 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
           {...(metric.secondaryAlias && history[metric.secondaryAlias] ? { secondarySeries: history[metric.secondaryAlias] } : {})}
           {...(metric.secondaryLabel ? { secondaryLabel: metric.secondaryLabel } : {})}
         />)}</div>
+      </section>
+      <section className="indoor-comparison-grid" aria-label="Indoor comparison and fallback">
+        <Panel title="Living Room Aranet" eyebrow="COMPARISON / FALLBACK" severity={sourceSeverity(aranet.sourceState)} freshness={panelFreshness(aranet.readings.co2.metadata.freshness)}>
+          <div className="indoor-reading-grid"><Metric label="TEMPERATURE" value={display(aranet.readings.temperature, 1)} unit="°F" /><Metric label="HUMIDITY" value={display(aranet.readings.humidity)} unit="%" /><Metric label="PRESSURE" value={display(aranet.readings.pressure)} unit="hPa" /><Metric label="CO₂" value={display(aranet.readings.co2)} unit="ppm" /><Metric label="BATTERY" value={display(aranet.readings.battery)} unit="%" /></div>
+          <div className="device-state-line"><strong>{aranet.sourceState}</strong><span>{aranet.readings.co2.metadata.freshness}</span></div>
+        </Panel>
+      </section>
+      <section className="indoor-settings-grid" aria-label="AirGradient settings">
+        <Panel title="AirGradient settings" eyebrow="AVAILABLE CONTROLS" severity={sourceSeverity(airgradient.sourceState)} freshness={panelFreshness(airgradient.readings.co2.metadata.freshness)}>
+          <AirGradientControls device={airgradient} review={setReview} />
+        </Panel>
       </section>
       <section className="purifier-grid" aria-label="Air purifiers">
         {indoor.purifiers.map((purifier) => <Panel key={purifier.alias} title={`${purifier.room === 'living_room' ? 'Living Room' : 'Bedroom'} Coway`} eyebrow="AIRMEGA 250S / CLOUD" severity={sourceSeverity(purifier.sourceState)} freshness={panelFreshness(purifier.readings.pm25.metadata.freshness)}><div className="indoor-reading-grid"><Metric label="PM2.5" value={display(purifier.readings.pm25)} unit="µg/m³" /><Metric label="PM10" value={display(purifier.readings.pm10)} unit="µg/m³" /><Metric label="AQI" value={display(purifier.readings.aqi)} /><Metric label="FILTER" value={display(purifier.readings.filterLife)} unit="%" /></div><div className="device-state-line"><strong>{purifier.sourceState}</strong><span>{purifier.power === null ? 'NO DATA' : purifier.power ? 'ON' : 'OFF'} · {purifier.preset ?? '—'} · speed {purifier.speed ?? '—'}</span></div><PurifierControls purifier={purifier} review={setReview} /></Panel>)}

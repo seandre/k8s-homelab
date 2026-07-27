@@ -27,6 +27,9 @@ describe('indoor dashboard', () => {
     }
     for (const setting of ['Display brightness', 'LED brightness', 'Display temperature unit', 'PM standard', 'LED mode']) expect(markup).toContain(setting);
     expect(markup.indexOf('Bedroom Coway')).toBeLessThan(markup.indexOf('Living Room Nest'));
+    expect(markup).toContain('indoor-primary-readings');
+    expect(markup.indexOf('Environmental trends')).toBeLessThan(markup.indexOf('Living Room Aranet'));
+    expect(markup.indexOf('Living Room Aranet')).toBeLessThan(markup.indexOf('AirGradient settings'));
   });
 
   it('aligns live history refreshes to the next 30-second scrape boundary', () => {
