@@ -164,4 +164,30 @@ describe('indoor dashboard', () => {
     expect(markup).toContain('history-trace-stop-yellow');
     expect(markup).toContain('history-trace-stop-red');
   });
+
+  it.each([
+    ['TVOC', 'airgradient_living_room.tvoc_index', 150, 250],
+    ['NOx', 'airgradient_living_room.nox_index', 20, 150],
+  ])('renders informational %s event bands across the relative index trace', (label, metric, warning, danger) => {
+    const markup = renderToStaticMarkup(<HistoryGraph
+      label={label}
+      thresholds={[{ value: warning, tone: 'yellow' }, { value: danger, tone: 'red' }]}
+      scale={{ fixedMin: 0, fixedMax: 500, ticks: [0, 100, 200, 300, 400, 500] }}
+      series={{
+        metric,
+        unit: 'index',
+        window: '1h',
+        points: [
+          { timestamp: '2026-07-25T00:00:00.000Z', value: 1 },
+          { timestamp: '2026-07-25T00:05:00.000Z', value: warning },
+          { timestamp: '2026-07-25T00:10:00.000Z', value: danger },
+        ],
+        metadata: { source: 'fixture', observedAt: '2026-07-25T00:10:00.000Z', freshness: 'CURRENT', severity: 'OK' },
+      }}
+    />);
+    expect(markup).toContain(`Thresholds ${warning}, ${danger} index`);
+    expect(markup).toContain('history-trace-stop-green');
+    expect(markup).toContain('history-trace-stop-yellow');
+    expect(markup).toContain('history-trace-stop-red');
+  });
 });

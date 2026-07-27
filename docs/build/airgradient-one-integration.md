@@ -218,14 +218,30 @@ Graphs appear in this exact order:
 2. AirGradient PM2.5, smoothed, with yellow at 5 and red at 15 µg/m³.
 3. Nest temperature, fixed 60–80°F.
 4. AirGradient humidity, fixed 0–100%.
-5. AirGradient TVOC index, fixed 0–500.
-6. AirGradient NOx index, fixed 0–500.
+5. AirGradient TVOC index, fixed 0–500, with informational event bands at
+   yellow 150 and red 250.
+6. AirGradient NOx index, fixed 0–500, with informational event bands at
+   yellow 20 and red 150.
 
 Existing live refresh, custom time ranges, hover line, responsive behavior, and
 non-optimistic action state remain unchanged. Settings are keyboard operable,
 visibly focused, and reviewed in a confirmation dialog before submission. The
 UI reports pending, success, timeout, rejection, and partial-state outcomes
 without implying a change before observed convergence.
+
+The gas-index bands describe relative event intensity, not pollutant
+concentration or health risk. Sensirion maps average VOC conditions to 100 and
+uses 150 as an example device-action threshold; AirGradient describes 250–349
+as a significant relative increase. Sensirion maps the NOx baseline to 1, uses
+20 as an example event trigger, and illustrates higher response above roughly
+150. AirGradient's controlled testing found NOx index magnitude inconsistent
+for identical concentrations, so neither graph band creates a notification or
+equipment action. Sources:
+[Sensirion VOC Index](https://sensirion.com/media/documents/02232963/6294E043/Info_Note_VOC_Index.pdf),
+[Sensirion NOx Index](https://sensirion.com/media/documents/9F289B95/6294DFFC/Info_Note_NOx_Index.pdf),
+[AirGradient VOC interpretation](https://www.airgradient.com/blog/explaining-voc-tvoc-and-voc-index/),
+and
+[AirGradient SGP41 NOx testing](https://www.airgradient.com/blog/sgp41-indoor-performance).
 
 ## Work sequence and package ownership
 

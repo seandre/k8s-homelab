@@ -115,7 +115,12 @@ export function HistoryGraph({ series, label, thresholds, scale }: { series: Tim
   const yellowThreshold = thresholds.find(({ tone }) => tone === 'yellow')?.value;
   const redThreshold = thresholds.find(({ tone }) => tone === 'red')?.value;
   const thresholdTrace = yellowThreshold !== undefined && redThreshold !== undefined
-    && ['airgradient_living_room.co2', 'airgradient_living_room.pm25'].includes(series.metric);
+    && [
+      'airgradient_living_room.co2',
+      'airgradient_living_room.pm25',
+      'airgradient_living_room.tvoc_index',
+      'airgradient_living_room.nox_index',
+    ].includes(series.metric);
   const traceTone = (value: number) => value >= redThreshold! ? 'red' : value >= yellowThreshold! ? 'yellow' : 'green';
   const traceStops = thresholdTrace ? chartPoints.flatMap((point, index) => {
     if (index === chartPoints.length - 1) return [{ offset: point.x, tone: traceTone(values[index]!) }];
@@ -334,8 +339,8 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
     { alias: 'airgradient_living_room.pm25', label: 'AirGradient PM2.5', thresholds: [{ value: 5, tone: 'yellow' }, { value: 15, tone: 'red' }], scale: { minSpan: 20, hardMin: 0, digits: 0 } },
     { alias: 'nest_living_room.current_temperature', label: 'Nest temperature', thresholds: [{ value: 60, tone: 'blue' }, { value: 80, tone: 'red' }], scale: { fixedMin: 60, fixedMax: 80, ticks: [60, 65, 70, 75, 80], digits: 0 } },
     { alias: 'airgradient_living_room.humidity', label: 'AirGradient humidity', thresholds: [], scale: { fixedMin: 0, fixedMax: 100, ticks: [0, 20, 40, 60, 80, 100], digits: 0 } },
-    { alias: 'airgradient_living_room.tvoc_index', label: 'AirGradient TVOC index', thresholds: [], scale: { fixedMin: 0, fixedMax: 500, ticks: [0, 100, 200, 300, 400, 500], digits: 0 } },
-    { alias: 'airgradient_living_room.nox_index', label: 'AirGradient NOx index', thresholds: [], scale: { fixedMin: 0, fixedMax: 500, ticks: [0, 100, 200, 300, 400, 500], digits: 0 } },
+    { alias: 'airgradient_living_room.tvoc_index', label: 'AirGradient TVOC index', thresholds: [{ value: 150, tone: 'yellow' }, { value: 250, tone: 'red' }], scale: { fixedMin: 0, fixedMax: 500, ticks: [0, 100, 200, 300, 400, 500], digits: 0 } },
+    { alias: 'airgradient_living_room.nox_index', label: 'AirGradient NOx index', thresholds: [{ value: 20, tone: 'yellow' }, { value: 150, tone: 'red' }], scale: { fixedMin: 0, fixedMax: 500, ticks: [0, 100, 200, 300, 400, 500], digits: 0 } },
   ], []);
   useEffect(() => {
     let active = true;
