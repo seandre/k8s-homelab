@@ -97,7 +97,7 @@ describe('indoor dashboard', () => {
   it('renders proportional y-axis labels and real history-window endpoints', () => {
     const markup = renderToStaticMarkup(<HistoryGraph
       label="Temperature"
-      thresholds={[{ value: 65, tone: 'dark-blue' }, { value: 68, tone: 'light-blue' }, { value: 72, tone: 'light-blue' }, { value: 75, tone: 'dark-blue' }]}
+      thresholds={[{ value: 65, tone: 'dark-blue' }, { value: 68, tone: 'light-blue' }, { value: 72, tone: 'yellow' }, { value: 75, tone: 'red' }]}
       scale={{ fixedMin: 60, fixedMax: 80, ticks: [60, 65, 70, 75, 80] }}
       series={{
         metric: 'aranet_living_room.temperature',
@@ -185,6 +185,25 @@ describe('indoor dashboard', () => {
     expect(markup).toContain('history-trace-stop-green');
     expect(markup).toContain('history-trace-stop-yellow');
     expect(markup).toContain('history-trace-stop-red');
+  });
+
+  it('colors humidity outside the 30–50% band blue', () => {
+    const markup = renderToStaticMarkup(<HistoryGraph
+      label="AirGradient humidity"
+      thresholds={[{ value: 30, tone: 'light-blue' }, { value: 50, tone: 'light-blue' }]}
+      scale={{ fixedMin: 0, fixedMax: 100, ticks: [0, 20, 40, 60, 80, 100] }}
+      series={{
+        metric: 'airgradient_living_room.humidity', unit: '%', window: '1h',
+        points: [
+          { timestamp: '2026-07-25T00:00:00.000Z', value: 20 },
+          { timestamp: '2026-07-25T00:05:00.000Z', value: 40 },
+          { timestamp: '2026-07-25T00:10:00.000Z', value: 60 },
+        ],
+        metadata: { source: 'fixture', observedAt: '2026-07-25T00:10:00.000Z', freshness: 'CURRENT', severity: 'OK' },
+      }}
+    />);
+    expect(markup).toContain('history-trace-stop-blue');
+    expect(markup).toContain('history-trace-stop-green');
   });
 
   it.each([

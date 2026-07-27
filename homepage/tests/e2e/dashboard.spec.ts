@@ -96,7 +96,7 @@ test('renders the responsive indoor dashboard and requires review before control
     if (url.searchParams.get('window') === 'custom') customQueries.push(url);
     const metric = url.searchParams.get('metric')!;
     const unit = metric.endsWith('.co2') ? 'ppm' : metric.endsWith('.temperature') ? '°F' : metric.endsWith('.humidity') ? '%' : metric.endsWith('.pm25') || metric.endsWith('.pm10') ? 'µg/m³' : 'index';
-    const values = metric.endsWith('.co2') ? [850, 950, 1100] : metric.endsWith('.temperature') ? [70, 72, 71] : metric.endsWith('.humidity') ? [42, 44, 43] : metric.endsWith('.pm25') ? [3, 10, 18] : metric.endsWith('.pm10') ? [5, 14, 24] : [20, 40, 30];
+    const values = metric.endsWith('.co2') ? [700, 850, 1100] : metric.endsWith('.temperature') ? [70, 72, 71] : metric.endsWith('.humidity') ? [42, 44, 43] : metric.endsWith('.pm25') ? [3, 10, 18] : metric.endsWith('.pm10') ? [5, 14, 24] : [20, 40, 30];
     const body = {
       requestId: 'e2e-history-request',
       data: {

@@ -134,20 +134,25 @@ export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, t
   const hoveredSecondaryPoint = hoveredSecondaryIndex === null ? null : secondarySeries!.points[hoveredSecondaryIndex]!;
   const yellowThreshold = thresholds.find(({ tone }) => tone === 'yellow')?.value;
   const redThreshold = thresholds.find(({ tone }) => tone === 'red')?.value;
-  const thresholdTrace = series && yellowThreshold !== undefined && redThreshold !== undefined
+  const humidityTrace = series?.metric === 'airgradient_living_room.humidity';
+  const humidityLow = humidityTrace ? thresholds[0]?.value : undefined;
+  const humidityHigh = humidityTrace ? thresholds.at(-1)?.value : undefined;
+  const thresholdTrace = series && (humidityTrace || (yellowThreshold !== undefined && redThreshold !== undefined
     && [
       'airgradient_living_room.co2',
       'airgradient_living_room.pm25',
       'airgradient_living_room.tvoc_index',
       'airgradient_living_room.nox_index',
-    ].includes(series.metric);
-  const traceTone = (value: number) => value >= redThreshold! ? 'red' : value >= yellowThreshold! ? 'yellow' : 'green';
+    ].includes(series.metric)));
+  const traceTone = (value: number) => humidityTrace
+    ? (value < humidityLow! || value > humidityHigh! ? 'blue' : 'green')
+    : value >= redThreshold! ? 'red' : value >= yellowThreshold! ? 'yellow' : 'green';
   const traceStops = thresholdTrace ? chartPoints.flatMap((point, index) => {
     if (index === chartPoints.length - 1) return [{ offset: point.x, tone: traceTone(values[index]!) }];
     const nextPoint = chartPoints[index + 1]!;
     const value = values[index]!;
     const nextValue = values[index + 1]!;
-    const crossings = [yellowThreshold!, redThreshold!]
+    const crossings = (humidityTrace ? [humidityLow!, humidityHigh!] : [yellowThreshold!, redThreshold!])
       .filter((threshold) => (value < threshold && nextValue >= threshold) || (value >= threshold && nextValue < threshold))
       .map((threshold) => ({
         offset: point.x + ((threshold - value) / (nextValue - value)) * (nextPoint.x - point.x),
@@ -367,11 +372,11 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
   const airgradient = indoor.sensors[1];
   const thermostat = indoor.thermostats[0];
   const metrics = useMemo<HistoryMetric[]>(() => [
-    { alias: 'airgradient_living_room.co2', label: 'AirGradient CO₂', thresholds: [{ value: 900, tone: 'yellow' }, { value: 1000, tone: 'red' }], scale: { fixedMin: 400, fixedMax: 1400, ticks: [400, 600, 800, 1000, 1200, 1400], digits: 0 } },
+    { alias: 'airgradient_living_room.co2', label: 'AirGradient CO₂', thresholds: [{ value: 800, tone: 'yellow' }, { value: 1000, tone: 'red' }], scale: { fixedMin: 400, fixedMax: 1400, ticks: [400, 600, 800, 1000, 1200, 1400], digits: 0 } },
     { alias: 'airgradient_living_room.pm25', secondaryAlias: 'airgradient_living_room.pm10', secondaryLabel: 'PM10', label: 'AirGradient particulate matter', thresholds: [{ value: 5, tone: 'yellow' }, { value: 15, tone: 'red' }], scale: { minSpan: 20, hardMin: 0, digits: 0 } },
     { alias: 'airgradient_living_room.tvoc_index', label: 'AirGradient TVOC index', thresholds: [{ value: 150, tone: 'yellow' }, { value: 250, tone: 'red' }], scale: { fixedMin: 0, fixedMax: 500, ticks: [0, 100, 200, 300, 400, 500], digits: 0 } },
     { alias: 'airgradient_living_room.nox_index', label: 'AirGradient NOx index', thresholds: [{ value: 20, tone: 'yellow' }, { value: 150, tone: 'red' }], scale: { fixedMin: 0, fixedMax: 500, ticks: [0, 100, 200, 300, 400, 500], digits: 0 } },
-    { alias: 'nest_living_room.current_temperature', label: 'Nest temperature', thresholds: [{ value: 65, tone: 'dark-blue' }, { value: 68, tone: 'light-blue' }, { value: 72, tone: 'light-blue' }, { value: 75, tone: 'dark-blue' }], scale: { fixedMin: 60, fixedMax: 80, ticks: [60, 65, 70, 75, 80], digits: 0 } },
+    { alias: 'nest_living_room.current_temperature', label: 'Nest temperature', thresholds: [{ value: 65, tone: 'dark-blue' }, { value: 68, tone: 'light-blue' }, { value: 72, tone: 'yellow' }, { value: 75, tone: 'red' }], scale: { fixedMin: 60, fixedMax: 80, ticks: [60, 65, 70, 75, 80], digits: 0 } },
     { alias: 'airgradient_living_room.humidity', label: 'AirGradient humidity', thresholds: [{ value: 30, tone: 'light-blue' }, { value: 50, tone: 'light-blue' }], scale: { fixedMin: 0, fixedMax: 100, ticks: [0, 20, 40, 60, 80, 100], digits: 0 } },
   ], []);
   useEffect(() => {
