@@ -57,8 +57,8 @@
   --network: #dddaf0;
   --workload: #f0d9d9;
   --divider: #b8c1ba;
-  --focus: #176b43;
-  --cpu-start: #176b43;
+  --focus: #0f5b37;
+  --cpu-start: #0f5b37;
   --cpu-mid: #697000;
   --cpu-end: #9d2424;
   --memory-start: #713a35;
@@ -77,11 +77,13 @@
   --info: #304f8e;
   --warn: #765900;
   --crit: #a52828;
-  --threshold-blue: #2866b5;
-  --threshold-light-blue: #3b87b5;
-  --threshold-dark-blue: #174a82;
-  --threshold-yellow: #765900;
-  --threshold-red: #a52828;
+  /* Darker light-mode chart colors retain the semantic palette while meeting
+     contrast on the white surface for both traces and dotted thresholds. */
+  --threshold-blue: #155a9e;
+  --threshold-light-blue: #126b9c;
+  --threshold-dark-blue: #0b3d73;
+  --threshold-yellow: #6a4f00;
+  --threshold-red: #8f1d1d;
   --surface: #ffffff;
   --shadow: rgba(24, 35, 26, 0.12);
 }
