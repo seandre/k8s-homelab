@@ -22,7 +22,6 @@ spec:
     metadata:
       annotations:
         homelab.seandre.dev/runtime-secret-revision: "airgradient-control-v1"
-        homelab.seandre.dev/outage-test-revision: "prometheus-isolated-v1"
       labels:
         app.kubernetes.io/name: homepage-custom
         app.kubernetes.io/instance: preview
