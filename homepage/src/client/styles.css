@@ -474,7 +474,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .service-launcher-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (min-width: 521px) {
-  .history-chart { grid-template-rows: 4.5rem 1.15rem; }
+  .history-chart { grid-template-rows: 7rem 1.15rem; }
 }
 @media (max-width: 520px) {
   .global-header { padding: 0.65rem; }
