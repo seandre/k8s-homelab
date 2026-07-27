@@ -97,7 +97,7 @@ describe('indoor dashboard', () => {
   it('renders proportional y-axis labels and real history-window endpoints', () => {
     const markup = renderToStaticMarkup(<HistoryGraph
       label="Temperature"
-      thresholds={[{ value: 60, tone: 'blue' }, { value: 80, tone: 'red' }]}
+      thresholds={[{ value: 65, tone: 'dark-blue' }, { value: 68, tone: 'light-blue' }, { value: 72, tone: 'light-blue' }, { value: 75, tone: 'dark-blue' }]}
       scale={{ fixedMin: 60, fixedMax: 80, ticks: [60, 65, 70, 75, 80] }}
       series={{
         metric: 'aranet_living_room.temperature',
@@ -214,10 +214,10 @@ describe('indoor dashboard', () => {
     expect(markup).toContain('history-trace-stop-red');
   });
 
-  it('restores low/high and very-low/very-high dotted humidity thresholds', () => {
+  it('renders the humidity lower and upper dotted thresholds', () => {
     const markup = renderToStaticMarkup(<HistoryGraph
       label="AirGradient humidity"
-      thresholds={[{ value: 20, tone: 'red' }, { value: 30, tone: 'yellow' }, { value: 60, tone: 'yellow' }, { value: 70, tone: 'red' }]}
+      thresholds={[{ value: 30, tone: 'light-blue' }, { value: 50, tone: 'light-blue' }]}
       scale={{ fixedMin: 0, fixedMax: 100, ticks: [0, 20, 40, 60, 80, 100] }}
       series={{
         metric: 'airgradient_living_room.humidity', unit: '%', window: '1h',
@@ -229,9 +229,8 @@ describe('indoor dashboard', () => {
         metadata: { source: 'fixture', observedAt: '2026-07-25T00:10:00.000Z', freshness: 'CURRENT', severity: 'OK' },
       }}
     />);
-    expect(markup.match(/class="threshold-line/g)).toHaveLength(4);
-    expect(markup.match(/class="threshold-line threshold-tone-red/g)).toHaveLength(2);
-    expect(markup.match(/class="threshold-line threshold-tone-yellow/g)).toHaveLength(2);
-    expect(markup).toContain('Thresholds 20, 30, 60, 70 %');
+    expect(markup.match(/class="threshold-line/g)).toHaveLength(2);
+    expect(markup.match(/class="threshold-line threshold-tone-light-blue/g)).toHaveLength(2);
+    expect(markup).toContain('Thresholds 30, 50 %');
   });
 });

@@ -371,8 +371,8 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
     { alias: 'airgradient_living_room.pm25', secondaryAlias: 'airgradient_living_room.pm10', secondaryLabel: 'PM10', label: 'AirGradient particulate matter', thresholds: [{ value: 5, tone: 'yellow' }, { value: 15, tone: 'red' }], scale: { minSpan: 20, hardMin: 0, digits: 0 } },
     { alias: 'airgradient_living_room.tvoc_index', label: 'AirGradient TVOC index', thresholds: [{ value: 150, tone: 'yellow' }, { value: 250, tone: 'red' }], scale: { fixedMin: 0, fixedMax: 500, ticks: [0, 100, 200, 300, 400, 500], digits: 0 } },
     { alias: 'airgradient_living_room.nox_index', label: 'AirGradient NOx index', thresholds: [{ value: 20, tone: 'yellow' }, { value: 150, tone: 'red' }], scale: { fixedMin: 0, fixedMax: 500, ticks: [0, 100, 200, 300, 400, 500], digits: 0 } },
-    { alias: 'nest_living_room.current_temperature', label: 'Nest temperature', thresholds: [{ value: 60, tone: 'blue' }, { value: 80, tone: 'red' }], scale: { fixedMin: 60, fixedMax: 80, ticks: [60, 65, 70, 75, 80], digits: 0 } },
-    { alias: 'airgradient_living_room.humidity', label: 'AirGradient humidity', thresholds: [{ value: 20, tone: 'dark-blue' }, { value: 30, tone: 'light-blue' }, { value: 60, tone: 'light-blue' }, { value: 70, tone: 'dark-blue' }], scale: { fixedMin: 0, fixedMax: 100, ticks: [0, 20, 40, 60, 80, 100], digits: 0 } },
+    { alias: 'nest_living_room.current_temperature', label: 'Nest temperature', thresholds: [{ value: 65, tone: 'dark-blue' }, { value: 68, tone: 'light-blue' }, { value: 72, tone: 'light-blue' }, { value: 75, tone: 'dark-blue' }], scale: { fixedMin: 60, fixedMax: 80, ticks: [60, 65, 70, 75, 80], digits: 0 } },
+    { alias: 'airgradient_living_room.humidity', label: 'AirGradient humidity', thresholds: [{ value: 30, tone: 'light-blue' }, { value: 50, tone: 'light-blue' }], scale: { fixedMin: 0, fixedMax: 100, ticks: [0, 20, 40, 60, 80, 100], digits: 0 } },
   ], []);
   useEffect(() => {
     let active = true;
