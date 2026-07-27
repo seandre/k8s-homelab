@@ -143,6 +143,14 @@ test('renders the responsive indoor dashboard and requires review before control
   await expect(co2Graph.locator('.history-trace-stop-red')).not.toHaveCount(0);
   const particulateGraph = page.getByRole('img', { name: /AirGradient particulate matter, 1h/ });
   await expect(particulateGraph).toBeVisible();
+  await expect(page.locator('.indoor-history-graph figcaption strong')).toHaveText([
+    'AirGradient CO₂',
+    'AirGradient particulate matter',
+    'AirGradient TVOC index',
+    'AirGradient NOx index',
+    'Nest temperature',
+    'AirGradient humidity',
+  ]);
   await expect(page.getByLabel('AirGradient particulate matter graph legend')).toContainText('PM2.5');
   await expect(page.getByLabel('AirGradient particulate matter graph legend')).toContainText('PM10');
   await expect(particulateGraph.locator('.history-line-secondary')).toHaveCount(1);

@@ -21,8 +21,10 @@ describe('indoor dashboard', () => {
     for (const graph of ['AirGradient CO₂', 'AirGradient particulate matter', 'Nest temperature', 'AirGradient humidity', 'AirGradient TVOC index', 'AirGradient NOx index']) {
       expect(markup).toContain(`NO DATA · ${graph}`);
     }
-    expect(markup.indexOf('NO DATA · AirGradient CO₂')).toBeLessThan(markup.indexOf('NO DATA · Nest temperature'));
-    expect(markup.indexOf('NO DATA · AirGradient particulate matter')).toBeLessThan(markup.indexOf('NO DATA · AirGradient humidity'));
+    const graphOrder = ['AirGradient CO₂', 'AirGradient particulate matter', 'AirGradient TVOC index', 'AirGradient NOx index', 'Nest temperature', 'AirGradient humidity'];
+    for (let index = 1; index < graphOrder.length; index += 1) {
+      expect(markup.indexOf(`NO DATA · ${graphOrder[index - 1]}`)).toBeLessThan(markup.indexOf(`NO DATA · ${graphOrder[index]}`));
+    }
     for (const setting of ['Display brightness', 'LED brightness', 'Display temperature unit', 'PM standard', 'LED mode']) expect(markup).toContain(setting);
     expect(markup.indexOf('Bedroom Coway')).toBeLessThan(markup.indexOf('Living Room Nest'));
   });
@@ -203,6 +205,7 @@ describe('indoor dashboard', () => {
       }}
     />);
     expect(markup).toContain(`Thresholds ${warning}, ${danger} index`);
+    expect(markup).toContain('style="stroke:url(#history-trace-');
     expect(markup).toContain('history-trace-stop-green');
     expect(markup).toContain('history-trace-stop-yellow');
     expect(markup).toContain('history-trace-stop-red');

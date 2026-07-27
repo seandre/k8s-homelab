@@ -216,12 +216,12 @@ Graphs appear in this exact order:
 
 1. AirGradient CO2, fixed 400–1400 ppm.
 2. AirGradient particulate matter, with a smoothed PM2.5 primary trace, yellow at 5 and red at 15 µg/m³, plus a dotted PM10 comparison trace and an explicit PM2.5/PM10 legend on the same axis. PM10 is comparative only and does not add alert thresholds.
-3. Nest temperature, fixed 60–80°F.
-4. AirGradient humidity, fixed 0–100%.
-5. AirGradient TVOC index, fixed 0–500, with informational event bands at
-   yellow 150 and red 250.
-6. AirGradient NOx index, fixed 0–500, with informational event bands at
-   yellow 20 and red 150.
+3. AirGradient TVOC index, fixed 0–500, with a threshold-colored primary trace
+   and informational event bands at yellow 150 and red 250.
+4. AirGradient NOx index, fixed 0–500, with a threshold-colored primary trace
+   and informational event bands at yellow 20 and red 150.
+5. Nest temperature, fixed 60–80°F.
+6. AirGradient humidity, fixed 0–100%.
 
 Existing live refresh, custom time ranges, hover line, responsive behavior, and
 non-optimistic action state remain unchanged. Settings are keyboard operable,

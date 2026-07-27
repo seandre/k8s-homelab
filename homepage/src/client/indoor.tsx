@@ -369,10 +369,10 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
   const metrics = useMemo<HistoryMetric[]>(() => [
     { alias: 'airgradient_living_room.co2', label: 'AirGradient CO₂', thresholds: [{ value: 900, tone: 'yellow' }, { value: 1000, tone: 'red' }], scale: { fixedMin: 400, fixedMax: 1400, ticks: [400, 600, 800, 1000, 1200, 1400], digits: 0 } },
     { alias: 'airgradient_living_room.pm25', secondaryAlias: 'airgradient_living_room.pm10', secondaryLabel: 'PM10', label: 'AirGradient particulate matter', thresholds: [{ value: 5, tone: 'yellow' }, { value: 15, tone: 'red' }], scale: { minSpan: 20, hardMin: 0, digits: 0 } },
-    { alias: 'nest_living_room.current_temperature', label: 'Nest temperature', thresholds: [{ value: 60, tone: 'blue' }, { value: 80, tone: 'red' }], scale: { fixedMin: 60, fixedMax: 80, ticks: [60, 65, 70, 75, 80], digits: 0 } },
-    { alias: 'airgradient_living_room.humidity', label: 'AirGradient humidity', thresholds: [], scale: { fixedMin: 0, fixedMax: 100, ticks: [0, 20, 40, 60, 80, 100], digits: 0 } },
     { alias: 'airgradient_living_room.tvoc_index', label: 'AirGradient TVOC index', thresholds: [{ value: 150, tone: 'yellow' }, { value: 250, tone: 'red' }], scale: { fixedMin: 0, fixedMax: 500, ticks: [0, 100, 200, 300, 400, 500], digits: 0 } },
     { alias: 'airgradient_living_room.nox_index', label: 'AirGradient NOx index', thresholds: [{ value: 20, tone: 'yellow' }, { value: 150, tone: 'red' }], scale: { fixedMin: 0, fixedMax: 500, ticks: [0, 100, 200, 300, 400, 500], digits: 0 } },
+    { alias: 'nest_living_room.current_temperature', label: 'Nest temperature', thresholds: [{ value: 60, tone: 'blue' }, { value: 80, tone: 'red' }], scale: { fixedMin: 60, fixedMax: 80, ticks: [60, 65, 70, 75, 80], digits: 0 } },
+    { alias: 'airgradient_living_room.humidity', label: 'AirGradient humidity', thresholds: [], scale: { fixedMin: 0, fixedMax: 100, ticks: [0, 20, 40, 60, 80, 100], digits: 0 } },
   ], []);
   useEffect(() => {
     let active = true;
