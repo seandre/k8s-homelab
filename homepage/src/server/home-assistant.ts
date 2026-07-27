@@ -200,12 +200,12 @@ export class HomeAssistantIndoorAdapter {
     result.rooms = [
       {
         alias: 'living_room', name: 'Living Room',
-        temperatureF: nest.currentTemperature.value ?? aranet.temperature.value,
+        temperatureF: ag.temperature.value ?? nest.currentTemperature.value ?? aranet.temperature.value,
         humidityPercent: ag.humidity.value ?? aranet.humidity.value,
         co2Ppm: ag.co2.value ?? aranet.co2.value,
         pm25WorstMicrogramsM3: [ag.pm25.value, living.readings.pm25.value].filter((value): value is number => value !== null).reduce<number | null>((worst, value) => worst === null ? value : Math.max(worst, value), null),
         activeAlertCount: 0,
-        freshness: [nest.currentTemperature, ag.co2.value !== null ? ag.co2 : aranet.co2, ag.pm25.value !== null ? ag.pm25 : living.readings.pm25].every((item) => item.metadata.freshness === 'CURRENT') ? 'CURRENT' : 'STALE',
+        freshness: [ag.temperature.value !== null ? ag.temperature : nest.currentTemperature, ag.co2.value !== null ? ag.co2 : aranet.co2, ag.pm25.value !== null ? ag.pm25 : living.readings.pm25].every((item) => item.metadata.freshness === 'CURRENT') ? 'CURRENT' : 'STALE',
       },
       { alias: 'bedroom', name: 'Bedroom', temperatureF: null, humidityPercent: null, co2Ppm: null, pm25WorstMicrogramsM3: bedroom.readings.pm25.value, activeAlertCount: 0, freshness: bedroom.readings.pm25.metadata.freshness },
     ];

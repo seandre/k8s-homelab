@@ -18,10 +18,10 @@ describe('indoor dashboard', () => {
     for (const window of ['1h', '3h', '6h', '24h', '7d', '30d', 'Custom']) expect(markup).toContain(`>${window}<`);
     expect(markup).toContain('HVAC mode');
     expect(markup).toContain('Review power off');
-    for (const graph of ['AirGradient CO₂', 'AirGradient particulate matter', 'Nest temperature', 'AirGradient humidity', 'AirGradient TVOC index', 'AirGradient NOx index']) {
+    for (const graph of ['AirGradient CO₂', 'AirGradient particulate matter', 'AirGradient temperature', 'AirGradient humidity', 'AirGradient TVOC index', 'AirGradient NOx index']) {
       expect(markup).toContain(`NO DATA · ${graph}`);
     }
-    const graphOrder = ['AirGradient CO₂', 'AirGradient particulate matter', 'AirGradient TVOC index', 'AirGradient NOx index', 'Nest temperature', 'AirGradient humidity'];
+    const graphOrder = ['AirGradient CO₂', 'AirGradient particulate matter', 'AirGradient TVOC index', 'AirGradient NOx index', 'AirGradient temperature', 'AirGradient humidity'];
     for (let index = 1; index < graphOrder.length; index += 1) {
       expect(markup.indexOf(`NO DATA · ${graphOrder[index - 1]}`)).toBeLessThan(markup.indexOf(`NO DATA · ${graphOrder[index]}`));
     }

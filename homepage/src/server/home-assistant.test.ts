@@ -51,7 +51,7 @@ describe('Home Assistant indoor adapter', () => {
       };
     }, now, controls);
     const indoor = await adapter.read();
-    expect(indoor.rooms[0]).toMatchObject({ temperatureF: 70, humidityPercent: 44, co2Ppm: 618, pm25WorstMicrogramsM3: 8 });
+    expect(indoor.rooms[0]).toMatchObject({ temperatureF: 71.2, humidityPercent: 44, co2Ppm: 618, pm25WorstMicrogramsM3: 8 });
     expect(indoor.sensors[0].sourceState).toBe('AVAILABLE');
     expect(indoor.sensors[1]).toMatchObject({
       alias: 'airgradient_living_room', sourceState: 'AVAILABLE',
