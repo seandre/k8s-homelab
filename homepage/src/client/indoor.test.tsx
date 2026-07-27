@@ -260,6 +260,29 @@ describe('indoor dashboard', () => {
     expect(markup).toContain('history-trace-stop-red');
   });
 
+  it('colors TVOC below 100 blue and retains green, yellow, and red upper bands', () => {
+    const markup = renderToStaticMarkup(<HistoryGraph
+      label="TVOC"
+      thresholds={[{ value: 100, tone: 'blue' }, { value: 150, tone: 'yellow' }, { value: 250, tone: 'red' }]}
+      scale={{ fixedMin: 0, fixedMax: 500, ticks: [0, 100, 200, 300, 400, 500] }}
+      series={{
+        metric: 'airgradient_living_room.tvoc_index', unit: 'index', window: '1h',
+        points: [
+          { timestamp: '2026-07-25T00:00:00.000Z', value: 80 },
+          { timestamp: '2026-07-25T00:05:00.000Z', value: 120 },
+          { timestamp: '2026-07-25T00:10:00.000Z', value: 180 },
+          { timestamp: '2026-07-25T00:15:00.000Z', value: 280 },
+        ],
+        metadata: { source: 'fixture', observedAt: '2026-07-25T00:15:00.000Z', freshness: 'CURRENT', severity: 'OK' },
+      }}
+    />);
+    expect(markup).toContain('threshold-tone-blue');
+    expect(markup).toContain('history-trace-stop-blue');
+    expect(markup).toContain('history-trace-stop-green');
+    expect(markup).toContain('history-trace-stop-yellow');
+    expect(markup).toContain('history-trace-stop-red');
+  });
+
   it('renders the humidity lower and upper dotted thresholds', () => {
     const markup = renderToStaticMarkup(<HistoryGraph
       label="AirGradient humidity"

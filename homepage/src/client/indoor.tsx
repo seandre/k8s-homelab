@@ -135,6 +135,7 @@ export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, t
   const hoveredSecondaryPoint = hoveredSecondaryIndex === null ? null : secondarySeries!.points[hoveredSecondaryIndex]!;
   const yellowThreshold = thresholds.find(({ tone }) => tone === 'yellow')?.value;
   const redThreshold = thresholds.find(({ tone }) => tone === 'red')?.value;
+  const blueThreshold = thresholds.find(({ tone }) => tone === 'blue')?.value;
   const humidityTrace = series?.metric === 'airgradient_living_room.humidity';
   const temperatureTrace = series?.metric === 'airgradient_living_room.temperature';
   const humidityLow = humidityTrace ? thresholds[0]?.value : undefined;
@@ -154,13 +155,14 @@ export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, t
       if (value < temperatureDarkBlue!) return 'dark-blue';
       if (value < temperatureLightBlue!) return 'light-blue';
     }
+    if (blueThreshold !== undefined && value < blueThreshold) return 'blue';
     return value >= redThreshold! ? 'red' : value >= yellowThreshold! ? 'yellow' : 'green';
   };
   const traceBoundaries = humidityTrace
     ? [humidityLow!, humidityHigh!]
     : temperatureTrace
       ? [temperatureDarkBlue!, temperatureLightBlue!, yellowThreshold!, redThreshold!]
-      : [yellowThreshold!, redThreshold!];
+      : [...(blueThreshold === undefined ? [] : [blueThreshold]), yellowThreshold!, redThreshold!];
   const traceStops = thresholdTrace ? chartPoints.flatMap((point, index) => {
     if (index === chartPoints.length - 1) return [{ offset: point.x, tone: traceTone(primaryValues[index]!) }];
     const nextPoint = chartPoints[index + 1]!;
@@ -391,7 +393,7 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
   const metrics = useMemo<HistoryMetric[]>(() => [
     { alias: 'airgradient_living_room.co2', label: 'AirGradient CO₂', thresholds: [{ value: 800, tone: 'yellow' }, { value: 1000, tone: 'red' }], scale: { fixedMin: 400, fixedMax: 1400, ticks: [400, 600, 800, 1000, 1200, 1400], digits: 0 } },
     { alias: 'airgradient_living_room.pm25', secondaryAlias: 'airgradient_living_room.pm10', secondaryLabel: 'PM10', label: 'AirGradient particulate matter', thresholds: [{ value: 5, tone: 'yellow' }, { value: 15, tone: 'red' }], scale: { minSpan: 20, hardMin: 0, digits: 0 } },
-    { alias: 'airgradient_living_room.tvoc_index', label: 'AirGradient TVOC index', thresholds: [{ value: 150, tone: 'yellow' }, { value: 250, tone: 'red' }], scale: { fixedMin: 0, fixedMax: 500, ticks: [0, 100, 200, 300, 400, 500], digits: 0 } },
+    { alias: 'airgradient_living_room.tvoc_index', label: 'AirGradient TVOC index', thresholds: [{ value: 100, tone: 'blue' }, { value: 150, tone: 'yellow' }, { value: 250, tone: 'red' }], scale: { fixedMin: 0, fixedMax: 500, ticks: [0, 100, 200, 300, 400, 500], digits: 0 } },
     { alias: 'airgradient_living_room.nox_index', label: 'AirGradient NOx index', thresholds: [{ value: 20, tone: 'yellow' }, { value: 150, tone: 'red' }], scale: { fixedMin: 0, fixedMax: 500, ticks: [0, 100, 200, 300, 400, 500], digits: 0 } },
     { alias: 'airgradient_living_room.temperature', label: 'AirGradient temperature', thresholds: [{ value: 65, tone: 'dark-blue' }, { value: 68, tone: 'light-blue' }, { value: 72, tone: 'yellow' }, { value: 75, tone: 'red' }], scale: { fixedMin: 60, fixedMax: 80, ticks: [60, 65, 70, 75, 80], digits: 0 } },
     { alias: 'airgradient_living_room.humidity', label: 'AirGradient humidity', thresholds: [{ value: 30, tone: 'light-blue' }, { value: 50, tone: 'light-blue' }], scale: { fixedMin: 0, fixedMax: 100, ticks: [0, 20, 40, 60, 80, 100], digits: 0 } },

@@ -164,6 +164,14 @@ test('renders the responsive indoor dashboard and requires review before control
     trace: getComputedStyle(graph.querySelector('.history-trace-stop-yellow')!).stopColor,
   }));
   expect(temperatureYellowColors.marker).toBe(temperatureYellowColors.trace);
+  const tvocGraph = page.getByRole('img', { name: /AirGradient TVOC index, 1h/ });
+  await tvocGraph.focus();
+  await page.keyboard.press('ArrowLeft');
+  const tvocBlueColors = await tvocGraph.evaluate((graph) => ({
+    marker: getComputedStyle(graph.querySelector('.history-tooltip-marker-blue')!).backgroundColor,
+    trace: getComputedStyle(graph.querySelector('.history-trace-stop-blue')!).stopColor,
+  }));
+  expect(tvocBlueColors.marker).toBe(tvocBlueColors.trace);
   await co2Graph.focus();
   await page.keyboard.press('ArrowLeft');
   await expect(co2Graph.locator('.history-tooltip')).toContainText('ppm');
