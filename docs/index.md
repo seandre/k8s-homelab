@@ -17,8 +17,9 @@ The [AirGradient ONE Integration Build
 Plan](build/airgradient-one-integration.md) defines the ordered agent packages,
 strict schema-v4 contract, local Home Assistant onboarding gate, alert and
 control safety rules, dashboard changes, acceptance matrix, and Git-only
-rollback for adding the Living Room monitor. Only its documentation publication
-package is complete; implementation packages remain gated and unstarted.
+rollback for adding the Living Room monitor. AG-000 through AG-009 are complete;
+the production acceptance and rollback results are recorded in the
+[IE-015 evidence](operations/indoor-dashboard-ie-015-evidence.md).
 
 The live-source rollout, persistent Prometheus configuration, and host
 node_exporter prerequisite are documented in [Homepage Observability

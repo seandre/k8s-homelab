@@ -659,6 +659,18 @@ owner explicitly decommissions it.
 **Next:** None; close only after IE-015 contains redacted evidence for every
 acceptance item.
 
+**AG-009 handoff evidence (2026-07-26):** COMPLETE. The immutable schema-v4
+Homepage image is digest-pinned and live; all seven current readings, 42 bounded
+history combinations, five settings, gateway safety gates, audit redaction,
+Home Assistant restart recovery, Prometheus outage/recovery, responsive UI,
+Argo health, and Git-only schema-v3 rollback/forward recovery passed. The live
+rollout exposed and fixed unchanged-value false staleness by using Home
+Assistant `last_reported` with a `last_updated` fallback. AG-002
+Internet/device-loss and firewall evidence remains controlling and was not
+weakened to repeat an already accepted outage. Full redacted evidence and
+rollback instructions are in
+`docs/operations/indoor-dashboard-ie-015-evidence.md`.
+
 ## Test matrix
 
 The package tests collectively prove:
@@ -701,4 +713,4 @@ versions/digests, and redacted capability shapes.
 | AG-006 | COMPLETE | Strict schema v4, seven readings, capabilities, precedence/fallback, compatibility rejection, 133 tests, and fixture-only handoff recorded above |
 | AG-007 | COMPLETE | Five strict commands, runtime capabilities, fixed HA services, convergence/replay/security gates, separate control token, 140 tests, and fixture-only evidence recorded above |
 | AG-008 | COMPLETE | Two sensor cards, six ordered graphs, capability-driven settings, review flow, partial-state behavior, 141 unit tests, and 17 E2E tests recorded above |
-| AG-009 | READY | AG-004 and AG-008 are complete; production rollout and live acceptance remain |
+| AG-009 | COMPLETE | Immutable schema-v4 deployment, live acceptance matrix, IE-015 evidence, and Git-only rollback/forward recovery are complete |
