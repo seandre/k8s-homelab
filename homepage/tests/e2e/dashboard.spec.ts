@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { HistoryResponseSchema } from '../../src/shared/contracts.js';
+import { healthyBootstrapFixture } from '../../src/shared/fixtures.js';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -403,6 +404,37 @@ test('uses fixed-pitch dot matrices for resource graphs on every telemetry page'
 
   await expect(page.locator('.traffic-graph .traffic-matrix-fixed')).toHaveCount(1);
   await expect(page.locator('.traffic-graph .braille-cell')).toHaveCount(0);
+});
+
+test('renders network traffic as dot bars growing outward from the midline', async ({ page }) => {
+  const bootstrap = structuredClone(healthyBootstrapFixture);
+  const baseSeries = bootstrap.timeSeries[0]!;
+  const values = [18, 72, 42, 95, 28, 64];
+  const points = values.map((value, index) => ({ timestamp: `2026-07-19T11:${30 + (index * 5)}:00.000Z`, value }));
+  bootstrap.timeSeries = [
+    ...bootstrap.timeSeries,
+    { ...baseSeries, metric: 'pve-01 RX', unit: 'Mb/s', points },
+    { ...baseSeries, metric: 'pve-01 TX', unit: 'Mb/s', points: points.map((point) => ({ ...point, value: point.value / 2 })) },
+  ];
+  await page.route('**/api/v1/events', (route) => route.abort());
+  await page.route('**/api/v1/bootstrap', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ data: bootstrap }),
+  }));
+  await page.goto('/network');
+
+  const graph = page.getByRole('img', { name: /Download: .* above midline; upload: .* below midline/ });
+  await expect.poll(() => graph.locator('.traffic-matrix-column-download').count()).toBeGreaterThan(values.length);
+  await expect.poll(() => graph.locator('.traffic-matrix-column-upload').count()).toBeGreaterThan(values.length);
+  const geometry = await graph.locator('.traffic-matrix-fixed').evaluate((svg) => {
+    const center = svg.getBoundingClientRect().height / 2;
+    const centers = (selector: string) => [...svg.querySelectorAll<SVGCircleElement>(selector)].map((dot) => dot.cy.baseVal.value);
+    return { center, download: centers('[class^="traffic-matrix-download-"]'), upload: centers('[class^="traffic-matrix-upload-"]') };
+  });
+  expect(Math.max(...geometry.download)).toBeLessThan(geometry.center);
+  expect(Math.min(...geometry.upload)).toBeGreaterThan(geometry.center);
+  await expect(page.locator('.network-throughput')).toHaveScreenshot('network-throughput-midline.png', { animations: 'disabled' });
 });
 
 for (const viewport of [

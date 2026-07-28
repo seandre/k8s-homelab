@@ -307,10 +307,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .dot-graph-trace { container-type: inline-size; overflow: visible; padding-block: 0.08rem; }
 .dot-graph-row { overflow: visible; font-size: clamp(0.5rem, calc(100cqi / var(--graph-columns)), 0.82rem); letter-spacing: 0; line-height: 1.1; }
 .pve-resource .dot-graph-row { display: flex; align-items: center; justify-content: flex-end; font-size: clamp(0.5rem, calc(100cqi / var(--graph-columns)), 0.65rem); line-height: 1.1; }
-.traffic-graph { display: grid; grid-template-columns: minmax(0, 1fr) 15ch; align-items: center; gap: 0.2rem; margin-top: 0.45rem; color: var(--muted); }
+.traffic-graph { display: grid; grid-template-columns: minmax(0, 1fr) 18ch; align-items: center; gap: 0.2rem; margin-top: 0.45rem; color: var(--muted); }
 .traffic-graph-trace { contain: paint; display: flex; justify-content: flex-end; min-width: 0; width: 100%; height: max(3rem, calc(var(--traffic-rows) * 1.2rem)); overflow: hidden; clip-path: inset(0); }
 .traffic-matrix-fixed { min-width: 0; }
-.traffic-matrix-baseline-dot { fill: var(--divider); }
 .traffic-matrix-upload-low { fill: var(--upload-start); }
 .traffic-matrix-upload-medium { fill: var(--upload-mid); }
 .traffic-matrix-upload-high { fill: var(--upload-end); }

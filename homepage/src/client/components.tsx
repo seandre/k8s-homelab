@@ -177,40 +177,40 @@ export function DotGraph({ label, values, unit, tone = 'cpu', height = 2 }: { la
 function FixedMirroredDotMatrix({ upload, download }: { upload: number[]; download: number[] }) {
   const { svg, size } = useMeasuredGraphSize(58);
   const halfHeight = size.height / 2;
-  const rows = Math.max(1, Math.floor((halfHeight - (dotPitch / 2)) / dotPitch));
+  const rows = Math.max(1, Math.floor(halfHeight / dotPitch));
   const ceiling = Math.max(...upload, ...download, 1);
   const normalize = (values: number[]) => values.map((value) => Math.min(100, Math.max(0, value / ceiling * 100)));
-  const uploadValues = visibleGraphValues(normalize(upload), size.width);
-  const downloadValues = visibleGraphValues(normalize(download), size.width);
+  const visibleColumns = Math.max(1, Math.floor(size.width / dotPitch));
+  const uploadValues = scaleValuesToWidth(normalize(upload), visibleColumns).slice(-visibleColumns);
+  const downloadValues = scaleValuesToWidth(normalize(download), visibleColumns).slice(-visibleColumns);
   const columnCount = Math.max(uploadValues.length, downloadValues.length);
   const xForColumn = (column: number) => size.width - ((columnCount - column - 0.5) * dotPitch);
-  const dots = (values: number[], direction: 'upload' | 'download') => values.map((value, column) => {
+  const dots = (values: number[], direction: 'download' | 'upload') => values.map((value, column) => {
     const offset = columnCount - values.length;
     const filledRows = Math.ceil(value / 100 * rows);
     return <g className={`traffic-matrix-column traffic-matrix-column-${direction}`} key={`${direction}-${column}`}>{Array.from({ length: filledRows }, (_, index) => {
       const level = index / rows;
       const levelClass = level >= 0.66 ? 'high' : level >= 0.33 ? 'medium' : 'low';
-      const y = direction === 'upload'
-        ? halfHeight - ((index + 1) * dotPitch)
-        : halfHeight + ((index + 1) * dotPitch);
+      const y = direction === 'download'
+        ? halfHeight - ((index + 0.5) * dotPitch)
+        : halfHeight + ((index + 0.5) * dotPitch);
       return <circle className={`traffic-matrix-${direction}-${levelClass}`} cx={xForColumn(column + offset)} cy={y} r={dotRadius} key={index} />;
     })}</g>;
   });
 
   return <svg ref={svg} className="dot-matrix dot-matrix-fixed traffic-matrix-fixed" viewBox={`0 0 ${size.width} ${size.height}`} preserveAspectRatio="none">
-    {Array.from({ length: Math.max(1, Math.floor(size.width / dotPitch)) }, (_, column) => <circle className="traffic-matrix-baseline-dot" cx={size.width - ((column + 0.5) * dotPitch)} cy={halfHeight} r={0.35} key={column} />)}
-    {dots(uploadValues, 'upload')}
     {dots(downloadValues, 'download')}
+    {dots(uploadValues, 'upload')}
   </svg>;
 }
 
-export function MirroredTrafficGraph({ upload, download, unit, height = 3 }: { upload: number[]; download: number[]; unit: string; height?: number }) {
+export function MirroredTrafficGraph({ upload, download, unit, height = 4 }: { upload: number[]; download: number[]; unit: string; height?: number }) {
   const upCurrent = upload.length > 0 ? `${upload.at(-1)}${unit}` : 'N/S';
   const downCurrent = download.length > 0 ? `${download.at(-1)}${unit}` : 'N/S';
-  const summary = `Upload: ${upCurrent}, above baseline; download: ${downCurrent}, below baseline; ${Math.max(upload.length, download.length)} samples; fixed-pitch dot matrix with older history clipped on the left.`;
+  const summary = `Download: ${downCurrent}, above midline; upload: ${upCurrent}, below midline; ${Math.max(upload.length, download.length)} samples rendered as fixed-pitch dot bars.`;
 
   return <div className="traffic-graph" role="img" aria-label={summary}>
     <div className="traffic-graph-trace" style={{ '--traffic-rows': height } as CSSProperties} aria-hidden="true"><FixedMirroredDotMatrix upload={upload} download={download} /></div>
-    <small><span className="traffic-upload-label">UP {upCurrent}</span><span className="traffic-download-label">DOWN {downCurrent}</span></small>
+    <small><span className="traffic-download-label">DOWNLOAD {downCurrent}</span><span className="traffic-upload-label">UPLOAD {upCurrent}</span></small>
   </div>;
 }
