@@ -409,10 +409,9 @@ for (const viewport of [
     await expect(cpuGraphs).toHaveCount(2);
     const graphCoverage = await cpuGraphs.evaluateAll((graphs) => graphs.map((graph) => {
       const bounds = graph.getBoundingClientRect();
-      const bottomRow = graph.querySelector('.dot-graph-row:last-child');
-      const paintedCells = [...(bottomRow?.querySelectorAll('.braille-cell') ?? [])].filter((cell) => cell.textContent !== '\u2800');
-      const first = paintedCells[0]?.getBoundingClientRect();
-      const last = paintedCells.at(-1)?.getBoundingClientRect();
+      const columns = [...graph.querySelectorAll('.dot-matrix-column')];
+      const first = columns[0]?.getBoundingClientRect();
+      const last = columns.at(-1)?.getBoundingClientRect();
       return {
         start: first ? (first.left - bounds.left) / bounds.width : 1,
         end: last ? (last.right - bounds.left) / bounds.width : 0,

@@ -125,10 +125,20 @@ function scaleValuesToWidth(values: number[], sampleCount: number) {
 
 export function DotGraph({ label, values, unit, tone = 'cpu', height = 2, width = 64, fillWidth = false }: { label: string; values: number[]; unit: string; tone?: 'cpu' | 'memory' | 'disk' | 'download' | 'upload'; height?: number; width?: number; fillWidth?: boolean }) {
   const hasSamples = values.length > 0;
-  const graphValues = fillWidth ? scaleValuesToWidth(values, width * 2) : values;
-  const rows = hasSamples ? toBrailleGraphRows(graphValues, width, height) : Array.from({ length: height }, () => '\u2800'.repeat(width));
+  const graphValues = fillWidth ? scaleValuesToWidth(values, width) : values;
+  const rows = hasSamples && !fillWidth ? toBrailleGraphRows(graphValues, width, height) : Array.from({ length: height }, () => '\u2800'.repeat(width));
+  const dotRows = height * 4;
   const current = hasSamples ? `${values.at(-1)}${unit}` : 'N/S';
-  return <div className={`dot-graph dot-graph-${tone}${fillWidth ? ' dot-graph-fill-width' : ''}`} role="img" aria-label={`${label}: ${current}; ${values.length} samples; ${height * 4} vertical Braille dot levels`}><div className="dot-graph-trace" style={{ '--graph-columns': width, '--graph-rows': height } as CSSProperties} aria-hidden="true">{rows.map((row, index) => <span className="dot-graph-row" key={index}><BrailleCells row={row} /></span>)}</div><small>{label} {current}</small></div>;
+  const levelLabel = fillWidth ? 'vertical dot levels' : 'vertical Braille dot levels';
+  return <div className={`dot-graph dot-graph-${tone}${fillWidth ? ' dot-graph-fill-width' : ''}`} role="img" aria-label={`${label}: ${current}; ${values.length} samples; ${dotRows} ${levelLabel}`}><div className="dot-graph-trace" style={{ '--graph-columns': width, '--graph-rows': height } as CSSProperties} aria-hidden="true">{fillWidth ? <svg className="dot-matrix" viewBox={`0 0 ${width} ${dotRows}`} preserveAspectRatio="none">{graphValues.map((value, column) => {
+    const filledRows = Math.ceil(Math.min(100, Math.max(0, value)) / 100 * dotRows);
+    return <g className="dot-matrix-column" key={column}>{Array.from({ length: filledRows }, (_, index) => {
+      const row = dotRows - index - 1;
+      const level = index / dotRows;
+      const levelClass = level >= 0.66 ? 'high' : level >= 0.33 ? 'medium' : 'low';
+      return <rect className={`dot-matrix-level-${levelClass}`} x={column + 0.14} y={row + 0.14} width="0.72" height="0.72" rx="0.18" key={row} />;
+    })}</g>;
+  })}</svg> : rows.map((row, index) => <span className="dot-graph-row" key={index}><BrailleCells row={row} /></span>)}</div><small>{label} {current}</small></div>;
 }
 
 export function MirroredTrafficGraph({ upload, download, unit, height = 3, width = 64 }: { upload: number[]; download: number[]; unit: string; height?: number; width?: number }) {
