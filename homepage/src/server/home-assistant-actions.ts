@@ -31,6 +31,10 @@ export type HomeAssistantControlMap = z.infer<typeof HomeAssistantControlMapSche
 
 type ServiceCall = { domain: 'climate' | 'fan' | 'number' | 'select' | 'switch'; service: string; data: Record<string, unknown> };
 
+const COWAY_TIMER_OPTIONS: Record<number, string> = { 0: 'OFF', 60: '1 Hour', 120: '2 Hours', 240: '4 Hours', 480: '8 Hours' };
+const COWAY_LIGHT_OPTIONS: Record<string, string> = { ON: 'On', OFF: 'Off', AQI_OFF: 'AQI Off' };
+const COWAY_SENSITIVITY_OPTIONS: Record<string, string> = { SENSITIVE: 'Sensitive', NORMAL: 'Normal', INSENSITIVE: 'Insensitive' };
+
 function service(command: IndoorCommand, mapping: HomeAssistantControlMap): ServiceCall {
   const legacy = () => mapping[command.target as 'nest_living_room' | 'coway_living_room' | 'coway_bedroom'];
   const airgradient = mapping.airgradient_living_room;
@@ -54,16 +58,16 @@ function service(command: IndoorCommand, mapping: HomeAssistantControlMap): Serv
       return { domain: 'fan', service: 'set_percentage', data: { entity_id: legacy().primary, percentage: command.speed === 1 ? 33 : command.speed === 2 ? 66 : 100 } };
     case 'COWAY_SET_TIMER':
       if (!legacy().timer) throw new Error('Control mapping is unavailable.');
-      return { domain: 'select', service: 'select_option', data: { entity_id: legacy().timer, option: String(command.durationMinutes) } };
+      return { domain: 'select', service: 'select_option', data: { entity_id: legacy().timer, option: COWAY_TIMER_OPTIONS[command.durationMinutes] } };
     case 'COWAY_SET_LIGHT':
       if (!legacy().light) throw new Error('Control mapping is unavailable.');
-      return { domain: 'select', service: 'select_option', data: { entity_id: legacy().light, option: command.light } };
+      return { domain: 'select', service: 'select_option', data: { entity_id: legacy().light, option: COWAY_LIGHT_OPTIONS[command.light] } };
     case 'COWAY_SET_BUTTON_LOCK':
       if (!legacy().buttonLock) throw new Error('Control mapping is unavailable.');
       return { domain: 'switch', service: command.locked ? 'turn_on' : 'turn_off', data: { entity_id: legacy().buttonLock } };
     case 'COWAY_SET_SENSITIVITY':
       if (!legacy().sensitivity) throw new Error('Control mapping is unavailable.');
-      return { domain: 'select', service: 'select_option', data: { entity_id: legacy().sensitivity, option: command.sensitivity } };
+      return { domain: 'select', service: 'select_option', data: { entity_id: legacy().sensitivity, option: COWAY_SENSITIVITY_OPTIONS[command.sensitivity] } };
     case 'AIRGRADIENT_SET_DISPLAY_BRIGHTNESS':
       return { domain: 'number', service: 'set_value', data: { entity_id: airgradient.displayBrightness, value: command.value } };
     case 'AIRGRADIENT_SET_LED_BRIGHTNESS':

@@ -53,6 +53,20 @@ describe('Home Assistant action executor', () => {
   });
 
   it.each([
+    [{ type: 'COWAY_SET_TIMER', target: 'coway_living_room', durationMinutes: 240 }, { entity_id: 'select.private_timer', option: '4 Hours' }],
+    [{ type: 'COWAY_SET_LIGHT', target: 'coway_living_room', light: 'AQI_OFF' }, { entity_id: 'select.private_light', option: 'AQI Off' }],
+    [{ type: 'COWAY_SET_SENSITIVITY', target: 'coway_living_room', sensitivity: 'SENSITIVE' }, { entity_id: 'select.private_sensitivity', option: 'Sensitive' }],
+  ] as const)('maps canonical Coway options to the fixed Home Assistant select values', async (command, expectedBody) => {
+    let body: unknown;
+    const executor = new HomeAssistantActionExecutor('http://ha.test:8123', 'token', mapping, async (_url, init) => {
+      body = JSON.parse(String(init.body));
+      return { ok: true };
+    });
+    await executor.execute(command);
+    expect(body).toEqual(expectedBody);
+  });
+
+  it.each([
     [{ type: 'AIRGRADIENT_SET_DISPLAY_BRIGHTNESS', target: 'airgradient_living_room', value: 75 }, '/api/services/number/set_value', { entity_id: 'number.private_display_brightness', value: 75 }],
     [{ type: 'AIRGRADIENT_SET_LED_BRIGHTNESS', target: 'airgradient_living_room', value: 40 }, '/api/services/number/set_value', { entity_id: 'number.private_led_brightness', value: 40 }],
     [{ type: 'AIRGRADIENT_SET_DISPLAY_TEMPERATURE_UNIT', target: 'airgradient_living_room', option: 'fahrenheit' }, '/api/services/select/select_option', { entity_id: 'select.private_temperature_unit', option: 'F' }],
