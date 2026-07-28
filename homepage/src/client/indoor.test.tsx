@@ -21,7 +21,15 @@ describe('indoor dashboard', () => {
     expect(markup).toContain('aria-label="HVAC mode"');
     expect(markup).toContain('Power: On. Show options');
     expect(markup).toContain('Preset: AUTO. Show options');
+    expect(markup).toContain('Timer: Off. Show options');
     expect(markup).toContain('Light: ON. Show options');
+    expect(markup).toContain('Sensitivity: NORMAL. Show options');
+    expect(markup).toContain('HVAC mode: HEAT_COOL. Show options');
+    expect(markup).toContain('Nest fan timer: Off. Show options');
+    expect(markup).toContain('Display temperature unit: fahrenheit. Show options');
+    expect(markup).toContain('PM standard: us aqi. Show options');
+    expect(markup).toContain('LED mode: co2. Show options');
+    expect(markup).toContain('class="control-current-positive"');
     expect(markup).not.toContain('aria-label="Button lock"');
     expect(markup).not.toContain('Review');
     expect(markup).not.toContain('<select');
@@ -37,6 +45,17 @@ describe('indoor dashboard', () => {
     expect(markup).toContain('indoor-primary-readings');
     expect(markup.indexOf('Environmental trends')).toBeLessThan(markup.indexOf('Living Room Aranet'));
     expect(markup.indexOf('Living Room Aranet')).toBeLessThan(markup.indexOf('AirGradient settings'));
+  });
+
+  it('uses positive outlines only for active power, light, and HVAC states', () => {
+    const inactive = structuredClone(healthyBootstrapFixture);
+    inactive.indoor.thermostats[0].hvacMode = 'OFF';
+    inactive.indoor.purifiers[0].power = false;
+    inactive.indoor.purifiers[0].light = 'OFF';
+    inactive.indoor.purifiers[1].power = false;
+    inactive.indoor.purifiers[1].light = 'OFF';
+    const markup = renderToStaticMarkup(<IndoorScreen bootstrap={inactive} />);
+    expect(markup).not.toContain('class="control-current-positive"');
   });
 
   it('aligns live history refreshes to the next 30-second scrape boundary', () => {

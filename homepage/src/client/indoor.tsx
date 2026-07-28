@@ -305,12 +305,13 @@ function OptionButtonGroup<T extends string | number>({ label, options, value, d
   </div>;
 }
 
-function PopoverOptionButton<T extends string>({ label, options, value, disabled, format = String, onSelect }: {
+function PopoverOptionButton<T extends string | number>({ label, options, value, disabled, format = String, positive = false, onSelect }: {
   label: string;
   options: T[];
   value: T | null;
   disabled: boolean;
   format?: (option: T) => string;
+  positive?: boolean;
   onSelect: (option: T) => void;
 }) {
   const root = useRef<HTMLDivElement>(null);
@@ -333,7 +334,7 @@ function PopoverOptionButton<T extends string>({ label, options, value, disabled
   if (!options.length) return null;
   return <div className="control-option-group control-option-popover" role="group" aria-label={label} ref={root}>
     <span className="control-option-label">{label}</span>
-    <button type="button" disabled={disabled} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((current) => !current)} aria-label={`${label}: ${value === null ? 'unknown' : format(value)}. Show options`}>
+    <button className={positive ? 'control-current-positive' : undefined} type="button" disabled={disabled} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((current) => !current)} aria-label={`${label}: ${value === null ? 'unknown' : format(value)}. Show options`}>
       {value === null ? 'Unknown' : format(value)}
     </button>
     {open ? <div className="control-option-menu" role="menu" aria-label={`${label} options`}>
@@ -354,14 +355,14 @@ function ThermostatControls({ thermostat, review }: { thermostat: ThermostatStat
   const [cool, setCool] = useState(thermostat.coolSetpointF ?? 74);
   return (
     <div className="indoor-controls">
-      {thermostat.capabilities.hvacModes.supported ? <OptionButtonGroup label="HVAC mode" options={thermostat.capabilities.hvacModes.options} value={thermostat.hvacMode} disabled={disabled} onSelect={(mode) =>
+      {thermostat.capabilities.hvacModes.supported ? <PopoverOptionButton label="HVAC mode" options={thermostat.capabilities.hvacModes.options} value={thermostat.hvacMode} disabled={disabled} positive={thermostat.hvacMode !== null && thermostat.hvacMode !== 'OFF'} onSelect={(mode) =>
         review(requestReview({ type: 'NEST_SET_HVAC_MODE', target: 'nest_living_room', mode: mode as NonNullable<ThermostatState['hvacMode']> }, 'Living Room Nest', thermostat.hvacMode ?? 'Unknown', mode, 'NEST_CLOUD', thermostat.stateVersion))
       } /> : null}
       {thermostat.capabilities.setpointShapes.includes('RANGE') ? <form onSubmit={(event) => {
         event.preventDefault();
         review(requestReview({ type: 'NEST_SET_SETPOINT', target: 'nest_living_room', setpoint: { shape: 'RANGE', heatTemperatureF: heat, coolTemperatureF: cool } }, 'Living Room Nest', `${thermostat.heatSetpointF ?? '—'}–${thermostat.coolSetpointF ?? '—'}°F`, `${heat}–${cool}°F`, 'NEST_CLOUD', thermostat.stateVersion));
       }}><label>Heat setpoint<input aria-label="Nest heat setpoint" type="number" min={min} max={max} step={step} value={heat} onChange={(event) => setHeat(Number(event.target.value))} disabled={disabled} /></label><label>Cool setpoint<input aria-label="Nest cool setpoint" type="number" min={min} max={max} step={step} value={cool} onChange={(event) => setCool(Number(event.target.value))} disabled={disabled} /></label><button type="submit" disabled={disabled || heat >= cool}>Save</button></form> : null}
-      {thermostat.capabilities.fanTimerMinutes.supported ? <OptionButtonGroup label="Nest fan timer" options={thermostat.capabilities.fanTimerMinutes.values} value={thermostat.fanTimerEndsAt ? null : 0} disabled={disabled} format={(minutes) => minutes === 0 ? 'Off' : `${minutes}m`} onSelect={(minutes) =>
+      {thermostat.capabilities.fanTimerMinutes.supported ? <PopoverOptionButton label="Nest fan timer" options={thermostat.capabilities.fanTimerMinutes.values} value={thermostat.fanTimerEndsAt ? null : 0} disabled={disabled} positive={Boolean(thermostat.fanTimerEndsAt)} format={(minutes) => minutes === 0 ? 'Off' : `${minutes}m`} onSelect={(minutes) =>
         review(requestReview({ type: 'NEST_SET_FAN_TIMER', target: 'nest_living_room', durationMinutes: minutes }, 'Living Room Nest', thermostat.fanTimerEndsAt ? 'Running' : 'Off', minutes === 0 ? 'Off' : `${minutes} minutes`, 'NEST_CLOUD', thermostat.stateVersion))
       } /> : null}
     </div>
@@ -373,7 +374,7 @@ function PurifierControls({ purifier, review }: { purifier: PurifierState; revie
   const make = (command: IndoorCommand, current: string, requested: string) => review(requestReview(command, purifier.room === 'living_room' ? 'Living Room Coway' : 'Bedroom Coway', current, requested, 'COWAY_CLOUD', purifier.stateVersion));
   return (
     <div className="indoor-controls">
-      {purifier.capabilities.power.supported ? <PopoverOptionButton label="Power" options={['On', 'Off']} value={purifier.power ? 'On' : 'Off'} disabled={disabled} onSelect={(value) =>
+      {purifier.capabilities.power.supported ? <PopoverOptionButton label="Power" options={['On', 'Off']} value={purifier.power ? 'On' : 'Off'} disabled={disabled} positive={purifier.power === true} onSelect={(value) =>
         make({ type: 'COWAY_SET_POWER', target: purifier.alias, power: value === 'On' }, purifier.power ? 'On' : 'Off', value)
       } /> : null}
       {purifier.capabilities.speeds.supported ? <OptionButtonGroup label="Speed" options={purifier.capabilities.speeds.values} value={purifier.speed} disabled={disabled} onSelect={(value) =>
@@ -382,13 +383,13 @@ function PurifierControls({ purifier, review }: { purifier: PurifierState; revie
       {purifier.capabilities.presets.supported ? <PopoverOptionButton label="Preset" options={purifier.capabilities.presets.options} value={purifier.preset} disabled={disabled} onSelect={(value) =>
         make({ type: 'COWAY_SET_PRESET', target: purifier.alias, preset: value }, purifier.preset ?? 'Unknown', value)
       } /> : null}
-      {purifier.capabilities.timerMinutes.supported ? <OptionButtonGroup label="Timer" options={purifier.capabilities.timerMinutes.values} value={purifier.timerEndsAt ? null : 0} disabled={disabled} format={(value) => value === 0 ? 'Off' : `${value}m`} onSelect={(value) =>
+      {purifier.capabilities.timerMinutes.supported ? <PopoverOptionButton label="Timer" options={purifier.capabilities.timerMinutes.values} value={purifier.timerEndsAt ? null : 0} disabled={disabled} positive={Boolean(purifier.timerEndsAt)} format={(value) => value === 0 ? 'Off' : `${value}m`} onSelect={(value) =>
         make({ type: 'COWAY_SET_TIMER', target: purifier.alias, durationMinutes: value }, purifier.timerEndsAt ? 'Running' : 'Off', value === 0 ? 'Off' : `${value} minutes`)
       } /> : null}
-      {purifier.capabilities.lightOptions.supported ? <PopoverOptionButton label="Light" options={purifier.capabilities.lightOptions.options} value={purifier.light} disabled={disabled} format={(value) => value.replaceAll('_', ' ')} onSelect={(value) =>
+      {purifier.capabilities.lightOptions.supported ? <PopoverOptionButton label="Light" options={purifier.capabilities.lightOptions.options} value={purifier.light} disabled={disabled} positive={purifier.light === 'ON' || purifier.light === 'AQI_OFF'} format={(value) => value.replaceAll('_', ' ')} onSelect={(value) =>
         make({ type: 'COWAY_SET_LIGHT', target: purifier.alias, light: value }, purifier.light ?? 'Unknown', value)
       } /> : null}
-      {purifier.capabilities.sensitivityOptions.supported ? <OptionButtonGroup label="Sensitivity" options={purifier.capabilities.sensitivityOptions.options} value={purifier.sensitivity} disabled={disabled} onSelect={(value) =>
+      {purifier.capabilities.sensitivityOptions.supported ? <PopoverOptionButton label="Sensitivity" options={purifier.capabilities.sensitivityOptions.options} value={purifier.sensitivity} disabled={disabled} onSelect={(value) =>
         make({ type: 'COWAY_SET_SENSITIVITY', target: purifier.alias, sensitivity: value }, purifier.sensitivity ?? 'Unknown', value)
       } /> : null}
     </div>
@@ -415,7 +416,7 @@ function AirGradientControls({ device, review }: { device: IndoorState['sensors'
     options: string[],
     supported: boolean,
     type: 'AIRGRADIENT_SET_DISPLAY_TEMPERATURE_UNIT' | 'AIRGRADIENT_SET_PM_STANDARD' | 'AIRGRADIENT_SET_LED_MODE',
-  ) => supported ? <OptionButtonGroup label={label} options={options} value={value} disabled={disabled} format={(option) => option.replaceAll('_', ' ')} onSelect={(option) =>
+  ) => supported ? <PopoverOptionButton label={label} options={options} value={value} disabled={disabled} format={(option) => option.replaceAll('_', ' ')} onSelect={(option) =>
     make({ type, target: 'airgradient_living_room', option }, value ?? 'Unknown', option)
   } /> : null;
   const controls = [

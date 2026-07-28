@@ -203,8 +203,12 @@ test('renders the responsive indoor dashboard and requires review before control
     return { fontSize, metricFontSize };
   })).toEqual({ fontSize: '9.92px', metricFontSize: '9.92px' });
   const hvacModes = page.getByRole('group', { name: 'HVAC mode' });
-  await expect(hvacModes.getByRole('button', { name: 'HEAT_COOL' })).toHaveAttribute('aria-pressed', 'true');
-  await hvacModes.getByRole('button', { name: 'OFF' }).click();
+  const hvacButton = hvacModes.getByRole('button', { name: 'HVAC mode: HEAT_COOL. Show options' });
+  await expect(hvacButton).toHaveClass(/control-current-positive/);
+  await hvacButton.click();
+  await expect(hvacModes.getByRole('menuitemradio')).toHaveCount(4);
+  await expect(hvacModes.getByRole('menuitemradio', { name: 'HEAT_COOL' })).toHaveAttribute('aria-checked', 'true');
+  await hvacModes.getByRole('menuitemradio', { name: 'OFF' }).click();
   const review = page.getByRole('dialog', { name: 'Confirm change' });
   await expect(review).toBeVisible();
   await expect(review.getByText('Living Room Nest')).toBeVisible();
@@ -212,8 +216,28 @@ test('renders the responsive indoor dashboard and requires review before control
   await expect(review.getByText(/Nest cloud · updates after confirmation/)).toBeVisible();
   await review.getByRole('button', { name: 'Save' }).click();
   await expect(review).toBeHidden();
-  await expect(hvacModes.getByRole('button', { name: 'HEAT_COOL' })).toHaveAttribute('aria-pressed', 'true');
-  await expect(hvacModes.getByRole('button', { name: 'OFF' })).toHaveAttribute('aria-pressed', 'false');
+  await expect(hvacButton).toContainText('HEAT_COOL');
+
+  const sensitivity = page.getByRole('group', { name: 'Sensitivity' }).first();
+  await sensitivity.getByRole('button', { name: 'Sensitivity: NORMAL. Show options' }).click();
+  await expect(sensitivity.getByRole('menuitemradio')).toHaveCount(3);
+  await expect(sensitivity.getByRole('menuitemradio', { name: 'NORMAL' })).toHaveAttribute('aria-checked', 'true');
+  await page.keyboard.press('Escape');
+
+  const cowayTimer = page.getByRole('group', { name: 'Timer' }).first();
+  await cowayTimer.getByRole('button', { name: 'Timer: Off. Show options' }).click();
+  await expect(cowayTimer.getByRole('menuitemradio')).toHaveCount(5);
+  await page.keyboard.press('Escape');
+
+  const pmStandard = page.getByRole('group', { name: 'PM standard' });
+  await pmStandard.getByRole('button', { name: 'PM standard: us aqi. Show options' }).click();
+  await expect(pmStandard.getByRole('menuitemradio')).toHaveCount(2);
+  await page.keyboard.press('Escape');
+
+  const power = page.getByRole('group', { name: 'Power' }).first();
+  await expect(power.getByRole('button', { name: 'Power: On. Show options' })).toHaveClass(/control-current-positive/);
+  const light = page.getByRole('group', { name: 'Light' }).first();
+  await expect(light.getByRole('button', { name: 'Light: ON. Show options' })).toHaveClass(/control-current-positive/);
 });
 
 test('supports indoor keyboard cancellation and has no serious accessibility violations', async ({ page }) => {
