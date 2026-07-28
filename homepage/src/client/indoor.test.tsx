@@ -62,6 +62,7 @@ describe('indoor dashboard', () => {
     const activeMarkup = renderToStaticMarkup(<IndoorScreen bootstrap={active} />);
     expect(activeMarkup).toContain('ventilate-button ventilate-button-active');
     expect(activeMarkup).toContain('>Ventilating…<');
+    expect(activeMarkup).toContain('>Cancel ventilation<');
     expect(activeMarkup).toMatch(/class="control-current-positive"[^>]*aria-label="Power: On/);
     expect(activeMarkup).toMatch(/class="control-current-positive"[^>]*aria-label="Light: ON/);
     expect(activeMarkup).toMatch(/class="control-current-positive"[^>]*aria-label="Timer: Running/);

@@ -40,6 +40,7 @@ function service(command: IndoorCommand, mapping: HomeAssistantControlMap): Serv
   const airgradient = mapping.airgradient_living_room;
   switch (command.type) {
     case 'VENTILATE':
+    case 'CANCEL_VENTILATION':
       throw new Error('Compound commands must be orchestrated by the indoor action gateway.');
     case 'NEST_SET_HVAC_MODE':
       return { domain: 'climate', service: 'set_hvac_mode', data: { entity_id: legacy().primary, hvac_mode: command.mode.toLowerCase() } };

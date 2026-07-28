@@ -344,6 +344,7 @@ const NestSetpointSchema = z.discriminatedUnion('shape', [
 ]);
 export const IndoorCommandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('VENTILATE'), target: z.literal('indoor_environment'), durationMinutes: z.literal(30) }).strict(),
+  z.object({ type: z.literal('CANCEL_VENTILATION'), target: z.literal('indoor_environment') }).strict(),
   z.object({ type: z.literal('NEST_SET_HVAC_MODE'), target: z.literal('nest_living_room'), mode: z.enum(['OFF', 'HEAT', 'COOL', 'HEAT_COOL']) }).strict(),
   z.object({ type: z.literal('NEST_SET_SETPOINT'), target: z.literal('nest_living_room'), setpoint: NestSetpointSchema }).strict(),
   z.object({ type: z.literal('NEST_SET_FAN_TIMER'), target: z.literal('nest_living_room'), durationMinutes: z.number().int().nonnegative() }).strict(),

@@ -446,7 +446,8 @@ function ReviewDialog({ review, onClose, onSubmit, submitting, error }: { review
 }
 
 export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
-  const { indoor } = bootstrap;
+  const [indoorSnapshot, setIndoorSnapshot] = useState(bootstrap.indoor);
+  const indoor = indoorSnapshot;
   const [selection, setSelection] = useState<HistorySelection>({ window: '1h' });
   const [history, setHistory] = useState<Record<string, TimeSeries>>({});
   const [historyUpdate, setHistoryUpdate] = useState<HistoryUpdateState>({ status: 'LOADING', updatedAt: null });
@@ -460,11 +461,13 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
   const [review, setReview] = useState<Review | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [ventilationActionId, setVentilationActionId] = useState<string | null>(null);
+  const [cancellingVentilation, setCancellingVentilation] = useState(false);
   const aranet = indoor.sensors[0];
   const airgradient = indoor.sensors[1];
   const thermostat = indoor.thermostats[0];
   const ventilationPending = indoor.actions.some((action) => action.target === 'indoor_environment' && action.status === 'PENDING');
-  const [ventilationActive, setVentilationActive] = useState(ventilationPending);
+  const ventilationActive = ventilationPending || ventilationActionId !== null;
   const ventilationAvailable = thermostat.sourceState === 'AVAILABLE'
     && thermostat.capabilities.fanTimerMinutes.supported
     && thermostat.capabilities.fanTimerMinutes.values.includes(0)
@@ -473,10 +476,9 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
       && purifier.capabilities.presets.supported
       && purifier.capabilities.presets.options.includes('RAPID'));
   useEffect(() => {
-    if (ventilationPending) setVentilationActive(true);
-  }, [ventilationPending]);
+    setIndoorSnapshot(bootstrap.indoor);
+  }, [bootstrap.indoor]);
   useEffect(() => {
-    if (!ventilationActive) return;
     let cancelled = false;
     let timer: number | undefined;
     const refresh = async () => {
@@ -485,10 +487,16 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
         const body: unknown = await response.json();
         const parsed = BootstrapSchema.safeParse((body as { data?: unknown }).data);
         if (!cancelled && response.ok && parsed.success) {
-          const latest = parsed.data.indoor.actions.filter((action) => action.target === 'indoor_environment').at(-1);
-          if (!latest || latest.status !== 'PENDING') setVentilationActive(false);
+          setIndoorSnapshot(parsed.data.indoor);
+          if (ventilationActionId) {
+            const tracked = parsed.data.indoor.actions.find((action) => action.actionId === ventilationActionId);
+            if (tracked && tracked.status !== 'PENDING') {
+              setVentilationActionId(null);
+              setCancellingVentilation(false);
+            }
+          }
         }
-      } catch { /* retain active state until a successful status read */ }
+      } catch { /* retain the last confirmed control state */ }
       if (!cancelled) timer = window.setTimeout(() => void refresh(), 2_000);
     };
     timer = window.setTimeout(() => void refresh(), 2_000);
@@ -496,7 +504,7 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
       cancelled = true;
       if (timer !== undefined) window.clearTimeout(timer);
     };
-  }, [ventilationActive]);
+  }, [ventilationActionId]);
   const metrics = useMemo<HistoryMetric[]>(() => [
     { alias: 'airgradient_living_room.co2', label: 'AirGradient CO₂', thresholds: [{ value: 800, tone: 'yellow' }, { value: 1000, tone: 'red' }], scale: { fixedMin: 400, fixedMax: 1400, ticks: [400, 600, 800, 1000, 1200, 1400], digits: 0 } },
     { alias: 'airgradient_living_room.pm25', secondaryAlias: 'airgradient_living_room.pm10', secondaryLabel: 'PM10', label: 'AirGradient particulate matter', thresholds: [{ value: 5, tone: 'yellow' }, { value: 15, tone: 'red' }], scale: { minSpan: 20, hardMin: 0, digits: 0 } },
@@ -592,21 +600,32 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
       const body: unknown = await response.json();
       const parsed = IndoorActionAcceptedSchema.safeParse((body as { data?: IndoorActionAccepted }).data);
       if (!response.ok || !parsed.success) throw new Error((body as { error?: { message?: string } }).error?.message ?? 'The command was not accepted.');
-      if (review.command.type === 'VENTILATE') setVentilationActive(true);
+      if (review.command.type === 'VENTILATE') setVentilationActionId(parsed.data.actionId);
+      if (review.command.type === 'CANCEL_VENTILATION') {
+        setVentilationActionId(parsed.data.actionId);
+        setCancellingVentilation(true);
+      }
       setReview(null);
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'The command failed.'); }
     finally { setSubmitting(false); }
   };
   return (
     <main className="dashboard indoor-dashboard" id="indoor">
-      <section className="hero-row"><div><span className="panel-eyebrow">INDOOR / HOME ASSISTANT</span><h1>Indoor environment</h1></div><div className="hero-state"><button className={`ventilate-button${ventilationActive ? ' ventilate-button-active' : ''}`} type="button" disabled={!ventilationAvailable || ventilationActive} onClick={() => setReview(requestReview(
+      <section className="hero-row"><div><span className="panel-eyebrow">INDOOR / HOME ASSISTANT</span><h1>Indoor environment</h1></div><div className="hero-state"><div className="ventilation-controls"><button className={`ventilate-button${ventilationActive ? ' ventilate-button-active' : ''}`} type="button" disabled={!ventilationAvailable || ventilationActive} onClick={() => setReview(requestReview(
         { type: 'VENTILATE', target: 'indoor_environment', durationMinutes: 30 },
         'Indoor environment',
         `Nest fan ${thermostat.fanTimerEndsAt ? 'on' : 'off'}; Coways ${indoor.purifiers.map((purifier) => purifier.power ? `speed ${purifier.speed ?? 'unknown'}` : 'off').join(' / ')}`,
         'Both Coways Rapid + Nest fan for 30 minutes',
         'MULTI_CLOUD',
         indoorVentilationStateVersion(indoor),
-      ))}>{ventilationActive ? 'Ventilating…' : 'Ventilate'}</button><StateBadge severity={indoor.alerts.some((item) => item.severity === 'CRIT') ? 'CRIT' : indoor.alerts.length ? 'WARN' : 'OK'} label={`${indoor.alerts.length} active alert${indoor.alerts.length === 1 ? '' : 's'}`} /><span>Updated {bootstrap.generatedAt.slice(11, 19)} UTC</span></div></section>
+      ))}>{ventilationActive ? 'Ventilating…' : 'Ventilate'}</button>{ventilationActive ? <button className="cancel-ventilation-button" type="button" disabled={cancellingVentilation} onClick={() => setReview(requestReview(
+        { type: 'CANCEL_VENTILATION', target: 'indoor_environment' },
+        'Indoor environment',
+        'Ventilating',
+        'Cancel and restore prior fan states',
+        'MULTI_CLOUD',
+        indoorVentilationStateVersion(indoor),
+      ))}>{cancellingVentilation ? 'Cancelling…' : 'Cancel ventilation'}</button> : null}</div><StateBadge severity={indoor.alerts.some((item) => item.severity === 'CRIT') ? 'CRIT' : indoor.alerts.length ? 'WARN' : 'OK'} label={`${indoor.alerts.length} active alert${indoor.alerts.length === 1 ? '' : 's'}`} /><span>Updated {bootstrap.generatedAt.slice(11, 19)} UTC</span></div></section>
       {indoor.alerts.length ? <section className="indoor-alerts" aria-label="Indoor alerts">{indoor.alerts.map((alert) => <div key={alert.id}><StateBadge severity={alert.severity} /><strong>{alert.kind.replaceAll('_', ' ')}</strong><span>{alert.summary}</span></div>)}</section> : null}
       <section className="indoor-current-grid" id="indoor-current" aria-label="Current indoor readings">
         <Panel title="AirGradient + Nest" eyebrow="LIVING ROOM / LOCAL PRIMARY" severity={sourceSeverity(airgradient.sourceState)} freshness={panelFreshness(airgradient.readings.co2.metadata.freshness)}>

@@ -143,6 +143,12 @@ test('renders the responsive indoor dashboard and requires review before control
   await expect(page.getByRole('button', { name: 'Ventilating…' })).toHaveClass(/ventilate-button-active/);
   await expect(page.getByRole('button', { name: 'Ventilating…' })).toBeDisabled();
   expect(indoorCommands).toContainEqual({ type: 'VENTILATE', target: 'indoor_environment', durationMinutes: 30 });
+  await page.getByRole('button', { name: 'Cancel ventilation' }).click();
+  const cancellationReview = page.getByRole('dialog', { name: 'Confirm change' });
+  await expect(cancellationReview).toContainText('Cancel and restore prior fan states');
+  await cancellationReview.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('button', { name: 'Cancelling…' })).toBeDisabled();
+  expect(indoorCommands).toContainEqual({ type: 'CANCEL_VENTILATION', target: 'indoor_environment' });
   await expect.poll(() => historyRequestCount).toBe(7);
   const co2Graph = page.getByRole('img', { name: /CO₂, 1h/ });
   await expect(co2Graph).toBeVisible();

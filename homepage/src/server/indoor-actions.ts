@@ -46,6 +46,11 @@ const VentilationProgressSchema = z.object({
     coway_bedroom: z.string().optional(),
   }).strict(),
   overriddenTargets: z.array(VentilationTargetSchema),
+  cancelRequested: z.boolean().optional(),
+  lastRapidAt: z.object({
+    coway_living_room: z.number().int().nonnegative().optional(),
+    coway_bedroom: z.number().int().nonnegative().optional(),
+  }).strict().optional(),
 }).strict();
 type VentilationProgress = z.infer<typeof VentilationProgressSchema>;
 const StoredActionSchema = IndoorActionStatusSchema.extend({
@@ -72,6 +77,7 @@ const SAFE_MESSAGE: Record<string, string> = {
   SOURCE_UNAVAILABLE: 'The target source is not currently available.',
   UNSUPPORTED_COMMAND: 'The target does not advertise this command or value.',
   TARGET_BUSY: 'The target already has the maximum number of pending actions.',
+  NO_ACTIVE_VENTILATION: 'There is no active ventilation cycle to cancel.',
 };
 const VENTILATION_TARGETS = ['nest_living_room', 'coway_living_room', 'coway_bedroom'] as const;
 
@@ -86,6 +92,7 @@ function inCidr(ip: string, prefix: string) {
 function requested(command: IndoorCommand): unknown {
   switch (command.type) {
     case 'VENTILATE': return { cowayPreset: 'RAPID', nestFan: 'ON', durationMinutes: 30 };
+    case 'CANCEL_VENTILATION': return { cancel: true };
     case 'NEST_SET_HVAC_MODE': return { hvacMode: command.mode };
     case 'NEST_SET_SETPOINT': return command.setpoint;
     case 'NEST_SET_FAN_TIMER': return { fanTimerMinutes: command.durationMinutes };
@@ -112,6 +119,7 @@ function oldState(indoor: IndoorState, command: IndoorCommand): unknown {
         power: purifier.power, preset: purifier.preset, speed: purifier.speed,
       }])),
     };
+    case 'CANCEL_VENTILATION': return { active: true };
     case 'NEST_SET_HVAC_MODE': return { hvacMode: indoor.thermostats[0].hvacMode };
     case 'NEST_SET_SETPOINT': return { heatSetpointF: indoor.thermostats[0].heatSetpointF, coolSetpointF: indoor.thermostats[0].coolSetpointF };
     case 'NEST_SET_FAN_TIMER': return { fanTimerEndsAt: indoor.thermostats[0].fanTimerEndsAt };
@@ -141,6 +149,7 @@ function supported(indoor: IndoorState, command: IndoorCommand) {
         && purifier.capabilities.presets.supported
         && purifier.capabilities.presets.options.includes('RAPID'));
   }
+  if (command.type === 'CANCEL_VENTILATION') return true;
   if (command.target === 'airgradient_living_room') {
     const target = indoor.sensors[1];
     switch (command.type) {
@@ -189,7 +198,7 @@ function supported(indoor: IndoorState, command: IndoorCommand) {
 }
 
 function converged(indoor: IndoorState, command: IndoorCommand, acceptedAt: Date) {
-  if (command.type === 'VENTILATE') return false;
+  if (command.type === 'VENTILATE' || command.type === 'CANCEL_VENTILATION') return false;
   if (command.target === 'airgradient_living_room') {
     const settings = indoor.sensors[1].settings;
     switch (command.type) {
@@ -313,6 +322,14 @@ export class IndoorActionGateway {
     if (!target || target.stateVersion !== parsed.data.expectedStateVersion) return reject(409, 'STATE_CONFLICT');
     if (target.sourceState !== 'AVAILABLE') return reject(409, 'SOURCE_UNAVAILABLE');
     if (!supported(snapshot, parsed.data.command)) return reject(422, 'UNSUPPORTED_COMMAND');
+    if (parsed.data.command.type === 'CANCEL_VENTILATION') {
+      const active = [...this.actions.values()].find((item) =>
+        item.command.type === 'VENTILATE' && item.status.status === 'PENDING');
+      if (!active?.ventilation) return reject(409, 'NO_ACTIVE_VENTILATION');
+      active.ventilation.cancelRequested = true;
+      await this.persist();
+      return { ok: true, action: active.accepted, replay: false };
+    }
     const ventilationBusy = parsed.data.command.type === 'VENTILATE'
       && VENTILATION_TARGETS.some((alias) => this.running.has(alias));
     if ([...this.actions.values()].filter((item) => item.command.target === target.alias && item.status.status === 'PENDING').length >= 2 || this.running.has(target.alias) || ventilationBusy) return reject(409, 'TARGET_BUSY');
@@ -329,6 +346,8 @@ export class IndoorActionGateway {
           changedTargets: this.ventilationChanges(snapshot),
           activeStates: {},
           overriddenTargets: [],
+          cancelRequested: false,
+          lastRapidAt: {},
         },
       } : {}),
     };
@@ -390,20 +409,16 @@ export class IndoorActionGateway {
     return { type: 'COWAY_SET_PRESET', target, preset: 'RAPID' };
   }
 
-  private ventilationTarget(indoor: IndoorState, target: VentilationTarget) {
-    return target === 'nest_living_room'
-      ? indoor.thermostats[0]
-      : indoor.purifiers.find((purifier) => purifier.alias === target)!;
-  }
-
   private ventilationState(indoor: IndoorState, target: VentilationTarget) {
     if (target === 'nest_living_room') return indoor.thermostats[0].fanTimerEndsAt === null ? 'off' : 'on';
     const purifier = indoor.purifiers.find((item) => item.alias === target)!;
     return `${purifier.power ? 'on' : 'off'}:${purifier.speed ?? 'none'}:${purifier.preset ?? 'none'}`;
   }
 
-  private ventilationConverged(indoor: IndoorState, target: VentilationTarget, acceptedAt: Date) {
-    return converged(indoor, this.ventilationStartCommand(target, indoor), acceptedAt);
+  private ventilationStillControlled(indoor: IndoorState, target: VentilationTarget) {
+    if (target === 'nest_living_room') return this.ventilationState(indoor, target) === 'on';
+    const purifier = indoor.purifiers.find((item) => item.alias === target)!;
+    return purifier.power === true && (purifier.preset === 'RAPID' || purifier.preset === 'AUTO');
   }
 
   private async restoreVentilationTarget(action: StoredAction, target: VentilationTarget) {
@@ -438,38 +453,52 @@ export class IndoorActionGateway {
         const snapshot = (await this.bootstrap()).indoor;
         await Promise.all(progress.changedTargets.map((target) =>
           this.executor.execute(this.ventilationStartCommand(target, snapshot))));
-        const convergenceStarted = this.now().getTime();
-        let current = snapshot;
-        while (this.now().getTime() - convergenceStarted < this.timeoutMs) {
-          await this.wait(this.pollMs);
-          current = (await this.bootstrap()).indoor;
-          if (progress.changedTargets.every((target) => this.ventilationTarget(current, target).sourceState === 'AVAILABLE'
-            && this.ventilationConverged(current, target, new Date(action.accepted.acceptedAt)))) break;
-        }
-        if (!progress.changedTargets.every((target) => this.ventilationConverged(current, target, new Date(action.accepted.acceptedAt)))) {
-          result = 'TIMED_OUT';
-          throw new Error('VENTILATION_START_TIMEOUT');
-        }
-        progress.activeStates = Object.fromEntries(progress.changedTargets.map((target) => [target, this.ventilationState(current, target)]));
+        const commandCompletedAt = this.now().getTime();
+        progress.activeStates = Object.fromEntries(progress.changedTargets.map((target) => [
+          target,
+          target === 'nest_living_room' ? 'on' : 'on:none:RAPID',
+        ]));
+        progress.lastRapidAt = Object.fromEntries(progress.changedTargets
+          .filter((target) => target !== 'nest_living_room')
+          .map((target) => [target, commandCompletedAt]));
         progress.phase = 'RUNNING';
-        progress.runUntil = this.now().getTime() + this.ventilationMs;
-        action.status = { ...action.accepted, resolvedAt: null, message: 'Ventilating for 30 minutes; manual changes override restoration.' };
+        progress.runUntil = commandCompletedAt + this.ventilationMs;
+        action.status = { ...action.accepted, resolvedAt: null, message: 'Ventilating for 30 minutes; Coway Rapid is maintained until cancelled or overridden.' };
         for (const alias of progress.changedTargets) this.running.delete(alias);
         await this.persist();
       }
 
       if (progress.phase === 'RUNNING') {
-        while (this.now().getTime() < progress.runUntil) {
+        while (!progress.cancelRequested && this.now().getTime() < progress.runUntil) {
           await this.wait(Math.min(this.pollMs, progress.runUntil - this.now().getTime()));
           const indoor = (await this.bootstrap()).indoor;
           let changed = false;
+          const reassert: Array<Promise<void>> = [];
           for (const target of progress.changedTargets) {
             if (progress.overriddenTargets.includes(target)) continue;
-            if (this.ventilationState(indoor, target) !== progress.activeStates[target]) {
+            if (target === 'nest_living_room') {
+              if (this.ventilationState(indoor, target) !== 'on') {
+                progress.overriddenTargets.push(target);
+                changed = true;
+              }
+              continue;
+            }
+            const purifier = indoor.purifiers.find((item) => item.alias === target)!;
+            if (purifier.preset === 'RAPID') continue;
+            if (purifier.preset === 'AUTO') {
+              const lastRapidAt = progress.lastRapidAt?.[target] ?? 0;
+              if (this.now().getTime() - lastRapidAt >= 15_000) {
+                progress.lastRapidAt ??= {};
+                progress.lastRapidAt[target] = this.now().getTime();
+                reassert.push(this.executor.execute({ type: 'COWAY_SET_PRESET', target, preset: 'RAPID' }));
+                changed = true;
+              }
+            } else {
               progress.overriddenTargets.push(target);
               changed = true;
             }
           }
+          if (reassert.length) await Promise.all(reassert);
           if (changed) await this.persist();
         }
         progress.phase = 'RESTORING';
@@ -479,14 +508,18 @@ export class IndoorActionGateway {
       const indoor = (await this.bootstrap()).indoor;
       for (const target of progress.changedTargets) {
         if (progress.overriddenTargets.includes(target)) continue;
-        if (this.ventilationState(indoor, target) !== progress.activeStates[target]) {
+        if (!this.ventilationStillControlled(indoor, target)) {
           progress.overriddenTargets.push(target);
           continue;
         }
         await this.restoreVentilationTarget(action, target);
       }
       result = 'SUCCEEDED';
-      if (progress.overriddenTargets.length) {
+      if (progress.cancelRequested) {
+        message = progress.overriddenTargets.length
+          ? `Cancelled; restored prior states and preserved overrides for ${progress.overriddenTargets.map((target) => target.replaceAll('_', ' ')).join(', ')}.`
+          : 'Cancelled; prior fan states were restored.';
+      } else if (progress.overriddenTargets.length) {
         message = `Completed; preserved manual overrides for ${progress.overriddenTargets.map((target) => target.replaceAll('_', ' ')).join(', ')}.`;
       }
     } catch {
@@ -495,10 +528,8 @@ export class IndoorActionGateway {
           try { await this.restoreVentilationTarget(action, target); } catch { /* preserve the original failure */ }
         }
       }
-      if (result !== 'TIMED_OUT') result = 'FAILED';
-      message = result === 'TIMED_OUT'
-        ? 'The fans did not confirm the Ventilate state in time; prior states were restored where possible.'
-        : 'Ventilate could not complete; prior states were restored where possible.';
+      result = 'FAILED';
+      message = 'Ventilate could not complete; prior states were restored where possible.';
     } finally {
       const resolvedAt = this.now().toISOString();
       action.status = { ...action.accepted, status: result, resolvedAt, ...(message ? { message } : {}) };

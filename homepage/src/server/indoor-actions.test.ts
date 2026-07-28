@@ -169,6 +169,12 @@ describe('indoor action gateway', () => {
       async (ms) => {
         clock += ms;
         waits += 1;
+        if (waits === 1) {
+          const living = state.indoor.purifiers[0];
+          living.speed = 1;
+          living.preset = 'AUTO';
+          living.stateVersion = 'living-cloud-auto-fallback';
+        }
         if (waits === 2) {
           const bedroom = state.indoor.purifiers[1];
           bedroom.speed = 1;
@@ -176,10 +182,10 @@ describe('indoor action gateway', () => {
           bedroom.stateVersion = 'bedroom-manual-override';
         }
       },
-      1,
+      10_000,
       10,
       undefined,
-      5,
+      30_000,
     );
     const input = {
       idempotencyKey: '25c24d27-eed3-4d09-b188-9cffc60c2cce',
@@ -198,6 +204,8 @@ describe('indoor action gateway', () => {
     expect(state.indoor.purifiers[0]).toMatchObject({ power: true, preset: 'AUTO', speed: 2 });
     expect(state.indoor.purifiers[1]).toMatchObject({ power: true, preset: null, speed: 1 });
     expect(calls).toContainEqual({ type: 'COWAY_SET_PRESET', target: 'coway_living_room', preset: 'RAPID' });
+    expect(calls.filter((command) => command.type === 'COWAY_SET_PRESET'
+      && command.target === 'coway_living_room' && command.preset === 'RAPID')).toHaveLength(2);
     expect(calls).toContainEqual({ type: 'COWAY_SET_PRESET', target: 'coway_bedroom', preset: 'RAPID' });
     expect(calls).not.toContainEqual({ type: 'COWAY_SET_PRESET', target: 'coway_bedroom', preset: 'AUTO' });
     expect(gateway.statuses()[0]?.message).toContain('coway bedroom');
@@ -207,6 +215,65 @@ describe('indoor action gateway', () => {
       overriddenTargets: ['coway_bedroom'],
       result: 'SUCCEEDED',
     }));
+  });
+
+  it('cancels an active ventilation cycle and restores the saved fan states', async () => {
+    let clock = Date.parse('2026-07-24T12:00:00Z');
+    let releaseWait: (() => void) | undefined;
+    const state = structuredClone(healthyBootstrapFixture);
+    const executor = {
+      execute: vi.fn(async (command: IndoorCommand) => {
+        if (command.type === 'NEST_SET_FAN_TIMER') {
+          state.indoor.thermostats[0].fanTimerEndsAt = command.durationMinutes > 0
+            ? new Date(clock + command.durationMinutes * 60_000).toISOString()
+            : null;
+        }
+        if (command.type === 'COWAY_SET_PRESET') {
+          const target = state.indoor.purifiers.find((purifier) => purifier.alias === command.target)!;
+          target.power = true;
+          target.preset = command.preset;
+          target.speed = command.preset === 'RAPID' ? null : 2;
+        }
+        if (command.type === 'COWAY_SET_POWER') {
+          state.indoor.purifiers.find((purifier) => purifier.alias === command.target)!.power = command.power;
+        }
+      }),
+    };
+    const gateway = new IndoorActionGateway(
+      () => state,
+      executor,
+      () => {},
+      () => new Date(clock),
+      async (ms) => new Promise<void>((resolve) => {
+        releaseWait = () => { clock += ms; resolve(); };
+      }),
+      2_000,
+      30_000,
+      undefined,
+      30 * 60_000,
+    );
+    expect(await gateway.accept({
+      idempotencyKey: 'a9abe324-afc2-466d-82a7-5c8cd4833cef',
+      expectedStateVersion: indoorVentilationStateVersion(state.indoor),
+      confirmed: true,
+      command: { type: 'VENTILATE', target: 'indoor_environment', durationMinutes: 30 },
+    }, context)).toMatchObject({ ok: true });
+    await vi.waitFor(() => expect(gateway.statuses()[0]?.message).toContain('Ventilating for 30 minutes'));
+
+    expect(await gateway.accept({
+      idempotencyKey: '89b93e06-702f-442b-92c5-74a5a0d777d2',
+      expectedStateVersion: indoorVentilationStateVersion(state.indoor),
+      confirmed: true,
+      command: { type: 'CANCEL_VENTILATION', target: 'indoor_environment' },
+    }, context)).toMatchObject({ ok: true });
+    releaseWait?.();
+    await vi.waitFor(() => expect(gateway.statuses()[0]).toMatchObject({
+      status: 'SUCCEEDED',
+      message: 'Cancelled; prior fan states were restored.',
+    }));
+    expect(state.indoor.thermostats[0].fanTimerEndsAt).toBeNull();
+    expect(state.indoor.purifiers[0].preset).toBe('AUTO');
+    expect(state.indoor.purifiers[1].preset).toBe('AUTO');
   });
 
   it('fails Ventilate closed unless all three controls are available and rejects a second run', async () => {
