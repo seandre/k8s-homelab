@@ -1,9 +1,17 @@
 import { useEffect, useState } from 'react';
-import { BootstrapSchema, type Bootstrap, type TimeSeries } from '../shared/contracts.js';
+import { BootstrapSchema, type Bootstrap, type IndoorActionStatus, type TimeSeries } from '../shared/contracts.js';
 import { healthyBootstrapFixture } from '../shared/fixtures.js';
 
 const HISTORY_CACHE_KEY = 'homepage.telemetry.history.v1';
 const HISTORY_LIMIT = 104;
+
+export function mergeIndoorActionHistory(current: IndoorActionStatus[], incoming: IndoorActionStatus[]) {
+  const merged = new Map(current.map((action) => [action.actionId, action]));
+  for (const action of incoming) merged.set(action.actionId, action);
+  return [...merged.values()]
+    .sort((left, right) => left.acceptedAt.localeCompare(right.acceptedAt))
+    .slice(-100);
+}
 
 export function parseBootstrapEvent(payload: string): Bootstrap | null {
   try { return BootstrapSchema.parse(JSON.parse(payload)); } catch { return null; }

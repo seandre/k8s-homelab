@@ -219,9 +219,9 @@ function converged(indoor: IndoorState, command: IndoorCommand, acceptedAt: Date
         : s.shape === 'COOL' ? target.coolSetpointF === s.temperatureF
         : target.heatSetpointF === s.heatTemperatureF && target.coolSetpointF === s.coolTemperatureF;
     }
-    return target.fanTimerEndsAt !== null && (command.durationMinutes === 0
-      ? Date.parse(target.fanTimerEndsAt) <= acceptedAt.getTime()
-      : Date.parse(target.fanTimerEndsAt) >= acceptedAt.getTime() + (command.durationMinutes - 2) * 60_000);
+    if (command.durationMinutes === 0) return target.fanTimerEndsAt === null;
+    return target.fanTimerEndsAt !== null
+      && Date.parse(target.fanTimerEndsAt) >= acceptedAt.getTime() + (command.durationMinutes - 2) * 60_000;
   }
   const target = indoor.purifiers.find((item) => item.alias === command.target)!;
   switch (command.type) {

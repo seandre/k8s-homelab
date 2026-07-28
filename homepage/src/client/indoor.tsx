@@ -4,6 +4,7 @@ import type {
 } from '../shared/contracts.js';
 import { BootstrapSchema, HistoryResponseSchema, IndoorActionAcceptedSchema, indoorVentilationStateVersion } from '../shared/contracts.js';
 import { Metric, Panel, StateBadge } from './components.js';
+import { mergeIndoorActionHistory } from './data.js';
 import { computeHistoryDomain, nextHistoryRefreshDelay, smoothSvgPath, ventilationTimeRemaining, type HistoryScale } from './indoor-chart.js';
 
 const WINDOWS = ['1h', '3h', '6h', '24h', '7d', '30d'] as const;
@@ -480,7 +481,10 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
       && purifier.capabilities.presets.supported
       && purifier.capabilities.presets.options.includes('RAPID'));
   useEffect(() => {
-    setIndoorSnapshot(bootstrap.indoor);
+    setIndoorSnapshot((current) => ({
+      ...bootstrap.indoor,
+      actions: mergeIndoorActionHistory(current.actions, bootstrap.indoor.actions),
+    }));
   }, [bootstrap.indoor]);
   useEffect(() => {
     let cancelled = false;
@@ -491,7 +495,10 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
         const body: unknown = await response.json();
         const parsed = BootstrapSchema.safeParse((body as { data?: unknown }).data);
         if (!cancelled && response.ok && parsed.success) {
-          setIndoorSnapshot(parsed.data.indoor);
+          setIndoorSnapshot((current) => ({
+            ...parsed.data.indoor,
+            actions: mergeIndoorActionHistory(current.actions, parsed.data.indoor.actions),
+          }));
           if (ventilationActionId) {
             const tracked = parsed.data.indoor.actions.find((action) => action.actionId === ventilationActionId);
             if (tracked && tracked.status !== 'PENDING') {
@@ -691,7 +698,7 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
       <section className="purifier-grid" aria-label="Air purifiers">
         {indoor.purifiers.map((purifier) => <Panel key={purifier.alias} title={`${purifier.room === 'living_room' ? 'Living Room' : 'Bedroom'} Coway`} eyebrow="AIRMEGA 250S / CLOUD" severity={sourceSeverity(purifier.sourceState)} freshness={panelFreshness(purifier.readings.pm25.metadata.freshness)}><div className="indoor-reading-grid"><Metric label="PM2.5" value={display(purifier.readings.pm25)} unit="µg/m³" /><Metric label="PM10" value={display(purifier.readings.pm10)} unit="µg/m³" /><Metric label="AQI" value={display(purifier.readings.aqi)} /><Metric label="FILTER" value={display(purifier.readings.filterLife)} unit="%" /></div><div className="device-state-line"><strong>{purifier.sourceState}</strong><span>{purifier.power === null ? 'NO DATA' : purifier.power ? 'ON' : 'OFF'} · {purifier.preset ?? '—'} · speed {purifier.speed ?? '—'}</span></div><PurifierControls purifier={purifier} review={setReview} /></Panel>)}
       </section>
-      {indoor.actions.length ? <section className="indoor-action-status" aria-live="polite" aria-label="Recent indoor commands">{indoor.actions.slice(0, 5).map((action) => <div key={action.actionId}><StateBadge severity={action.status === 'SUCCEEDED' ? 'OK' : action.status === 'PENDING' ? 'INFO' : 'CRIT'} label={action.status} /><span>{action.target.replaceAll('_', ' ')}</span>{action.message ? <small>{action.message}</small> : null}</div>)}</section> : null}
+      {indoor.actions.length ? <section className="indoor-action-status" aria-live="polite" aria-label="Recent indoor commands">{indoor.actions.slice(-5).reverse().map((action) => <div key={action.actionId}><StateBadge severity={action.status === 'SUCCEEDED' ? 'OK' : action.status === 'PENDING' ? 'INFO' : 'CRIT'} label={action.status} /><span>{action.target.replaceAll('_', ' ')}</span>{action.message ? <small>{action.message}</small> : null}</div>)}</section> : null}
       {review ? <ReviewDialog review={review} onClose={() => { setReview(null); setError(null); }} onSubmit={() => void submit()} submitting={submitting} error={error} /> : null}
     </main>
   );

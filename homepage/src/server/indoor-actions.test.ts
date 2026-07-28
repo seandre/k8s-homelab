@@ -59,6 +59,35 @@ describe('indoor action gateway', () => {
     expect(JSON.stringify(audit.mock.calls)).not.toMatch(/entity_id|sensor\.|token|authorization/i);
   });
 
+  it('confirms a Nest fan-off command when the observed timer becomes null', async () => {
+    const state = structuredClone(healthyBootstrapFixture);
+    const thermostat = state.indoor.thermostats[0];
+    thermostat.sourceState = 'AVAILABLE';
+    thermostat.fanTimerEndsAt = '2026-07-24T12:15:00.000Z';
+    const executor = {
+      execute: vi.fn(async () => {
+        thermostat.fanTimerEndsAt = null;
+      }),
+    };
+    const gateway = new IndoorActionGateway(
+      () => state,
+      executor,
+      () => {},
+      () => new Date('2026-07-24T12:00:00Z'),
+      async () => {},
+      1,
+      10,
+    );
+    expect(await gateway.accept({
+      idempotencyKey: '9be17e2c-4744-48fa-bf78-a67653b8626e',
+      expectedStateVersion: thermostat.stateVersion,
+      confirmed: true,
+      command: { type: 'NEST_SET_FAN_TIMER', target: 'nest_living_room', durationMinutes: 0 },
+    }, context)).toMatchObject({ ok: true });
+    await vi.waitFor(() => expect(gateway.statuses()[0]?.status).toBe('SUCCEEDED'));
+    expect(executor.execute).toHaveBeenCalledTimes(1);
+  });
+
   it('fails closed for source, origin, confirmation, stale state, unavailable source, and capability', async () => {
     const executor = { execute: vi.fn(async () => {}) };
     const make = (state = fixture()) => new IndoorActionGateway(() => state, executor, () => {});
