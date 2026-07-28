@@ -285,6 +285,26 @@ export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, t
   );
 }
 
+function OptionButtonGroup<T extends string | number>({ label, options, value, disabled, format = String, onSelect }: {
+  label: string;
+  options: T[];
+  value: T | null;
+  disabled: boolean;
+  format?: (option: T) => string;
+  onSelect: (option: T) => void;
+}) {
+  return <div className="control-option-group" role="group" aria-label={label}>
+    <span className="control-option-label">{label}</span>
+    <div className="control-button-row">{options.map((option) => <button
+      type="button"
+      aria-pressed={option === value}
+      disabled={disabled}
+      key={option}
+      onClick={() => { if (option !== value) onSelect(option); }}
+    >{format(option)}</button>)}</div>
+  </div>;
+}
+
 function ThermostatControls({ thermostat, review }: { thermostat: ThermostatState; review: (item: Review) => void }) {
   const disabled = thermostat.sourceState !== 'AVAILABLE';
   const min = thermostat.capabilities.setpointMinF ?? 50;
@@ -294,15 +314,16 @@ function ThermostatControls({ thermostat, review }: { thermostat: ThermostatStat
   const [cool, setCool] = useState(thermostat.coolSetpointF ?? 74);
   return (
     <div className="indoor-controls">
-      {thermostat.capabilities.hvacModes.supported ? <label>HVAC mode<select disabled={disabled} value={thermostat.hvacMode ?? ''} onChange={(event) => {
-        const mode = event.target.value as NonNullable<ThermostatState['hvacMode']>;
-        review(requestReview({ type: 'NEST_SET_HVAC_MODE', target: 'nest_living_room', mode }, 'Living Room Nest', thermostat.hvacMode ?? 'Unknown', mode, 'NEST_CLOUD', thermostat.stateVersion));
-      }}>{thermostat.capabilities.hvacModes.options.map((mode) => <option key={mode}>{mode}</option>)}</select></label> : null}
+      {thermostat.capabilities.hvacModes.supported ? <OptionButtonGroup label="HVAC mode" options={thermostat.capabilities.hvacModes.options} value={thermostat.hvacMode} disabled={disabled} onSelect={(mode) =>
+        review(requestReview({ type: 'NEST_SET_HVAC_MODE', target: 'nest_living_room', mode: mode as NonNullable<ThermostatState['hvacMode']> }, 'Living Room Nest', thermostat.hvacMode ?? 'Unknown', mode, 'NEST_CLOUD', thermostat.stateVersion))
+      } /> : null}
       {thermostat.capabilities.setpointShapes.includes('RANGE') ? <form onSubmit={(event) => {
         event.preventDefault();
         review(requestReview({ type: 'NEST_SET_SETPOINT', target: 'nest_living_room', setpoint: { shape: 'RANGE', heatTemperatureF: heat, coolTemperatureF: cool } }, 'Living Room Nest', `${thermostat.heatSetpointF ?? '—'}–${thermostat.coolSetpointF ?? '—'}°F`, `${heat}–${cool}°F`, 'NEST_CLOUD', thermostat.stateVersion));
       }}><label>Heat setpoint<input aria-label="Nest heat setpoint" type="number" min={min} max={max} step={step} value={heat} onChange={(event) => setHeat(Number(event.target.value))} disabled={disabled} /></label><label>Cool setpoint<input aria-label="Nest cool setpoint" type="number" min={min} max={max} step={step} value={cool} onChange={(event) => setCool(Number(event.target.value))} disabled={disabled} /></label><button type="submit" disabled={disabled || heat >= cool}>Review range</button></form> : null}
-      {thermostat.capabilities.fanTimerMinutes.supported ? <div className="control-button-row" aria-label="Nest fan timer">{thermostat.capabilities.fanTimerMinutes.values.map((minutes) => <button type="button" disabled={disabled} key={minutes} onClick={() => review(requestReview({ type: 'NEST_SET_FAN_TIMER', target: 'nest_living_room', durationMinutes: minutes }, 'Living Room Nest', thermostat.fanTimerEndsAt ? 'Running' : 'Off', minutes === 0 ? 'Off' : `${minutes} minutes`, 'NEST_CLOUD', thermostat.stateVersion))}>{minutes === 0 ? 'Fan off' : `Fan ${minutes}m`}</button>)}</div> : null}
+      {thermostat.capabilities.fanTimerMinutes.supported ? <OptionButtonGroup label="Nest fan timer" options={thermostat.capabilities.fanTimerMinutes.values} value={thermostat.fanTimerEndsAt ? null : 0} disabled={disabled} format={(minutes) => minutes === 0 ? 'Off' : `${minutes}m`} onSelect={(minutes) =>
+        review(requestReview({ type: 'NEST_SET_FAN_TIMER', target: 'nest_living_room', durationMinutes: minutes }, 'Living Room Nest', thermostat.fanTimerEndsAt ? 'Running' : 'Off', minutes === 0 ? 'Off' : `${minutes} minutes`, 'NEST_CLOUD', thermostat.stateVersion))
+      } /> : null}
     </div>
   );
 }
@@ -312,13 +333,27 @@ function PurifierControls({ purifier, review }: { purifier: PurifierState; revie
   const make = (command: IndoorCommand, current: string, requested: string) => review(requestReview(command, purifier.room === 'living_room' ? 'Living Room Coway' : 'Bedroom Coway', current, requested, 'COWAY_CLOUD', purifier.stateVersion));
   return (
     <div className="indoor-controls">
-      {purifier.capabilities.power.supported ? <button type="button" disabled={disabled} onClick={() => make({ type: 'COWAY_SET_POWER', target: purifier.alias, power: !purifier.power }, purifier.power ? 'On' : 'Off', purifier.power ? 'Off' : 'On')}>{purifier.power ? 'Review power off' : 'Review power on'}</button> : null}
-      {purifier.capabilities.speeds.supported ? <label>Speed<select disabled={disabled} value={purifier.speed ?? ''} onChange={(event) => make({ type: 'COWAY_SET_SPEED', target: purifier.alias, speed: Number(event.target.value) as 1 | 2 | 3 }, String(purifier.speed ?? 'Unknown'), event.target.value)}>{purifier.capabilities.speeds.values.map((value) => <option value={value} key={value}>{value}</option>)}</select></label> : null}
-      {purifier.capabilities.presets.supported ? <label>Preset<select disabled={disabled} value={purifier.preset ?? ''} onChange={(event) => make({ type: 'COWAY_SET_PRESET', target: purifier.alias, preset: event.target.value }, purifier.preset ?? 'Unknown', event.target.value)}>{purifier.capabilities.presets.options.map((value) => <option key={value}>{value}</option>)}</select></label> : null}
-      {purifier.capabilities.timerMinutes.supported ? <label>Timer<select disabled={disabled} defaultValue="" onChange={(event) => make({ type: 'COWAY_SET_TIMER', target: purifier.alias, durationMinutes: Number(event.target.value) }, purifier.timerEndsAt ? 'Running' : 'Off', Number(event.target.value) === 0 ? 'Off' : `${event.target.value} minutes`)}><option value="" disabled>Choose</option>{purifier.capabilities.timerMinutes.values.map((value) => <option value={value} key={value}>{value === 0 ? 'Off' : `${value} min`}</option>)}</select></label> : null}
-      {purifier.capabilities.lightOptions.supported ? <label>Light<select disabled={disabled} value={purifier.light ?? ''} onChange={(event) => make({ type: 'COWAY_SET_LIGHT', target: purifier.alias, light: event.target.value }, purifier.light ?? 'Unknown', event.target.value)}>{purifier.capabilities.lightOptions.options.map((value) => <option key={value}>{value}</option>)}</select></label> : null}
-      {purifier.capabilities.buttonLock.supported ? <button type="button" disabled={disabled} onClick={() => make({ type: 'COWAY_SET_BUTTON_LOCK', target: purifier.alias, locked: !purifier.buttonLock }, purifier.buttonLock ? 'Locked' : 'Unlocked', purifier.buttonLock ? 'Unlocked' : 'Locked')}>Review {purifier.buttonLock ? 'unlock' : 'lock'}</button> : null}
-      {purifier.capabilities.sensitivityOptions.supported ? <label>Sensitivity<select disabled={disabled} value={purifier.sensitivity ?? ''} onChange={(event) => make({ type: 'COWAY_SET_SENSITIVITY', target: purifier.alias, sensitivity: event.target.value }, purifier.sensitivity ?? 'Unknown', event.target.value)}>{purifier.capabilities.sensitivityOptions.options.map((value) => <option key={value}>{value}</option>)}</select></label> : null}
+      {purifier.capabilities.power.supported ? <OptionButtonGroup label="Power" options={['On', 'Off']} value={purifier.power ? 'On' : 'Off'} disabled={disabled} onSelect={(value) =>
+        make({ type: 'COWAY_SET_POWER', target: purifier.alias, power: value === 'On' }, purifier.power ? 'On' : 'Off', value)
+      } /> : null}
+      {purifier.capabilities.speeds.supported ? <OptionButtonGroup label="Speed" options={purifier.capabilities.speeds.values} value={purifier.speed} disabled={disabled} onSelect={(value) =>
+        make({ type: 'COWAY_SET_SPEED', target: purifier.alias, speed: value as 1 | 2 | 3 }, String(purifier.speed ?? 'Unknown'), String(value))
+      } /> : null}
+      {purifier.capabilities.presets.supported ? <OptionButtonGroup label="Preset" options={purifier.capabilities.presets.options} value={purifier.preset} disabled={disabled} onSelect={(value) =>
+        make({ type: 'COWAY_SET_PRESET', target: purifier.alias, preset: value }, purifier.preset ?? 'Unknown', value)
+      } /> : null}
+      {purifier.capabilities.timerMinutes.supported ? <OptionButtonGroup label="Timer" options={purifier.capabilities.timerMinutes.values} value={purifier.timerEndsAt ? null : 0} disabled={disabled} format={(value) => value === 0 ? 'Off' : `${value}m`} onSelect={(value) =>
+        make({ type: 'COWAY_SET_TIMER', target: purifier.alias, durationMinutes: value }, purifier.timerEndsAt ? 'Running' : 'Off', value === 0 ? 'Off' : `${value} minutes`)
+      } /> : null}
+      {purifier.capabilities.lightOptions.supported ? <OptionButtonGroup label="Light" options={purifier.capabilities.lightOptions.options} value={purifier.light} disabled={disabled} format={(value) => value.replaceAll('_', ' ')} onSelect={(value) =>
+        make({ type: 'COWAY_SET_LIGHT', target: purifier.alias, light: value }, purifier.light ?? 'Unknown', value)
+      } /> : null}
+      {purifier.capabilities.buttonLock.supported ? <OptionButtonGroup label="Button lock" options={['Unlocked', 'Locked']} value={purifier.buttonLock ? 'Locked' : 'Unlocked'} disabled={disabled} onSelect={(value) =>
+        make({ type: 'COWAY_SET_BUTTON_LOCK', target: purifier.alias, locked: value === 'Locked' }, purifier.buttonLock ? 'Locked' : 'Unlocked', value)
+      } /> : null}
+      {purifier.capabilities.sensitivityOptions.supported ? <OptionButtonGroup label="Sensitivity" options={purifier.capabilities.sensitivityOptions.options} value={purifier.sensitivity} disabled={disabled} onSelect={(value) =>
+        make({ type: 'COWAY_SET_SENSITIVITY', target: purifier.alias, sensitivity: value }, purifier.sensitivity ?? 'Unknown', value)
+      } /> : null}
     </div>
   );
 }
@@ -343,9 +378,9 @@ function AirGradientControls({ device, review }: { device: IndoorState['sensors'
     options: string[],
     supported: boolean,
     type: 'AIRGRADIENT_SET_DISPLAY_TEMPERATURE_UNIT' | 'AIRGRADIENT_SET_PM_STANDARD' | 'AIRGRADIENT_SET_LED_MODE',
-  ) => supported ? <label>{label}<select disabled={disabled} value={value ?? ''} onChange={(event) =>
-    make({ type, target: 'airgradient_living_room', option: event.target.value }, value ?? 'Unknown', event.target.value)
-  }><option value="" disabled>Choose</option>{options.map((option) => <option key={option} value={option}>{option.replaceAll('_', ' ')}</option>)}</select></label> : null;
+  ) => supported ? <OptionButtonGroup label={label} options={options} value={value} disabled={disabled} format={(option) => option.replaceAll('_', ' ')} onSelect={(option) =>
+    make({ type, target: 'airgradient_living_room', option }, value ?? 'Unknown', option)
+  } /> : null;
   const controls = [
     numberControl('Display brightness', device.settings.displayBrightness, device.capabilities.displayBrightness, 'AIRGRADIENT_SET_DISPLAY_BRIGHTNESS'),
     numberControl('LED brightness', device.settings.ledBrightness, device.capabilities.ledBrightness, 'AIRGRADIENT_SET_LED_BRIGHTNESS'),

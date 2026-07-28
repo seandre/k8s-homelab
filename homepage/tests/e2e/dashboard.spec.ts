@@ -202,7 +202,9 @@ test('renders the responsive indoor dashboard and requires review before control
     axis.remove();
     return { fontSize, metricFontSize };
   })).toEqual({ fontSize: '9.92px', metricFontSize: '9.92px' });
-  await page.getByLabel('HVAC mode').selectOption('OFF');
+  const hvacModes = page.getByRole('group', { name: 'HVAC mode' });
+  await expect(hvacModes.getByRole('button', { name: 'HEAT_COOL' })).toHaveAttribute('aria-pressed', 'true');
+  await hvacModes.getByRole('button', { name: 'OFF' }).click();
   const review = page.getByRole('dialog', { name: 'Review device command' });
   await expect(review).toBeVisible();
   await expect(review.getByText('Living Room Nest')).toBeVisible();
@@ -210,12 +212,13 @@ test('renders the responsive indoor dashboard and requires review before control
   await expect(review.getByText('Google Nest cloud')).toBeVisible();
   await review.getByRole('button', { name: 'Confirm command' }).click();
   await expect(review).toBeHidden();
-  await expect(page.getByLabel('HVAC mode')).toHaveValue('HEAT_COOL');
+  await expect(hvacModes.getByRole('button', { name: 'HEAT_COOL' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(hvacModes.getByRole('button', { name: 'OFF' })).toHaveAttribute('aria-pressed', 'false');
 });
 
 test('supports indoor keyboard cancellation and has no serious accessibility violations', async ({ page }) => {
   await page.goto('/indoor');
-  await page.getByRole('button', { name: 'Review power off' }).first().focus();
+  await page.getByRole('group', { name: 'Power' }).first().getByRole('button', { name: 'Off' }).focus();
   await page.keyboard.press('Enter');
   const review = page.getByRole('dialog', { name: 'Review device command' });
   await expect(review).toBeVisible();

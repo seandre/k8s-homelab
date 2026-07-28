@@ -17,7 +17,9 @@ describe('indoor dashboard', () => {
     expect(markup).toContain('Loading history');
     for (const window of ['1h', '3h', '6h', '24h', '7d', '30d', 'Custom']) expect(markup).toContain(`>${window}<`);
     expect(markup).toContain('HVAC mode');
-    expect(markup).toContain('Review power off');
+    expect(markup).toContain('aria-label="Power"');
+    expect(markup).toContain('aria-label="HVAC mode"');
+    expect(markup).not.toContain('<select');
     for (const graph of ['AirGradient CO₂', 'AirGradient particulate matter', 'AirGradient temperature', 'AirGradient humidity', 'AirGradient TVOC index', 'AirGradient NOx index']) {
       expect(markup).toContain(`NO DATA · ${graph}`);
     }
@@ -42,7 +44,7 @@ describe('indoor dashboard', () => {
     const bootstrap = { ...healthyBootstrapFixture, indoor: unsupportedIndoorFixture };
     const markup = renderToStaticMarkup(<IndoorScreen bootstrap={bootstrap} />);
     expect(markup).not.toContain('HVAC mode');
-    expect(markup).not.toContain('Review power');
+    expect(markup).not.toContain('aria-label="Power"');
     expect(markup).not.toContain('Sensitivity');
     expect(markup).not.toContain('Display brightness');
     expect(markup).not.toContain('LED mode');
