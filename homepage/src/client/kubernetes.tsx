@@ -1,5 +1,5 @@
 import React from 'react';
-import { DotGraph, Metric, Panel } from './components.js';
+import { DotGraph, Metric, MirroredTrafficGraph, Panel } from './components.js';
 import { bytesToGiB, buildOverviewModel } from './overview.js';
 import { healthyBootstrapFixture } from '../shared/fixtures.js';
 import type { Bootstrap, Host, TimeSeries } from '../shared/contracts.js';
@@ -24,7 +24,7 @@ function KubernetesNodeGraphs({ node, timeSeries }: { node: Host; timeSeries: Ti
     <DotGraph label="CPU" values={seriesValues(timeSeries, `${node.name} CPU`, node.cpuPercent)} unit="%" tone="cpu" height={4} />
     <DotGraph label="MEMORY" values={seriesValues(timeSeries, `${node.name} MEMORY`, node.memoryPercent)} unit="%" tone="memory" height={4} />
     {diskHistory ? <DotGraph label="DISK" values={seriesValues(timeSeries, `${node.name} DISK`, node.diskTotalBytes && node.diskUsedBytes !== null ? node.diskUsedBytes / node.diskTotalBytes * 100 : null)} unit="%" tone="disk" height={4} /> : null}
-    {rxHistory || txHistory ? <div className="k8s-network-graphs">{rxHistory ? <DotGraph label="DOWN" values={seriesValues(timeSeries, `${node.name} RX`, node.networkIngressBitsPerSecond === null ? null : node.networkIngressBitsPerSecond / 1_000_000)} unit="Mb/s" tone="download" height={2} /> : null}{txHistory ? <DotGraph label="UP" values={seriesValues(timeSeries, `${node.name} TX`, node.networkEgressBitsPerSecond === null ? null : node.networkEgressBitsPerSecond / 1_000_000)} unit="Mb/s" tone="upload" height={2} /> : null}</div> : null}
+    {rxHistory || txHistory ? <div className="k8s-network-graphs"><MirroredTrafficGraph upload={txHistory ? seriesValues(timeSeries, `${node.name} TX`, node.networkEgressBitsPerSecond === null ? null : node.networkEgressBitsPerSecond / 1_000_000) : []} download={rxHistory ? seriesValues(timeSeries, `${node.name} RX`, node.networkIngressBitsPerSecond === null ? null : node.networkIngressBitsPerSecond / 1_000_000) : []} unit="Mb/s" height={3} /></div> : null}
   </div>;
 }
 

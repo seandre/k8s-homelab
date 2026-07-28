@@ -30,9 +30,10 @@ describe('Kubernetes fixture views', () => {
     ];
     const html = renderToStaticMarkup(<KubernetesScreen bootstrap={bootstrap} />);
     expect(html).toContain('DISK: 44%');
-    expect(html).toContain('DOWN: 12Mb/s');
-    expect(html).toContain('UP: 5Mb/s');
-    expect(html.match(/dot-matrix-fixed/g)).toHaveLength(11);
+    expect(html).toContain('DOWNLOAD 12Mb/s');
+    expect(html).toContain('UPLOAD 5Mb/s');
+    expect(html.match(/dot-matrix-fixed/g)).toHaveLength(10);
+    expect(html).toContain('Download: 12Mb/s, above midline; upload: 5Mb/s, below midline');
   });
 
   it('renders the future OKD state as neutral, not as an error', () => {

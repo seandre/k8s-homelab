@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Host, TimeSeries } from '../shared/contracts.js';
-import { BrailleCells, DotGraph, Metric, Panel } from './components.js';
+import { BrailleCells, DotGraph, Metric, MirroredTrafficGraph, Panel } from './components.js';
 import { toBrailleGraphRows } from './graph.js';
 import { bytesToGiB, bytesToTiB } from './overview.js';
 
@@ -78,7 +78,7 @@ export function ProxmoxPanel({ host, expanded, onExpand, timeSeries = [] }: { ho
       <div className="pve-resource-grid">
         <section className="pve-resource memory-resource"><h3>MEMORY</h3><DotGraph label="USED" values={seriesValues(timeSeries, `${host.name} MEMORY`, memory)} unit="%" tone="memory" height={2} /><p><b>{bytesToGiB(host.memoryUsedBytes)} GiB</b> used / {bytesToGiB(host.memoryTotalBytes)} GiB</p><p>{host.memoryTotalBytes === null || host.memoryUsedBytes === null ? '—' : bytesToGiB(host.memoryTotalBytes - host.memoryUsedBytes)} GiB available</p></section>
         <section className="pve-resource disk-resource"><h3>DISKS</h3><DotGraph label="VM DATA" values={seriesValues(timeSeries, `${host.name} DISK`, disk)} unit="%" tone="disk" height={2} /><p><b>{bytesToTiB(host.diskUsedBytes)} TiB</b> used / {bytesToTiB(host.diskTotalBytes)} TiB</p><p>I/O WAIT <b>{host.diskIoPercent ?? '—'}%</b></p></section>
-        <section className="pve-resource network-resource"><h3>NETWORK</h3><DotGraph label="DOWN" values={downloadHistory} unit="Mb/s" tone="download" height={1} /><DotGraph label="UP" values={uploadHistory} unit="Mb/s" tone="upload" height={1} /><p>MAX RX <b>{maxDownload ?? 'N/S'}{maxDownload === null ? '' : ' Mb/s'}</b> · MAX TX <b>{maxUpload ?? 'N/S'}{maxUpload === null ? '' : ' Mb/s'}</b></p><p>TOTAL TRANSFER <b>{byteCountLabel(host.networkTotalBytes)}</b></p></section>
+        <section className="pve-resource network-resource"><h3>NETWORK</h3><MirroredTrafficGraph upload={uploadHistory} download={downloadHistory} unit="Mb/s" height={3} /><p>MAX RX <b>{maxDownload ?? 'N/S'}{maxDownload === null ? '' : ' Mb/s'}</b> · MAX TX <b>{maxUpload ?? 'N/S'}{maxUpload === null ? '' : ' Mb/s'}</b></p><p>TOTAL TRANSFER <b>{byteCountLabel(host.networkTotalBytes)}</b></p></section>
       </div>
       {expanded ? <ProxmoxDetail host={host} timeSeries={timeSeries} /> : null}
     </Panel>

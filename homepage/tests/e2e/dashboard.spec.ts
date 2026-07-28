@@ -406,6 +406,16 @@ test('uses fixed-pitch dot matrices for resource graphs on every telemetry page'
   await expect(page.locator('.traffic-graph .braille-cell')).toHaveCount(0);
 });
 
+test('uses mirrored midline traffic graphs on every Proxmox card', async ({ page }) => {
+  for (const route of ['/', '/compute']) {
+    await page.goto(route);
+    const cards = page.locator('.pve-card');
+    await expect(cards).toHaveCount(2);
+    await expect(page.locator('.pve-card .network-resource .traffic-matrix-fixed')).toHaveCount(2);
+    await expect(page.locator('.pve-card .network-resource .dot-graph')).toHaveCount(0);
+  }
+});
+
 test('renders network traffic as dot bars growing outward from the midline', async ({ page }) => {
   const bootstrap = structuredClone(healthyBootstrapFixture);
   const baseSeries = bootstrap.timeSeries[0]!;

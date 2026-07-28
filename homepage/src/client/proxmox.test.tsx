@@ -28,7 +28,9 @@ describe('Proxmox drill-down', () => {
     expect(markup).toContain('dot-matrix');
     expect(markup).toContain('dot-matrix-fixed');
     expect(markup).toContain('dot-graph-fill-width');
-    expect(markup.match(/dot-matrix-fixed/g)).toHaveLength(5);
+    expect(markup.match(/dot-matrix-fixed/g)).toHaveLength(4);
+    expect(markup).toContain('traffic-matrix-fixed');
+    expect(markup).toContain('Download: 120Mb/s, above midline; upload: 80Mb/s, below midline');
     expect(markup).toContain('4 historical samples');
     expect(markup).toContain('core-history-low');
     expect(markup).not.toContain('core-total');
