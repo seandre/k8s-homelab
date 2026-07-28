@@ -9,11 +9,11 @@ procedure. It applies only to
 `.github/workflows/homepage-image.yaml`; other image workflows remain unchanged
 until this approach is proven.
 
-Status: **IN PROGRESS**. WF-000 defines the work. WF-001 is complete only after
-the optimized workflow is merged and its first production run passes every
-functional check. WF-002 is complete only after five successful warm-cache
-`main` runs meet the performance target and the production evidence table is
-filled. Do not infer completion from an image build alone.
+Status: **IN PROGRESS**. WF-000 and WF-001 are complete. WF-002 is complete
+only after five successful warm-cache `main` runs meet the performance target.
+The first optimized production run passed every functional check but used the
+new BuildKit cache scope for the first time, so it is recorded separately and
+does not count toward the five-run warm-cache median.
 
 ## Baseline and objective
 
@@ -172,8 +172,8 @@ direct `kubectl apply`, or a self-hosted runner.
 
 | Package | State | Completion condition |
 |---|---|---|
-| WF-000 — Publish controlling plan | IN PROGRESS | This page and its documentation-order, landing-page, sidebar, and architecture-decision links are published; the documentation workflow succeeds without including unrelated worktree edits |
-| WF-001 — Parallelize verification and build once | PENDING | The four-job workflow contract is merged; local validation passes; the first optimized `main` run proves parallel jobs, one build, exact-digest scan and pinning, attestations, and no bot-build loop |
+| WF-000 — Publish controlling plan | **COMPLETE** | Plan commit [`8722c5d`](https://github.com/seandre/k8s-homelab/commit/8722c5d09f26a504900caa1cdfd28ab251cd45df), successful [documentation run `30329079546`](https://github.com/seandre/k8s-homelab/actions/runs/30329079546), and isolated docs-image promotion `9938945`; unrelated worktree edits were not included |
+| WF-001 — Parallelize verification and build once | **COMPLETE** | Workflow commit [`394ec33`](https://github.com/seandre/k8s-homelab/commit/394ec3311c1abdcc7b45e9cc73b809171bee491b), successful [first optimized run `30329328834`](https://github.com/seandre/k8s-homelab/actions/runs/30329328834), and gated Deployment promotion [`c309422`](https://github.com/seandre/k8s-homelab/commit/c309422764c8f7b10c777c19dce0ea690e029ba7) |
 | WF-002 — Production acceptance and closeout | PENDING | Argo CD is Synced/Healthy on the pinned digest and five warm-cache `main` runs have a median duration at or below 120 seconds |
 
 ## Production acceptance evidence
@@ -184,13 +184,25 @@ that proves it.
 
 | Check | Required evidence | Result |
 |---|---|---|
-| Parallel execution | First optimized run shows overlapping `quality` and `container-main` timestamps | PENDING |
-| Single build | The same run contains exactly one main-branch BuildKit build | PENDING |
-| Exact digest | Trivy input, `container-main` output, deployment commit, and manifest contain the same OCI digest | PENDING |
-| Supply-chain attestations | GHCR/referrers evidence shows an SBOM and maximum-mode provenance for that digest | PENDING |
-| No build loop | The manifest-only bot commit does not start the Homepage image workflow | PENDING |
-| GitOps health | Argo CD reports `Synced / Healthy` and the running Deployment image ID/reference resolves to that digest | PENDING |
-| Rollback readiness | The prior digest-pinned reference is recorded and can be restored with one Git revert or manifest edit | PENDING |
+| Parallel execution | First optimized run shows overlapping `quality` and `container-main` timestamps | **PASS** — [run `30329328834`](https://github.com/seandre/k8s-homelab/actions/runs/30329328834): both jobs started at `2026-07-28T04:39:04Z` |
+| Single build | The same run contains exactly one main-branch BuildKit build | **PASS** — `container-main` contained one `Build and push the immutable image once` step; `container-pr` was skipped on the `main` push |
+| Exact digest | Trivy input, `container-main` output, deployment commit, and manifest contain the same OCI digest | **PASS** — the exact-digest Trivy step succeeded and [`c309422`](https://github.com/seandre/k8s-homelab/commit/c309422764c8f7b10c777c19dce0ea690e029ba7) pinned the exported OCI digest `sha256:01db6b8e3b4466fa60927c1197528e7c8e6ebbc9c5aa4e605705be5ed1435a0b` |
+| Supply-chain attestations | GHCR/referrers evidence shows an SBOM and maximum-mode provenance for that digest | **PASS** — GHCR reports an OCI index at the deployed digest and attestation manifest `sha256:9adb2a997fc2e39c736a68e5b574eac6b1fccb9d68aa38a9313c812eca7d5a17` with SPDX and SLSA provenance layers; the [workflow](../../.github/workflows/homepage-image.yaml) requests `provenance: mode=max` |
+| No build loop | The manifest-only bot commit does not start the Homepage image workflow | **PASS** — the post-promotion run list contains the `394ec33` source run and no run for bot commit `c309422` |
+| GitOps health | Argo CD reports `Synced / Healthy` and the running Deployment image ID/reference resolves to that digest | **PASS** — at `2026-07-28T04:45:49Z`, `homelab-apps` was `Synced / Healthy` at `c309422`; the ready pod's image and runtime image ID both resolved to the deployed digest |
+| Rollback readiness | The prior digest-pinned reference is recorded and can be restored with one Git revert or manifest edit | **PASS** — the parent of [`c309422`](https://github.com/seandre/k8s-homelab/commit/c309422764c8f7b10c777c19dce0ea690e029ba7) records prior reference `sha-8597793@sha256:c36cb687b32b2c6a7573fc63bc808e06593c1123f11027f856e80e115efebbd0` |
+
+### First optimized functional run
+
+[Run `30329328834`](https://github.com/seandre/k8s-homelab/actions/runs/30329328834)
+was created at `2026-07-28T04:38:55Z` and completed successfully at
+`2026-07-28T04:40:34Z`, an end-to-end duration of **99 seconds**. `quality`
+completed at `04:40:23Z`, `container-main` at `04:40:01Z`, and the gated
+`deploy` job ran from `04:40:25Z` through `04:40:33Z`.
+
+This run created the new `homepage-container-main` BuildKit cache scope. Treat
+it as cold-cache functional evidence and do not include it in the five-run
+warm-cache acceptance median.
 
 ### Five-run timing record
 
