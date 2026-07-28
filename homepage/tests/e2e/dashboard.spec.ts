@@ -380,6 +380,8 @@ for (const viewport of [{ name: 'mobile', width: 320, height: 900 }, { name: 'ta
     await page.goto('/kubernetes');
     const nodeGraphs = page.locator('.k8s-node-graph-grid .dot-graph-trace');
     await expect(nodeGraphs).toHaveCount(6);
+    await expect(page.locator('.k8s-node-graph-grid .dot-graph-trace .dot-matrix-fixed')).toHaveCount(6);
+    await expect(page.locator('.k8s-node-graph-grid .braille-cell')).toHaveCount(0);
     const dimensions = await nodeGraphs.evaluateAll((graphs) => graphs.map((graph) => {
       const bounds = graph.getBoundingClientRect();
       return { width: bounds.width, height: bounds.height };
@@ -388,6 +390,20 @@ for (const viewport of [{ name: 'mobile', width: 320, height: 900 }, { name: 'ta
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 }
+
+test('uses fixed-pitch dot matrices for resource graphs on every telemetry page', async ({ page }) => {
+  for (const route of ['/', '/compute', '/kubernetes', '/network']) {
+    await page.goto(route);
+    const resourceGraphs = page.locator('.dot-graph');
+    const graphCount = await resourceGraphs.count();
+    expect(graphCount, route).toBeGreaterThan(0);
+    await expect(page.locator('.dot-graph .dot-matrix-fixed')).toHaveCount(graphCount);
+    await expect(page.locator('.dot-graph .braille-cell')).toHaveCount(0);
+  }
+
+  await expect(page.locator('.traffic-graph .traffic-matrix-fixed')).toHaveCount(1);
+  await expect(page.locator('.traffic-graph .braille-cell')).toHaveCount(0);
+});
 
 for (const viewport of [
   { name: 'mobile', width: 320, height: 900, columns: 1 },

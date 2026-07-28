@@ -28,6 +28,7 @@ describe('Proxmox drill-down', () => {
     expect(markup).toContain('dot-matrix');
     expect(markup).toContain('dot-matrix-fixed');
     expect(markup).toContain('dot-graph-fill-width');
+    expect(markup.match(/dot-matrix-fixed/g)).toHaveLength(5);
     expect(markup).toContain('4 historical samples');
     expect(markup).toContain('core-history-low');
     expect(markup).not.toContain('core-total');

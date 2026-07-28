@@ -12,6 +12,9 @@ describe('Network fixture view', () => {
     expect(markup).toContain('TOTAL DRAW');
     expect(markup).toContain('143');
     expect(markup).toContain('View PVE outlet draw');
+    expect(markup.match(/dot-matrix-fixed/g)).toHaveLength(3);
+    expect(markup).toContain('traffic-matrix-fixed');
+    expect(markup).not.toContain('braille-cell');
     expect(markup).toContain('NOT PROVISIONED');
     expect(markup).not.toContain('Run speed test');
   });

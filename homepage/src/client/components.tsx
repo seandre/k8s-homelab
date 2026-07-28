@@ -1,6 +1,5 @@
 import React, { useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import type { Freshness, Severity, TimeSeries } from '../shared/contracts.js';
-import { toBrailleGraphRows, toMirroredBrailleGraphRows } from './graph.js';
 
 export function StateBadge({ severity, label = severity }: { severity: Severity; label?: string }) {
   return <span className={`state state-${severity.toLowerCase()}`}>{label}</span>;
@@ -123,9 +122,13 @@ function scaleValuesToWidth(values: number[], sampleCount: number) {
   });
 }
 
-function FixedDotMatrix({ values }: { values: number[] }) {
+const dotPitch = 3;
+const dotRadius = 0.55;
+const historyColumns = 640;
+
+function useMeasuredGraphSize(initialHeight: number) {
   const svg = useRef<SVGSVGElement>(null);
-  const [size, setSize] = useState({ width: 416, height: 76 });
+  const [size, setSize] = useState({ width: 416, height: initialHeight });
   useEffect(() => {
     const container = svg.current?.parentElement;
     if (!container) return;
@@ -138,12 +141,18 @@ function FixedDotMatrix({ values }: { values: number[] }) {
     observer.observe(container);
     return () => observer.disconnect();
   }, []);
-  const pitch = 3;
-  const masterColumns = 240;
-  const visibleColumns = Math.max(1, Math.floor(size.width / pitch));
-  const rows = Math.max(1, Math.floor(size.height / pitch));
-  const graphValues = scaleValuesToWidth(values, masterColumns).slice(-visibleColumns);
-  const radius = 0.55;
+  return { svg, size };
+}
+
+function visibleGraphValues(values: number[], width: number) {
+  const visibleColumns = Math.max(1, Math.floor(width / dotPitch));
+  return scaleValuesToWidth(values, Math.max(historyColumns, visibleColumns)).slice(-visibleColumns);
+}
+
+function FixedDotMatrix({ values }: { values: number[] }) {
+  const { svg, size } = useMeasuredGraphSize(76);
+  const rows = Math.max(1, Math.floor(size.height / dotPitch));
+  const graphValues = visibleGraphValues(values, size.width);
   return (
     <svg ref={svg} className="dot-matrix dot-matrix-fixed" viewBox={`0 0 ${size.width} ${size.height}`} preserveAspectRatio="none">
       {graphValues.map((value, column) => {
@@ -151,42 +160,57 @@ function FixedDotMatrix({ values }: { values: number[] }) {
         return <g className="dot-matrix-column" key={column}>{Array.from({ length: filledRows }, (_, index) => {
           const level = index / rows;
           const levelClass = level >= 0.66 ? 'high' : level >= 0.33 ? 'medium' : 'low';
-          const x = size.width - ((graphValues.length - column - 0.5) * pitch);
-          return <circle className={`dot-matrix-level-${levelClass}`} cx={x} cy={size.height - ((index + 0.5) * pitch)} r={radius} key={index} />;
+          const x = size.width - ((graphValues.length - column - 0.5) * dotPitch);
+          return <circle className={`dot-matrix-level-${levelClass}`} cx={x} cy={size.height - ((index + 0.5) * dotPitch)} r={dotRadius} key={index} />;
         })}</g>;
       })}
     </svg>
   );
 }
 
-export function DotGraph({ label, values, unit, tone = 'cpu', height = 2, width = 64, fillWidth = false }: { label: string; values: number[]; unit: string; tone?: 'cpu' | 'memory' | 'disk' | 'download' | 'upload'; height?: number; width?: number; fillWidth?: boolean }) {
+export function DotGraph({ label, values, unit, tone = 'cpu', height = 2 }: { label: string; values: number[]; unit: string; tone?: 'cpu' | 'memory' | 'disk' | 'download' | 'upload'; height?: number }) {
   const hasSamples = values.length > 0;
-  const rows = hasSamples && !fillWidth ? toBrailleGraphRows(values, width, height) : Array.from({ length: height }, () => '\u2800'.repeat(width));
-  const dotRows = height * 4;
   const current = hasSamples ? `${values.at(-1)}${unit}` : 'N/S';
-  const graphDescription = fillWidth ? 'fixed-pitch dot matrix with older history clipped on the left' : `${dotRows} vertical Braille dot levels`;
-  return <div className={`dot-graph dot-graph-${tone}${fillWidth ? ' dot-graph-fill-width' : ''}`} role="img" aria-label={`${label}: ${current}; ${values.length} samples; ${graphDescription}`}><div className="dot-graph-trace" style={{ '--graph-columns': width, '--graph-rows': height } as CSSProperties} aria-hidden="true">{fillWidth ? <FixedDotMatrix values={values} /> : rows.map((row, index) => <span className="dot-graph-row" key={index}><BrailleCells row={row} /></span>)}</div><small>{label} {current}</small></div>;
+  return <div className={`dot-graph dot-graph-${tone} dot-graph-fill-width`} role="img" aria-label={`${label}: ${current}; ${values.length} samples; fixed-pitch dot matrix with older history clipped on the left`}><div className="dot-graph-trace" style={{ '--graph-rows': height } as CSSProperties} aria-hidden="true"><FixedDotMatrix values={values} /></div><small>{label} {current}</small></div>;
 }
 
-export function MirroredTrafficGraph({ upload, download, unit, height = 3, width = 64 }: { upload: number[]; download: number[]; unit: string; height?: number; width?: number }) {
-  const hasSamples = upload.length > 0 || download.length > 0;
-  const activeCells = Math.min(width, Math.max(1, Math.ceil(Math.max(upload.length, download.length) / 2)));
-  const graph = toMirroredBrailleGraphRows(upload, download, activeCells, height);
-  const pad = (row: string) => `${'\u00a0'.repeat(width - activeCells)}${row}`;
-  const empty = '\u00a0'.repeat(width);
-  const uploadRows = hasSamples ? graph.upload.map(pad) : Array.from({ length: height }, () => empty);
-  const downloadRows = hasSamples ? graph.download.map(pad) : Array.from({ length: height }, () => empty);
-  const baseline = '⠤'.repeat(width);
+function FixedMirroredDotMatrix({ upload, download }: { upload: number[]; download: number[] }) {
+  const { svg, size } = useMeasuredGraphSize(58);
+  const halfHeight = size.height / 2;
+  const rows = Math.max(1, Math.floor((halfHeight - (dotPitch / 2)) / dotPitch));
+  const ceiling = Math.max(...upload, ...download, 1);
+  const normalize = (values: number[]) => values.map((value) => Math.min(100, Math.max(0, value / ceiling * 100)));
+  const uploadValues = visibleGraphValues(normalize(upload), size.width);
+  const downloadValues = visibleGraphValues(normalize(download), size.width);
+  const columnCount = Math.max(uploadValues.length, downloadValues.length);
+  const xForColumn = (column: number) => size.width - ((columnCount - column - 0.5) * dotPitch);
+  const dots = (values: number[], direction: 'upload' | 'download') => values.map((value, column) => {
+    const offset = columnCount - values.length;
+    const filledRows = Math.ceil(value / 100 * rows);
+    return <g className={`traffic-matrix-column traffic-matrix-column-${direction}`} key={`${direction}-${column}`}>{Array.from({ length: filledRows }, (_, index) => {
+      const level = index / rows;
+      const levelClass = level >= 0.66 ? 'high' : level >= 0.33 ? 'medium' : 'low';
+      const y = direction === 'upload'
+        ? halfHeight - ((index + 1) * dotPitch)
+        : halfHeight + ((index + 1) * dotPitch);
+      return <circle className={`traffic-matrix-${direction}-${levelClass}`} cx={xForColumn(column + offset)} cy={y} r={dotRadius} key={index} />;
+    })}</g>;
+  });
+
+  return <svg ref={svg} className="dot-matrix dot-matrix-fixed traffic-matrix-fixed" viewBox={`0 0 ${size.width} ${size.height}`} preserveAspectRatio="none">
+    {Array.from({ length: Math.max(1, Math.floor(size.width / dotPitch)) }, (_, column) => <circle className="traffic-matrix-baseline-dot" cx={size.width - ((column + 0.5) * dotPitch)} cy={halfHeight} r={0.35} key={column} />)}
+    {dots(uploadValues, 'upload')}
+    {dots(downloadValues, 'download')}
+  </svg>;
+}
+
+export function MirroredTrafficGraph({ upload, download, unit, height = 3 }: { upload: number[]; download: number[]; unit: string; height?: number }) {
   const upCurrent = upload.length > 0 ? `${upload.at(-1)}${unit}` : 'N/S';
   const downCurrent = download.length > 0 ? `${download.at(-1)}${unit}` : 'N/S';
-  const summary = `Upload: ${upCurrent}, above baseline; download: ${downCurrent}, below baseline; ${Math.max(upload.length, download.length)} samples.`;
+  const summary = `Upload: ${upCurrent}, above baseline; download: ${downCurrent}, below baseline; ${Math.max(upload.length, download.length)} samples; fixed-pitch dot matrix with older history clipped on the left.`;
 
   return <div className="traffic-graph" role="img" aria-label={summary}>
-    <div className="traffic-graph-trace" style={{ '--graph-columns': width } as CSSProperties} aria-hidden="true">
-      <div className="traffic-graph-upload">{uploadRows.map((row, index) => <span className="traffic-graph-row" key={index}>{row}</span>)}</div>
-      <span className="traffic-graph-baseline">{baseline}</span>
-      <div className="traffic-graph-download">{downloadRows.map((row, index) => <span className="traffic-graph-row" key={index}>{row}</span>)}</div>
-    </div>
+    <div className="traffic-graph-trace" style={{ '--traffic-rows': height } as CSSProperties} aria-hidden="true"><FixedMirroredDotMatrix upload={upload} download={download} /></div>
     <small><span className="traffic-upload-label">UP {upCurrent}</span><span className="traffic-download-label">DOWN {downCurrent}</span></small>
   </div>;
 }

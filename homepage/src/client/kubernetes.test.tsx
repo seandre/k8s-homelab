@@ -12,8 +12,10 @@ describe('Kubernetes fixture views', () => {
     expect(html).toContain('koreader-sync');
     expect(html).toContain('https://argocd.lab.seandre.dev');
     expect(html.match(/class="dot-graph /g)).toHaveLength(8);
-    expect(html).toContain('CPU: 36%; 1 samples; 16 vertical Braille dot levels');
+    expect(html).toContain('CPU: 36%; 1 samples; fixed-pitch dot matrix with older history clipped on the left');
     expect(html).toContain('MEMORY: 86%; 1 samples');
+    expect(html.match(/dot-matrix-fixed/g)).toHaveLength(8);
+    expect(html).not.toContain('braille-cell');
     expect(html).toContain('READY');
   });
 
@@ -30,6 +32,7 @@ describe('Kubernetes fixture views', () => {
     expect(html).toContain('DISK: 44%');
     expect(html).toContain('DOWN: 12Mb/s');
     expect(html).toContain('UP: 5Mb/s');
+    expect(html.match(/dot-matrix-fixed/g)).toHaveLength(11);
   });
 
   it('renders the future OKD state as neutral, not as an error', () => {
