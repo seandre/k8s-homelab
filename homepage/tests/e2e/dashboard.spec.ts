@@ -89,6 +89,7 @@ test('lists active alerts and navigates directly to their closest panel', async 
 test('renders the responsive indoor dashboard and requires review before controls', async ({ page }) => {
   test.setTimeout(60_000);
   let historyRequestCount = 0;
+  const indoorCommands: unknown[] = [];
   const customQueries: URL[] = [];
   await page.route(/\/api\/v1\/history\?/, async (route) => {
     historyRequestCount += 1;
@@ -118,11 +119,11 @@ test('renders the responsive indoor dashboard and requires review before control
   await page.route('**/api/v1/indoor/actions', async (route) => {
     const body = route.request().postDataJSON();
     expect(body.confirmed).toBe(true);
-    expect(body.command).toEqual({ type: 'NEST_SET_HVAC_MODE', target: 'nest_living_room', mode: 'OFF' });
+    indoorCommands.push(body.command);
     await route.fulfill({
       status: 202,
       contentType: 'application/json',
-      body: JSON.stringify({ data: { actionId: crypto.randomUUID(), target: 'nest_living_room', status: 'PENDING', acceptedAt: new Date().toISOString() } }),
+      body: JSON.stringify({ data: { actionId: crypto.randomUUID(), target: body.command.target, status: 'PENDING', acceptedAt: new Date().toISOString() } }),
     });
   });
   await page.goto('/indoor');
@@ -131,6 +132,13 @@ test('renders the responsive indoor dashboard and requires review before control
   await expect(page.getByRole('heading', { name: 'Living Room Aranet' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Living Room Coway' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Bedroom Coway' })).toBeVisible();
+  await page.getByRole('button', { name: 'Ventilate', exact: true }).click();
+  const ventilationReview = page.getByRole('dialog', { name: 'Confirm change' });
+  await expect(ventilationReview).toContainText('Both Coways Rapid + Nest fan for 30 minutes');
+  await expect(ventilationReview).toContainText('Nest + Coway clouds');
+  await ventilationReview.getByRole('button', { name: 'Save' }).click();
+  await expect(ventilationReview).toBeHidden();
+  expect(indoorCommands).toContainEqual({ type: 'VENTILATE', target: 'indoor_environment', durationMinutes: 30 });
   await expect.poll(() => historyRequestCount).toBe(7);
   const co2Graph = page.getByRole('img', { name: /CO₂, 1h/ });
   await expect(co2Graph).toBeVisible();
@@ -216,6 +224,7 @@ test('renders the responsive indoor dashboard and requires review before control
   await expect(review.getByText(/Nest cloud · updates after confirmation/)).toBeVisible();
   await review.getByRole('button', { name: 'Save' }).click();
   await expect(review).toBeHidden();
+  expect(indoorCommands).toContainEqual({ type: 'NEST_SET_HVAC_MODE', target: 'nest_living_room', mode: 'OFF' });
   await expect(hvacButton).toContainText('HEAT_COOL');
 
   const sensitivity = page.getByRole('group', { name: 'Sensitivity' }).first();

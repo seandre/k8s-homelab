@@ -10,6 +10,7 @@ describe('indoor dashboard', () => {
   it('renders normalized readings, both purifiers, history windows, and capability controls', () => {
     const markup = renderToStaticMarkup(<IndoorScreen bootstrap={healthyBootstrapFixture} />);
     expect(markup).toContain('AirGradient + Nest');
+    expect(markup).toContain('>Ventilate<');
     expect(markup).toContain('Living Room Aranet');
     expect(markup).toContain('Living Room Coway');
     expect(markup).toContain('Bedroom Coway');
@@ -72,6 +73,8 @@ describe('indoor dashboard', () => {
     expect(markup).not.toContain('Sensitivity');
     expect(markup).not.toContain('Display brightness');
     expect(markup).not.toContain('LED mode');
+    expect(markup).toContain('Ventilate');
+    expect(markup).toContain('ventilate-button" type="button" disabled');
     expect(markup).toContain('UNAVAILABLE');
   });
 

@@ -39,6 +39,8 @@ function service(command: IndoorCommand, mapping: HomeAssistantControlMap): Serv
   const legacy = () => mapping[command.target as 'nest_living_room' | 'coway_living_room' | 'coway_bedroom'];
   const airgradient = mapping.airgradient_living_room;
   switch (command.type) {
+    case 'VENTILATE':
+      throw new Error('Compound commands must be orchestrated by the indoor action gateway.');
     case 'NEST_SET_HVAC_MODE':
       return { domain: 'climate', service: 'set_hvac_mode', data: { entity_id: legacy().primary, hvac_mode: command.mode.toLowerCase() } };
     case 'NEST_SET_SETPOINT': {

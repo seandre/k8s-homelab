@@ -2,7 +2,7 @@ import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type {
   Bootstrap, IndoorActionAccepted, IndoorCommand, IndoorState, TimeSeries,
 } from '../shared/contracts.js';
-import { HistoryResponseSchema, IndoorActionAcceptedSchema } from '../shared/contracts.js';
+import { HistoryResponseSchema, IndoorActionAcceptedSchema, indoorVentilationStateVersion } from '../shared/contracts.js';
 import { Metric, Panel, StateBadge } from './components.js';
 import { computeHistoryDomain, nextHistoryRefreshDelay, smoothSvgPath, type HistoryScale } from './indoor-chart.js';
 
@@ -13,7 +13,7 @@ type HistorySelection =
   | { window: 'custom'; mode: 'relative'; durationMs: number }
   | { window: 'custom'; mode: 'exact'; start: string; end: string };
 type HistoryUpdateState = { status: 'LOADING' | 'CURRENT' | 'STALE'; updatedAt: string | null };
-type Review = { command: IndoorCommand; target: string; current: string; requested: string; dependency: 'NEST_CLOUD' | 'COWAY_CLOUD' | 'AIRGRADIENT_LOCAL'; stateVersion: string };
+type Review = { command: IndoorCommand; target: string; current: string; requested: string; dependency: 'NEST_CLOUD' | 'COWAY_CLOUD' | 'AIRGRADIENT_LOCAL' | 'MULTI_CLOUD'; stateVersion: string };
 type IndoorReading = IndoorState['sensors'][0]['readings']['temperature'];
 type ThermostatState = IndoorState['thermostats'][0];
 type PurifierState = IndoorState['purifiers'][number];
@@ -436,7 +436,7 @@ function ReviewDialog({ review, onClose, onSubmit, submitting, error }: { review
     <div className="help-overlay" role="dialog" aria-modal="true" aria-labelledby="indoor-review-title" onKeyDown={(event) => { if (event.key === 'Escape' && !submitting) onClose(); }}>
       <div className="help-card indoor-review-card">
         <div className="drawer-header"><h2 id="indoor-review-title">Confirm change</h2><button ref={close} type="button" onClick={onClose} disabled={submitting}>Cancel</button></div>
-        <p className="control-change-summary"><strong>{review.target}</strong><span>{review.current} → {review.requested}</span><small>{review.dependency === 'NEST_CLOUD' ? 'Nest cloud' : review.dependency === 'COWAY_CLOUD' ? 'Coway cloud' : 'AirGradient local'} · updates after confirmation</small></p>
+        <p className="control-change-summary"><strong>{review.target}</strong><span>{review.current} → {review.requested}</span><small>{review.dependency === 'NEST_CLOUD' ? 'Nest cloud' : review.dependency === 'COWAY_CLOUD' ? 'Coway cloud' : review.dependency === 'MULTI_CLOUD' ? 'Nest + Coway clouds' : 'AirGradient local'} · updates after confirmation</small></p>
         {error ? <p className="action-error" role="alert">{error}</p> : null}
         <button className="confirm-action" type="button" onClick={onSubmit} disabled={submitting}>{submitting ? 'Saving…' : 'Save'}</button>
       </div>
@@ -462,6 +462,14 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
   const aranet = indoor.sensors[0];
   const airgradient = indoor.sensors[1];
   const thermostat = indoor.thermostats[0];
+  const ventilationPending = indoor.actions.some((action) => action.target === 'indoor_environment' && action.status === 'PENDING');
+  const ventilationAvailable = thermostat.sourceState === 'AVAILABLE'
+    && thermostat.capabilities.fanTimerMinutes.supported
+    && thermostat.capabilities.fanTimerMinutes.values.includes(0)
+    && thermostat.capabilities.fanTimerMinutes.values.some((minutes) => minutes > 0)
+    && indoor.purifiers.every((purifier) => purifier.sourceState === 'AVAILABLE'
+      && purifier.capabilities.presets.supported
+      && purifier.capabilities.presets.options.includes('RAPID'));
   const metrics = useMemo<HistoryMetric[]>(() => [
     { alias: 'airgradient_living_room.co2', label: 'AirGradient CO₂', thresholds: [{ value: 800, tone: 'yellow' }, { value: 1000, tone: 'red' }], scale: { fixedMin: 400, fixedMax: 1400, ticks: [400, 600, 800, 1000, 1200, 1400], digits: 0 } },
     { alias: 'airgradient_living_room.pm25', secondaryAlias: 'airgradient_living_room.pm10', secondaryLabel: 'PM10', label: 'AirGradient particulate matter', thresholds: [{ value: 5, tone: 'yellow' }, { value: 15, tone: 'red' }], scale: { minSpan: 20, hardMin: 0, digits: 0 } },
@@ -563,7 +571,14 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
   };
   return (
     <main className="dashboard indoor-dashboard" id="indoor">
-      <section className="hero-row"><div><span className="panel-eyebrow">INDOOR / HOME ASSISTANT</span><h1>Indoor environment</h1></div><div className="hero-state"><StateBadge severity={indoor.alerts.some((item) => item.severity === 'CRIT') ? 'CRIT' : indoor.alerts.length ? 'WARN' : 'OK'} label={`${indoor.alerts.length} active alert${indoor.alerts.length === 1 ? '' : 's'}`} /><span>Updated {bootstrap.generatedAt.slice(11, 19)} UTC</span></div></section>
+      <section className="hero-row"><div><span className="panel-eyebrow">INDOOR / HOME ASSISTANT</span><h1>Indoor environment</h1></div><div className="hero-state"><button className="ventilate-button" type="button" disabled={!ventilationAvailable || ventilationPending} onClick={() => setReview(requestReview(
+        { type: 'VENTILATE', target: 'indoor_environment', durationMinutes: 30 },
+        'Indoor environment',
+        `Nest fan ${thermostat.fanTimerEndsAt ? 'on' : 'off'}; Coways ${indoor.purifiers.map((purifier) => purifier.power ? `speed ${purifier.speed ?? 'unknown'}` : 'off').join(' / ')}`,
+        'Both Coways Rapid + Nest fan for 30 minutes',
+        'MULTI_CLOUD',
+        indoorVentilationStateVersion(indoor),
+      ))}>{ventilationPending ? 'Ventilating…' : 'Ventilate'}</button><StateBadge severity={indoor.alerts.some((item) => item.severity === 'CRIT') ? 'CRIT' : indoor.alerts.length ? 'WARN' : 'OK'} label={`${indoor.alerts.length} active alert${indoor.alerts.length === 1 ? '' : 's'}`} /><span>Updated {bootstrap.generatedAt.slice(11, 19)} UTC</span></div></section>
       {indoor.alerts.length ? <section className="indoor-alerts" aria-label="Indoor alerts">{indoor.alerts.map((alert) => <div key={alert.id}><StateBadge severity={alert.severity} /><strong>{alert.kind.replaceAll('_', ' ')}</strong><span>{alert.summary}</span></div>)}</section> : null}
       <section className="indoor-current-grid" id="indoor-current" aria-label="Current indoor readings">
         <Panel title="AirGradient + Nest" eyebrow="LIVING ROOM / LOCAL PRIMARY" severity={sourceSeverity(airgradient.sourceState)} freshness={panelFreshness(airgradient.readings.co2.metadata.freshness)}>

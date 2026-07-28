@@ -321,7 +321,7 @@ export const IndoorAlertSchema = z.object({
   severity: z.enum(['WARN', 'CRIT']), summary: z.string().max(240), startedAt: z.string().datetime({ offset: true }),
 }).strict();
 export const IndoorActionStatusSchema = z.object({
-  actionId: z.string().min(1), target: z.enum(['nest_living_room', 'coway_living_room', 'coway_bedroom', 'airgradient_living_room']),
+  actionId: z.string().min(1), target: z.enum(['nest_living_room', 'coway_living_room', 'coway_bedroom', 'airgradient_living_room', 'indoor_environment']),
   status: z.enum(['PENDING', 'SUCCEEDED', 'FAILED', 'TIMED_OUT']), acceptedAt: z.string().datetime({ offset: true }),
   resolvedAt: z.string().datetime({ offset: true }).nullable(), message: z.string().max(240).optional(),
 }).strict();
@@ -336,13 +336,14 @@ export const IndoorStateSchema = z.object({
 }).strict();
 export type IndoorState = z.infer<typeof IndoorStateSchema>;
 
-export const IndoorTargetAliasSchema = z.enum(['nest_living_room', 'coway_living_room', 'coway_bedroom', 'airgradient_living_room']);
+export const IndoorTargetAliasSchema = z.enum(['nest_living_room', 'coway_living_room', 'coway_bedroom', 'airgradient_living_room', 'indoor_environment']);
 const NestSetpointSchema = z.discriminatedUnion('shape', [
   z.object({ shape: z.literal('HEAT'), temperatureF: z.number().finite() }).strict(),
   z.object({ shape: z.literal('COOL'), temperatureF: z.number().finite() }).strict(),
   z.object({ shape: z.literal('RANGE'), heatTemperatureF: z.number().finite(), coolTemperatureF: z.number().finite() }).strict(),
 ]);
 export const IndoorCommandSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('VENTILATE'), target: z.literal('indoor_environment'), durationMinutes: z.literal(30) }).strict(),
   z.object({ type: z.literal('NEST_SET_HVAC_MODE'), target: z.literal('nest_living_room'), mode: z.enum(['OFF', 'HEAT', 'COOL', 'HEAT_COOL']) }).strict(),
   z.object({ type: z.literal('NEST_SET_SETPOINT'), target: z.literal('nest_living_room'), setpoint: NestSetpointSchema }).strict(),
   z.object({ type: z.literal('NEST_SET_FAN_TIMER'), target: z.literal('nest_living_room'), durationMinutes: z.number().int().nonnegative() }).strict(),
@@ -372,6 +373,13 @@ export const IndoorActionAcceptedSchema = z.object({
 export type IndoorCommand = z.infer<typeof IndoorCommandSchema>;
 export type IndoorActionRequest = z.infer<typeof IndoorActionRequestSchema>;
 export type IndoorActionAccepted = z.infer<typeof IndoorActionAcceptedSchema>;
+
+export function indoorVentilationStateVersion(indoor: IndoorState) {
+  return [
+    indoor.thermostats[0].stateVersion,
+    ...indoor.purifiers.map((purifier) => purifier.stateVersion),
+  ].join(':');
+}
 
 export const BootstrapSchema = z.object({
   schemaVersion: z.literal(4),

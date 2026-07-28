@@ -370,6 +370,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .indoor-alerts { display: grid; gap: 0.35rem; margin-bottom: 0.65rem; }
 .indoor-alerts > div, .indoor-action-status > div { display: flex; align-items: center; gap: 0.55rem; border: 1px solid var(--divider); border-left: 0.2rem solid var(--warn); padding: 0.45rem 0.55rem; font-size: 0.65rem; }
 .indoor-alerts strong { color: var(--title); }
+.ventilate-button { min-height: 2rem; border: 1px solid var(--focus); background: color-mix(in srgb, var(--focus) 18%, var(--surface)); color: var(--title); padding: 0.35rem 0.7rem; font: 700 0.62rem/1 var(--mono); cursor: pointer; }
+.ventilate-button:disabled { cursor: not-allowed; opacity: 0.5; }
 .device-state-line { display: flex; justify-content: space-between; gap: 0.6rem; margin-top: 0.65rem; border-top: 1px dotted var(--divider); padding-top: 0.5rem; color: var(--muted); font-size: 0.62rem; }
 .device-state-line strong { color: var(--title); }
 .indoor-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 0.45rem; margin-top: 0.65rem; }

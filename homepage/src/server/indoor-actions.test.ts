@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { healthyBootstrapFixture } from '../shared/fixtures.js';
+import { indoorVentilationStateVersion, type IndoorCommand } from '../shared/contracts.js';
 import { IndoorActionGateway, type ActionContext } from './indoor-actions.js';
 
 const context: ActionContext = {
@@ -123,5 +124,118 @@ describe('indoor action gateway', () => {
       idempotencyKey: '442ef0ef-f366-468e-a118-a10508fc2d5b',
       command: { type: 'AIRGRADIENT_SET_LED_MODE', target: 'airgradient_living_room', option: 'calibrate' },
     }, context)).toMatchObject({ ok: false, code: 'UNSUPPORTED_COMMAND' });
+  });
+
+  it('ventilates for 30 minutes, restores unchanged devices, and preserves per-device overrides', async () => {
+    let clock = Date.parse('2026-07-24T12:00:00Z');
+    let waits = 0;
+    const state = structuredClone(healthyBootstrapFixture);
+    const calls: IndoorCommand[] = [];
+    const audit = vi.fn();
+    const executor = {
+      execute: vi.fn(async (command: IndoorCommand) => {
+        calls.push(command);
+        if (command.type === 'NEST_SET_FAN_TIMER') {
+          state.indoor.thermostats[0].fanTimerEndsAt = command.durationMinutes > 0
+            ? new Date(clock + command.durationMinutes * 60_000).toISOString()
+            : null;
+          state.indoor.thermostats[0].stateVersion = `nest-${command.durationMinutes}`;
+        }
+        if (command.type === 'COWAY_SET_SPEED') {
+          const target = state.indoor.purifiers.find((purifier) => purifier.alias === command.target)!;
+          target.power = true;
+          target.preset = null;
+          target.speed = command.speed;
+          target.stateVersion = `${command.target}-speed-${command.speed}`;
+        }
+        if (command.type === 'COWAY_SET_PRESET') {
+          const target = state.indoor.purifiers.find((purifier) => purifier.alias === command.target)!;
+          target.preset = command.preset;
+          target.speed = command.preset === 'RAPID' ? 3 : 2;
+          target.stateVersion = `${command.target}-preset-${command.preset}`;
+        }
+        if (command.type === 'COWAY_SET_POWER') {
+          const target = state.indoor.purifiers.find((purifier) => purifier.alias === command.target)!;
+          target.power = command.power;
+          target.stateVersion = `${command.target}-power-${command.power}`;
+        }
+      }),
+    };
+    const gateway = new IndoorActionGateway(
+      () => state,
+      executor,
+      audit,
+      () => new Date(clock),
+      async (ms) => {
+        clock += ms;
+        waits += 1;
+        if (waits === 2) {
+          const bedroom = state.indoor.purifiers[1];
+          bedroom.speed = 1;
+          bedroom.preset = null;
+          bedroom.stateVersion = 'bedroom-manual-override';
+        }
+      },
+      1,
+      10,
+      undefined,
+      5,
+    );
+    const input = {
+      idempotencyKey: '25c24d27-eed3-4d09-b188-9cffc60c2cce',
+      expectedStateVersion: indoorVentilationStateVersion(state.indoor),
+      confirmed: true,
+      command: { type: 'VENTILATE', target: 'indoor_environment', durationMinutes: 30 },
+    } as const;
+
+    expect(await gateway.accept(input, context)).toMatchObject({
+      ok: true,
+      action: { target: 'indoor_environment', status: 'PENDING' },
+    });
+    await vi.waitFor(() => expect(gateway.statuses()[0]?.status).toBe('SUCCEEDED'));
+
+    expect(state.indoor.thermostats[0].fanTimerEndsAt).toBeNull();
+    expect(state.indoor.purifiers[0]).toMatchObject({ power: true, preset: 'AUTO', speed: 2 });
+    expect(state.indoor.purifiers[1]).toMatchObject({ power: true, preset: null, speed: 1 });
+    expect(calls).toContainEqual({ type: 'COWAY_SET_PRESET', target: 'coway_living_room', preset: 'RAPID' });
+    expect(calls).toContainEqual({ type: 'COWAY_SET_PRESET', target: 'coway_bedroom', preset: 'RAPID' });
+    expect(calls).not.toContainEqual({ type: 'COWAY_SET_PRESET', target: 'coway_bedroom', preset: 'AUTO' });
+    expect(gateway.statuses()[0]?.message).toContain('coway bedroom');
+    expect(audit).toHaveBeenCalledWith(expect.objectContaining({
+      target: 'indoor_environment',
+      command: 'VENTILATE',
+      overriddenTargets: ['coway_bedroom'],
+      result: 'SUCCEEDED',
+    }));
+  });
+
+  it('fails Ventilate closed unless all three controls are available and rejects a second run', async () => {
+    const unavailable = fixture();
+    unavailable.indoor.thermostats[0].sourceState = 'UNAVAILABLE';
+    const command = { type: 'VENTILATE', target: 'indoor_environment', durationMinutes: 30 } as const;
+    const input = {
+      idempotencyKey: '1161dd3d-bff4-4037-b9cb-bd8b7c111507',
+      expectedStateVersion: indoorVentilationStateVersion(unavailable.indoor),
+      confirmed: true,
+      command,
+    } as const;
+    const gateway = new IndoorActionGateway(() => unavailable, { execute: vi.fn(async () => {}) }, () => {});
+    expect(await gateway.accept(input, context)).toMatchObject({ ok: false, code: 'SOURCE_UNAVAILABLE' });
+
+    const available = structuredClone(healthyBootstrapFixture);
+    const busy = new IndoorActionGateway(
+      () => available,
+      { execute: vi.fn(async () => {}) },
+      () => {},
+      () => new Date('2026-07-24T12:00:00Z'),
+      () => new Promise<void>(() => {}),
+    );
+    const first = {
+      ...input,
+      idempotencyKey: 'a1871a48-ad65-4304-858b-78ad6d977f49',
+      expectedStateVersion: indoorVentilationStateVersion(available.indoor),
+    };
+    expect(await busy.accept(first, context)).toMatchObject({ ok: true });
+    expect(await busy.accept({ ...first, idempotencyKey: '149f4e21-e43f-44a0-9057-3929f484ddbe' }, context)).toMatchObject({ ok: false, code: 'TARGET_BUSY' });
   });
 });

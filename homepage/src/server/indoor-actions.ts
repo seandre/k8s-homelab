@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import {
-  IndoorActionAcceptedSchema, IndoorActionRequestSchema, IndoorActionStatusSchema, IndoorCommandSchema, type Bootstrap, type IndoorActionAccepted,
+  IndoorActionAcceptedSchema, IndoorActionRequestSchema, IndoorActionStatusSchema, IndoorCommandSchema, indoorVentilationStateVersion, type Bootstrap, type IndoorActionAccepted,
   type IndoorActionStatus, type IndoorCommand, type IndoorState,
 } from '../shared/contracts.js';
 
@@ -32,13 +32,29 @@ interface StoredAction {
   oldState: unknown;
   requestedState: unknown;
   expiresAt: number;
+  ventilation?: VentilationProgress;
 }
+const VentilationTargetSchema = z.enum(['nest_living_room', 'coway_living_room', 'coway_bedroom']);
+type VentilationTarget = z.infer<typeof VentilationTargetSchema>;
+const VentilationProgressSchema = z.object({
+  phase: z.enum(['STARTING', 'RUNNING', 'RESTORING']),
+  runUntil: z.number().int().nonnegative(),
+  changedTargets: z.array(VentilationTargetSchema),
+  activeStates: z.object({
+    nest_living_room: z.string().optional(),
+    coway_living_room: z.string().optional(),
+    coway_bedroom: z.string().optional(),
+  }).strict(),
+  overriddenTargets: z.array(VentilationTargetSchema),
+}).strict();
+type VentilationProgress = z.infer<typeof VentilationProgressSchema>;
 const StoredActionSchema = IndoorActionStatusSchema.extend({
   key: z.string().uuid(),
   command: IndoorCommandSchema,
   oldState: z.unknown(),
   requestedState: z.unknown(),
   expiresAt: z.number().int().positive(),
+  ventilation: VentilationProgressSchema.optional(),
 }).strict();
 type PersistedAction = z.infer<typeof StoredActionSchema>;
 
@@ -57,6 +73,7 @@ const SAFE_MESSAGE: Record<string, string> = {
   UNSUPPORTED_COMMAND: 'The target does not advertise this command or value.',
   TARGET_BUSY: 'The target already has the maximum number of pending actions.',
 };
+const VENTILATION_TARGETS = ['nest_living_room', 'coway_living_room', 'coway_bedroom'] as const;
 
 function reject(statusCode: number, code: keyof typeof SAFE_MESSAGE): ActionResult {
   return { ok: false, statusCode, code, message: SAFE_MESSAGE[code]! };
@@ -68,6 +85,7 @@ function inCidr(ip: string, prefix: string) {
 
 function requested(command: IndoorCommand): unknown {
   switch (command.type) {
+    case 'VENTILATE': return { cowayPreset: 'RAPID', nestFan: 'ON', durationMinutes: 30 };
     case 'NEST_SET_HVAC_MODE': return { hvacMode: command.mode };
     case 'NEST_SET_SETPOINT': return command.setpoint;
     case 'NEST_SET_FAN_TIMER': return { fanTimerMinutes: command.durationMinutes };
@@ -88,6 +106,12 @@ function requested(command: IndoorCommand): unknown {
 
 function oldState(indoor: IndoorState, command: IndoorCommand): unknown {
   switch (command.type) {
+    case 'VENTILATE': return {
+      nest_living_room: { fanTimerEndsAt: indoor.thermostats[0].fanTimerEndsAt },
+      ...Object.fromEntries(indoor.purifiers.map((purifier) => [purifier.alias, {
+        power: purifier.power, preset: purifier.preset, speed: purifier.speed,
+      }])),
+    };
     case 'NEST_SET_HVAC_MODE': return { hvacMode: indoor.thermostats[0].hvacMode };
     case 'NEST_SET_SETPOINT': return { heatSetpointF: indoor.thermostats[0].heatSetpointF, coolSetpointF: indoor.thermostats[0].coolSetpointF };
     case 'NEST_SET_FAN_TIMER': return { fanTimerEndsAt: indoor.thermostats[0].fanTimerEndsAt };
@@ -107,6 +131,16 @@ function oldState(indoor: IndoorState, command: IndoorCommand): unknown {
 }
 
 function supported(indoor: IndoorState, command: IndoorCommand) {
+  if (command.type === 'VENTILATE') {
+    const nest = indoor.thermostats[0];
+    return nest.sourceState === 'AVAILABLE'
+      && nest.capabilities.fanTimerMinutes.supported
+      && nest.capabilities.fanTimerMinutes.values.includes(0)
+      && nest.capabilities.fanTimerMinutes.values.some((minutes) => minutes > 0)
+      && indoor.purifiers.every((purifier) => purifier.sourceState === 'AVAILABLE'
+        && purifier.capabilities.presets.supported
+        && purifier.capabilities.presets.options.includes('RAPID'));
+  }
   if (command.target === 'airgradient_living_room') {
     const target = indoor.sensors[1];
     switch (command.type) {
@@ -155,6 +189,7 @@ function supported(indoor: IndoorState, command: IndoorCommand) {
 }
 
 function converged(indoor: IndoorState, command: IndoorCommand, acceptedAt: Date) {
+  if (command.type === 'VENTILATE') return false;
   if (command.target === 'airgradient_living_room') {
     const settings = indoor.sensors[1].settings;
     switch (command.type) {
@@ -206,6 +241,7 @@ export class IndoorActionGateway {
     private readonly pollMs = 2_000,
     private readonly timeoutMs = 30_000,
     private readonly persistence?: ActionPersistence,
+    private readonly ventilationMs = 30 * 60_000,
   ) {
     this.ready = this.restore();
   }
@@ -219,13 +255,19 @@ export class IndoorActionGateway {
       for (const item of parsed.data) {
         if (item.expiresAt <= now) continue;
         const accepted = IndoorActionAcceptedSchema.parse({ actionId: item.actionId, target: item.target, status: 'PENDING', acceptedAt: item.acceptedAt });
-        const restoredStatus = item.status === 'PENDING'
+        const resumable = item.status === 'PENDING' && item.command.type === 'VENTILATE' && item.ventilation;
+        const restoredStatus = item.status === 'PENDING' && !resumable
           ? { ...accepted, status: 'FAILED' as const, resolvedAt: this.now().toISOString(), message: 'The gateway restarted before confirmation.' }
           : IndoorActionStatusSchema.parse(item);
         this.actions.set(item.key, {
           key: item.key, accepted, status: restoredStatus, command: item.command,
           oldState: item.oldState, requestedState: item.requestedState, expiresAt: item.expiresAt,
+          ...(item.ventilation ? { ventilation: item.ventilation } : {}),
         });
+        if (resumable) {
+          this.running.add('indoor_environment');
+          void this.run(this.actions.get(item.key)!);
+        }
       }
     } catch {
       // A corrupt or missing optional store fails closed to an empty replay
@@ -238,6 +280,7 @@ export class IndoorActionGateway {
     await this.persistence.save([...this.actions.values()].map((item) => ({
       ...item.status, key: item.key, command: item.command, oldState: item.oldState,
       requestedState: item.requestedState, expiresAt: item.expiresAt,
+      ...(item.ventilation ? { ventilation: item.ventilation } : {}),
     })));
   }
 
@@ -263,19 +306,31 @@ export class IndoorActionGateway {
     const prior = this.actions.get(parsed.data.idempotencyKey);
     if (prior) return { ok: true, action: prior.accepted, replay: true };
     const snapshot = (await this.bootstrap()).indoor;
-    const target = parsed.data.command.target === 'nest_living_room' ? snapshot.thermostats[0]
+    const target = parsed.data.command.target === 'indoor_environment' ? { alias: 'indoor_environment' as const, stateVersion: indoorVentilationStateVersion(snapshot), sourceState: supported(snapshot, parsed.data.command) ? 'AVAILABLE' as const : 'UNAVAILABLE' as const }
+      : parsed.data.command.target === 'nest_living_room' ? snapshot.thermostats[0]
       : parsed.data.command.target === 'airgradient_living_room' ? snapshot.sensors[1]
       : snapshot.purifiers.find((item) => item.alias === parsed.data.command.target);
     if (!target || target.stateVersion !== parsed.data.expectedStateVersion) return reject(409, 'STATE_CONFLICT');
     if (target.sourceState !== 'AVAILABLE') return reject(409, 'SOURCE_UNAVAILABLE');
     if (!supported(snapshot, parsed.data.command)) return reject(422, 'UNSUPPORTED_COMMAND');
-    if ([...this.actions.values()].filter((item) => item.command.target === target.alias && item.status.status === 'PENDING').length >= 2 || this.running.has(target.alias)) return reject(409, 'TARGET_BUSY');
+    const ventilationBusy = parsed.data.command.type === 'VENTILATE'
+      && VENTILATION_TARGETS.some((alias) => this.running.has(alias));
+    if ([...this.actions.values()].filter((item) => item.command.target === target.alias && item.status.status === 'PENDING').length >= 2 || this.running.has(target.alias) || ventilationBusy) return reject(409, 'TARGET_BUSY');
     const acceptedAt = this.now().toISOString();
     const accepted: IndoorActionAccepted = { actionId: randomUUID(), target: target.alias, status: 'PENDING', acceptedAt };
     const stored: StoredAction = {
       key: parsed.data.idempotencyKey, accepted, command: parsed.data.command,
       status: { ...accepted, resolvedAt: null }, oldState: oldState(snapshot, parsed.data.command),
       requestedState: requested(parsed.data.command), expiresAt: now + 86_400_000,
+      ...(parsed.data.command.type === 'VENTILATE' ? {
+        ventilation: {
+          phase: 'STARTING' as const,
+          runUntil: 0,
+          changedTargets: this.ventilationChanges(snapshot),
+          activeStates: {},
+          overriddenTargets: [],
+        },
+      } : {}),
     };
     this.actions.set(stored.key, stored);
     try { await this.persist(); } catch { this.actions.delete(stored.key); return reject(503, 'SOURCE_UNAVAILABLE'); }
@@ -285,6 +340,10 @@ export class IndoorActionGateway {
   }
 
   private async run(action: StoredAction) {
+    if (action.command.type === 'VENTILATE') {
+      await this.runVentilation(action);
+      return;
+    }
     const started = this.now().getTime();
     let result: IndoorActionStatus['status'] = 'FAILED';
     try {
@@ -309,6 +368,148 @@ export class IndoorActionGateway {
       this.audit({
         actionId: action.accepted.actionId, target: action.command.target, command: action.command.type,
         oldState: action.oldState, requestedState: action.requestedState,
+        latencyMs: Math.max(0, this.now().getTime() - started), result,
+      });
+    }
+  }
+
+  private ventilationChanges(indoor: IndoorState): VentilationTarget[] {
+    const changed: VentilationTarget[] = [];
+    if (indoor.thermostats[0].fanTimerEndsAt === null) changed.push('nest_living_room');
+    for (const purifier of indoor.purifiers) {
+      if (!purifier.power || purifier.preset !== 'RAPID') changed.push(purifier.alias);
+    }
+    return changed;
+  }
+
+  private ventilationStartCommand(target: VentilationTarget, indoor: IndoorState): IndoorCommand {
+    if (target === 'nest_living_room') {
+      const durationMinutes = indoor.thermostats[0].capabilities.fanTimerMinutes.values.find((minutes) => minutes > 0)!;
+      return { type: 'NEST_SET_FAN_TIMER', target, durationMinutes };
+    }
+    return { type: 'COWAY_SET_PRESET', target, preset: 'RAPID' };
+  }
+
+  private ventilationTarget(indoor: IndoorState, target: VentilationTarget) {
+    return target === 'nest_living_room'
+      ? indoor.thermostats[0]
+      : indoor.purifiers.find((purifier) => purifier.alias === target)!;
+  }
+
+  private ventilationState(indoor: IndoorState, target: VentilationTarget) {
+    if (target === 'nest_living_room') return indoor.thermostats[0].fanTimerEndsAt === null ? 'off' : 'on';
+    const purifier = indoor.purifiers.find((item) => item.alias === target)!;
+    return `${purifier.power ? 'on' : 'off'}:${purifier.speed ?? 'none'}:${purifier.preset ?? 'none'}`;
+  }
+
+  private ventilationConverged(indoor: IndoorState, target: VentilationTarget, acceptedAt: Date) {
+    return converged(indoor, this.ventilationStartCommand(target, indoor), acceptedAt);
+  }
+
+  private async restoreVentilationTarget(action: StoredAction, target: VentilationTarget) {
+    const old = action.oldState as {
+      nest_living_room: { fanTimerEndsAt: string | null };
+      coway_living_room: { power: boolean | null; preset: string | null; speed: 1 | 2 | 3 | null };
+      coway_bedroom: { power: boolean | null; preset: string | null; speed: 1 | 2 | 3 | null };
+    };
+    if (target === 'nest_living_room') {
+      if (old.nest_living_room.fanTimerEndsAt === null) {
+        await this.executor.execute({ type: 'NEST_SET_FAN_TIMER', target, durationMinutes: 0 });
+      }
+      return;
+    }
+    const state = old[target];
+    if (state.preset !== null) {
+      await this.executor.execute({ type: 'COWAY_SET_PRESET', target, preset: state.preset });
+    } else if (state.speed !== null) {
+      await this.executor.execute({ type: 'COWAY_SET_SPEED', target, speed: state.speed });
+    }
+    if (state.power !== null) await this.executor.execute({ type: 'COWAY_SET_POWER', target, power: state.power });
+  }
+
+  private async runVentilation(action: StoredAction) {
+    const started = this.now().getTime();
+    const progress = action.ventilation!;
+    let result: IndoorActionStatus['status'] = 'FAILED';
+    let message: string | undefined;
+    try {
+      if (progress.phase === 'STARTING') {
+        for (const alias of progress.changedTargets) this.running.add(alias);
+        const snapshot = (await this.bootstrap()).indoor;
+        for (const target of progress.changedTargets) {
+          await this.executor.execute(this.ventilationStartCommand(target, snapshot));
+        }
+        const convergenceStarted = this.now().getTime();
+        let current = snapshot;
+        while (this.now().getTime() - convergenceStarted < this.timeoutMs) {
+          await this.wait(this.pollMs);
+          current = (await this.bootstrap()).indoor;
+          if (progress.changedTargets.every((target) => this.ventilationTarget(current, target).sourceState === 'AVAILABLE'
+            && this.ventilationConverged(current, target, new Date(action.accepted.acceptedAt)))) break;
+        }
+        if (!progress.changedTargets.every((target) => this.ventilationConverged(current, target, new Date(action.accepted.acceptedAt)))) {
+          result = 'TIMED_OUT';
+          throw new Error('VENTILATION_START_TIMEOUT');
+        }
+        progress.activeStates = Object.fromEntries(progress.changedTargets.map((target) => [target, this.ventilationState(current, target)]));
+        progress.phase = 'RUNNING';
+        progress.runUntil = this.now().getTime() + this.ventilationMs;
+        action.status = { ...action.accepted, resolvedAt: null, message: 'Ventilating for 30 minutes; manual changes override restoration.' };
+        for (const alias of progress.changedTargets) this.running.delete(alias);
+        await this.persist();
+      }
+
+      if (progress.phase === 'RUNNING') {
+        while (this.now().getTime() < progress.runUntil) {
+          await this.wait(Math.min(this.pollMs, progress.runUntil - this.now().getTime()));
+          const indoor = (await this.bootstrap()).indoor;
+          let changed = false;
+          for (const target of progress.changedTargets) {
+            if (progress.overriddenTargets.includes(target)) continue;
+            if (this.ventilationState(indoor, target) !== progress.activeStates[target]) {
+              progress.overriddenTargets.push(target);
+              changed = true;
+            }
+          }
+          if (changed) await this.persist();
+        }
+        progress.phase = 'RESTORING';
+        await this.persist();
+      }
+
+      const indoor = (await this.bootstrap()).indoor;
+      for (const target of progress.changedTargets) {
+        if (progress.overriddenTargets.includes(target)) continue;
+        if (this.ventilationState(indoor, target) !== progress.activeStates[target]) {
+          progress.overriddenTargets.push(target);
+          continue;
+        }
+        await this.restoreVentilationTarget(action, target);
+      }
+      result = 'SUCCEEDED';
+      if (progress.overriddenTargets.length) {
+        message = `Completed; preserved manual overrides for ${progress.overriddenTargets.map((target) => target.replaceAll('_', ' ')).join(', ')}.`;
+      }
+    } catch {
+      if (progress.phase === 'STARTING') {
+        for (const target of progress.changedTargets) {
+          try { await this.restoreVentilationTarget(action, target); } catch { /* preserve the original failure */ }
+        }
+      }
+      if (result !== 'TIMED_OUT') result = 'FAILED';
+      message = result === 'TIMED_OUT'
+        ? 'The fans did not confirm the Ventilate state in time; prior states were restored where possible.'
+        : 'Ventilate could not complete; prior states were restored where possible.';
+    } finally {
+      const resolvedAt = this.now().toISOString();
+      action.status = { ...action.accepted, status: result, resolvedAt, ...(message ? { message } : {}) };
+      this.running.delete('indoor_environment');
+      for (const alias of VENTILATION_TARGETS) this.running.delete(alias);
+      try { await this.persist(); } catch { /* audit still records the terminal device result */ }
+      this.audit({
+        actionId: action.accepted.actionId, target: action.command.target, command: action.command.type,
+        oldState: action.oldState, requestedState: action.requestedState,
+        overriddenTargets: progress.overriddenTargets,
         latencyMs: Math.max(0, this.now().getTime() - started), result,
       });
     }
