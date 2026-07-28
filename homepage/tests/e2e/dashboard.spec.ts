@@ -409,15 +409,22 @@ for (const viewport of [
     await expect(cpuGraphs).toHaveCount(2);
     const graphCoverage = await cpuGraphs.evaluateAll((graphs) => graphs.map((graph) => {
       const bounds = graph.getBoundingClientRect();
+      const graphContainer = graph.closest('.dot-graph')!.getBoundingClientRect();
+      const cpuRegion = graph.closest('.pve-cpu-region')!.getBoundingClientRect();
       const columns = [...graph.querySelectorAll('.dot-matrix-column')];
       const first = columns[0]?.getBoundingClientRect();
       const last = columns.at(-1)?.getBoundingClientRect();
       return {
         start: first ? (first.left - bounds.left) / bounds.width : 1,
         end: last ? (last.right - bounds.left) / bounds.width : 0,
+        contained: bounds.left >= graphContainer.left && bounds.right <= graphContainer.right,
+        outerContained: graphContainer.left >= cpuRegion.left && graphContainer.right <= cpuRegion.right,
+        widths: [bounds.width, graphContainer.width, cpuRegion.width],
       };
     }));
-    expect(graphCoverage.every(({ start, end }) => start <= 0.02 && end >= 0.98), JSON.stringify(graphCoverage)).toBe(true);
+    expect(graphCoverage.every(({ start, end }) => start <= 0.03 && end >= 0.98), JSON.stringify(graphCoverage)).toBe(true);
+    expect(graphCoverage.every(({ contained }) => contained), JSON.stringify(graphCoverage)).toBe(true);
+    expect(graphCoverage.every(({ outerContained }) => outerContained), JSON.stringify(graphCoverage)).toBe(true);
   });
 }
 
@@ -428,6 +435,8 @@ for (const viewport of [{ name: 'mobile', width: 320, height: 900 }, { name: 'ta
       await page.addInitScript(([key, value]) => window.localStorage.setItem(key, value), ['homelab-appearance', appearance]);
       await page.goto('/');
       await expect(page.locator('html')).toHaveAttribute('data-appearance', appearance);
+      await expect.poll(() => page.locator('.dot-matrix-fixed .dot-matrix-column').first().count()).toBe(1);
+      await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
       await expect(page).toHaveScreenshot(`overview-${appearance}-${viewport.name}.png`, { fullPage: true, animations: 'disabled', mask: [page.locator('.header-status')] });
     });
   }

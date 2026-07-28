@@ -24,8 +24,9 @@ describe('Proxmox drill-down', () => {
     expect(markup).toContain('MAX RX <b>145 Mb/s</b> · MAX TX <b>96 Mb/s</b>');
     expect(markup).toContain('CONTAINERS');
     expect(markup).toContain('VIRTUAL MACHINES');
-    expect(markup).toContain('responsive dot matrix');
+    expect(markup).toContain('fixed-pitch dot matrix with older history clipped on the left');
     expect(markup).toContain('dot-matrix');
+    expect(markup).toContain('dot-matrix-fixed');
     expect(markup).toContain('dot-graph-fill-width');
     expect(markup).toContain('4 historical samples');
     expect(markup).toContain('core-history-low');
