@@ -111,7 +111,7 @@ jobs:
 
           def replace(match):
               prefix = match.group(1) or match.group(3)
-              suffix = match.group(2) or match.group(4)
+              suffix = match.group(2) if match.group(2) is not None else match.group(4)
               return f"{prefix}{image}{suffix}"
 
           updated, replacements = pattern.subn(replace, contents)
