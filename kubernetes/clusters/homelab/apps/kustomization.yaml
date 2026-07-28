@@ -7,3 +7,4 @@ resources:
   - ../../../apps/kosync
   - ../../../apps/homelab-docs
   - ../../../apps/home-assistant
+  - ../../../apps/cycling-calendar
