@@ -434,6 +434,26 @@ test('renders network traffic as dot bars growing outward from the midline', asy
   });
   expect(Math.max(...geometry.download)).toBeLessThan(geometry.center);
   expect(Math.min(...geometry.upload)).toBeGreaterThan(geometry.center);
+});
+
+test('matches the network traffic overview reference', async ({ page }) => {
+  const bootstrap = structuredClone(healthyBootstrapFixture);
+  const baseSeries = bootstrap.timeSeries[0]!;
+  const values = [18, 72, 42, 95, 28, 64];
+  const points = values.map((value, index) => ({ timestamp: `2026-07-19T11:${30 + (index * 5)}:00.000Z`, value }));
+  bootstrap.timeSeries = [
+    ...bootstrap.timeSeries,
+    { ...baseSeries, metric: 'pve-01 RX', unit: 'Mb/s', points },
+    { ...baseSeries, metric: 'pve-01 TX', unit: 'Mb/s', points: points.map((point) => ({ ...point, value: point.value / 2 })) },
+  ];
+  await page.route('**/api/v1/events', (route) => route.abort());
+  await page.route('**/api/v1/bootstrap', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ data: bootstrap }),
+  }));
+  await page.goto('/network');
+  await expect.poll(() => page.locator('.traffic-matrix-column-download').count()).toBeGreaterThan(values.length);
   await expect(page.locator('.network-throughput')).toHaveScreenshot('network-throughput-midline.png', { animations: 'disabled' });
 });
 
