@@ -20,7 +20,7 @@ env:
   IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/k8s-homelab-homepage
 
 jobs:
-  verify:
+  quality:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -28,60 +28,226 @@ jobs:
       run:
         working-directory: homepage
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: homepage/package-lock.json
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium and system dependencies
+        run: npx playwright install --with-deps chromium
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Check types
+        run: npm run typecheck
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Run integration tests
+        run: npm run test:integration
+
       # Visual baselines are rendered and reviewed on macOS; retain portable
-      # keyboard/navigation/accessibility browser coverage on Ubuntu runners.
-      - run: npm run lint && npm run typecheck && npm test -- --run && npm run test:integration && npm run test:e2e -- --grep-invert 'matches the .* overview' && npm run build
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
+      # keyboard, navigation, and accessibility browser coverage on Ubuntu.
+      # Playwright's web server performs the production build.
+      - name: Run portable browser tests
+        run: npm run test:e2e -- --grep-invert 'matches the .* overview'
+
+  container-pr:
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build the verification image once
+        uses: docker/build-push-action@v6
         with:
           context: homepage
           push: false
           tags: homepage:verify
           load: true
-      - uses: aquasecurity/trivy-action@v0.36.0
+          cache-from: type=gha,scope=homepage-container-pr
+          cache-to: type=gha,mode=max,scope=homepage-container-pr
+
+      - name: Scan the verification image
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: homepage:verify
           severity: HIGH,CRITICAL
-          exit-code: '1'
+          exit-code: "1"
           ignore-unfixed: true
 
-  publish:
-    needs: verify
+  container-main:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
       id-token: write
+    outputs:
+      image_tag: ${{ steps.image.outputs.tag }}
+      image_digest: ${{ steps.build.outputs.digest }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set immutable image tag
+        id: image
+        run: |
+          set -euo pipefail
+          printf 'tag=%s:sha-%s\n' "${IMAGE_NAME}" "${GITHUB_SHA::7}" >>"${GITHUB_OUTPUT}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.IMAGE_NAME }}
-          tags: |
-            type=sha,prefix=sha-
-      - uses: docker/build-push-action@v6
+
+      - name: Build and push the immutable image once
+        id: build
+        uses: docker/build-push-action@v6
         with:
           context: homepage
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.image.outputs.tag }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           sbom: true
           provenance: mode=max
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=homepage-container-main
+          cache-to: type=gha,mode=max,scope=homepage-container-main
+
+      - name: Scan the exact pushed image digest
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ steps.image.outputs.tag }}@${{ steps.build.outputs.digest }}
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+
+  deploy:
+    needs:
+      - quality
+      - container-main
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Pin and deploy the scanned immutable image
+        env:
+          DEPLOYMENT_FILE: kubernetes/apps/homepage-custom-preview/deployment.yaml
+          IMAGE_TAG: ${{ needs.container-main.outputs.image_tag }}
+          IMAGE_DIGEST: ${{ needs.container-main.outputs.image_digest }}
+        run: |
+          set -euo pipefail
+
+          expected_tag="${IMAGE_NAME}:sha-${GITHUB_SHA::7}"
+          if [[ "${IMAGE_TAG}" != "${expected_tag}" ]]; then
+            echo "container-main returned an unexpected image tag"
+            exit 1
+          fi
+          if [[ ! "${IMAGE_DIGEST}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "container-main returned an invalid OCI digest"
+            exit 1
+          fi
+          image="${IMAGE_TAG}@${IMAGE_DIGEST}"
+
+          python3 - "${DEPLOYMENT_FILE}" "${image}" <<'PY'
+          import pathlib
+          import re
+          import sys
+
+          deployment = pathlib.Path(sys.argv[1])
+          image = sys.argv[2]
+          image_repository = image.split(":sha-", 1)[0]
+          contents = deployment.read_text()
+          pattern = re.compile(
+              rf"^([ \t]*image:[ \t]*){re.escape(image_repository)}:"
+              r"sha-[0-9a-f]+@sha256:[0-9a-f]{64}([ \t]*)$",
+              re.MULTILINE,
+          )
+          updated, replacements = pattern.subn(
+              lambda match: f"{match.group(1)}{image}{match.group(2)}",
+              contents,
+          )
+          if replacements != 1:
+              raise SystemExit(
+                  f"expected one Homepage Deployment image reference, found {replacements}"
+              )
+          deployment.write_text(updated)
+          PY
+
+          if git diff --quiet -- "${DEPLOYMENT_FILE}"; then
+            echo "${image} is already deployed"
+            exit 0
+          fi
+
+          kubectl kustomize kubernetes/clusters/homelab >/dev/null
+          git diff --check
+
+          mapfile -t changed_files < <(git diff --name-only)
+          if (( ${#changed_files[@]} != 1 )) || \
+             [[ "${changed_files[0]}" != "${DEPLOYMENT_FILE}" ]]; then
+            echo "Refusing to commit files outside ${DEPLOYMENT_FILE}"
+            printf '%s\n' "${changed_files[@]}"
+            exit 1
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- "${DEPLOYMENT_FILE}"
+          git diff --cached --check
+          git commit -m "deploy homepage image sha-${GITHUB_SHA::7}"
+
+          for attempt in 1 2 3; do
+            echo "Push attempt ${attempt} of 3"
+            git fetch origin main
+
+            if [[ "$(git rev-parse origin/main)" != "${GITHUB_SHA}" ]]; then
+              if ! git merge-base --is-ancestor "${GITHUB_SHA}" origin/main; then
+                echo "origin/main no longer descends from the workflow source"
+                exit 1
+              fi
+              if ! git diff --quiet "${GITHUB_SHA}..origin/main" -- \
+                homepage \
+                .github/workflows/homepage-image.yaml \
+                "${DEPLOYMENT_FILE}"; then
+                echo "A newer Homepage change exists; its workflow will deploy it"
+                exit 0
+              fi
+              git rebase origin/main
+            fi
+
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+          done
+
+          echo "Failed to push the Homepage Deployment after three attempts"
+          exit 1
