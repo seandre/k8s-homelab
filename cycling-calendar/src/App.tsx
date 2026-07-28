@@ -191,12 +191,12 @@ function RaceDetail({ race }: { race: Race }) {
         <div className="detail-links" aria-label="Race links">
           {race.organizerUrl ? (
             <a href={race.organizerUrl} target="_blank" rel="noreferrer">
-              Organizer <span aria-hidden="true">↗</span>
+              Organizer
             </a>
           ) : null}
           {race.pcsUrl ? (
             <a href={race.pcsUrl} target="_blank" rel="noreferrer">
-              PCS <span aria-hidden="true">↗</span>
+              PCS
             </a>
           ) : null}
           {race.uciUrl || primaryUciSource ? (
@@ -205,8 +205,7 @@ function RaceDetail({ race }: { race: Race }) {
               target="_blank"
               rel="noreferrer"
             >
-              UCI {race.uciUrl ? 'event' : 'calendar'}{' '}
-              <span aria-hidden="true">↗</span>
+              UCI {race.uciUrl ? 'event' : 'calendar'}
             </a>
           ) : null}
         </div>
@@ -268,9 +267,10 @@ function RaceRow({
         </span>
         <span className="race-format" data-label="Format">
           {getFormatLabel(race)}
-          <span className="row-arrow" aria-hidden="true">
-            {isExpanded ? '−' : '+'}
-          </span>
+          <span
+            className={`row-arrow${isExpanded ? ' is-expanded' : ''}`}
+            aria-hidden="true"
+          />
         </span>
       </button>
       {isExpanded ? <RaceDetail race={race} /> : null}
@@ -506,7 +506,6 @@ function App() {
                     {race.countryCode} · {race.classification}
                   </span>
                   <strong>{getDisplayName(race)}</strong>
-                  <em aria-hidden="true">↘</em>
                 </button>
               ))}
             </div>
@@ -520,8 +519,7 @@ function App() {
 
       <section className="season-summary" aria-labelledby="summary-heading">
         <div className="summary-title">
-          <p className="section-kicker">Full season view</p>
-          <h2 id="summary-heading">At a glance</h2>
+          <h2 id="summary-heading">Full season</h2>
           <p>
             Cancellations and postponements remain visible but are excluded
             from active season totals.
@@ -555,7 +553,7 @@ function App() {
         <div className="calendar-intro">
           <div>
             <p className="section-kicker">Season / 2026</p>
-            <h2 id="calendar-heading">The calendar</h2>
+            <h2 id="calendar-heading">2026 race calendar</h2>
           </div>
           <p>
             Search the full Women Elite road season, refine it by race type, or
@@ -567,7 +565,6 @@ function App() {
           <label className="search-field">
             <span>Search races</span>
             <div>
-              <span aria-hidden="true">⌕</span>
               <input
                 type="search"
                 value={state.query}
@@ -679,7 +676,7 @@ function App() {
                   setExpandedRaceId('');
                 }}
               >
-                Clear filters <span aria-hidden="true">×</span>
+                Clear filters
               </button>
             ) : (
               <p>All filters clear</p>

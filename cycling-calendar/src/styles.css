@@ -773,9 +773,30 @@ a {
 }
 
 .row-arrow {
+  position: relative;
+  width: 18px;
+  height: 18px;
   margin-left: 10px;
-  font-size: 1.6rem;
-  font-weight: 300;
+}
+
+.row-arrow::before,
+.row-arrow::after {
+  position: absolute;
+  top: 8px;
+  left: 3px;
+  width: 12px;
+  height: 1px;
+  background: currentColor;
+  content: '';
+}
+
+.row-arrow::after {
+  transform: rotate(90deg);
+  transition: transform 160ms ease;
+}
+
+.row-arrow.is-expanded::after {
+  transform: rotate(0);
 }
 
 .status-label {
@@ -1123,7 +1144,9 @@ a {
 
   .masthead h1 {
     margin: 58px 0 46px;
-    font-size: clamp(3.55rem, 19vw, 6rem);
+    max-width: 100%;
+    font-size: clamp(2.25rem, 11vw, 3.5rem);
+    letter-spacing: -0.065em;
     line-height: 0.81;
   }
 
