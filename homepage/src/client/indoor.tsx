@@ -305,7 +305,7 @@ function OptionButtonGroup<T extends string | number>({ label, options, value, d
   </div>;
 }
 
-function CycleOptionButton<T extends string>({ label, options, value, disabled, format = String, onSelect }: {
+function PopoverOptionButton<T extends string>({ label, options, value, disabled, format = String, onSelect }: {
   label: string;
   options: T[];
   value: T | null;
@@ -313,14 +313,35 @@ function CycleOptionButton<T extends string>({ label, options, value, disabled, 
   format?: (option: T) => string;
   onSelect: (option: T) => void;
 }) {
+  const root = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!root.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
   if (!options.length) return null;
-  const currentIndex = value === null ? -1 : options.indexOf(value);
-  const next = options[(currentIndex + 1) % options.length]!;
-  return <div className="control-option-group" role="group" aria-label={label}>
+  return <div className="control-option-group control-option-popover" role="group" aria-label={label} ref={root}>
     <span className="control-option-label">{label}</span>
-    <button type="button" disabled={disabled} onClick={() => onSelect(next)} aria-label={`${label}: ${value === null ? 'unknown' : format(value)}. Change to ${format(next)}`}>
+    <button type="button" disabled={disabled} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((current) => !current)} aria-label={`${label}: ${value === null ? 'unknown' : format(value)}. Show options`}>
       {value === null ? 'Unknown' : format(value)}
     </button>
+    {open ? <div className="control-option-menu" role="menu" aria-label={`${label} options`}>
+      {options.map((option) => <button type="button" role="menuitemradio" aria-checked={option === value} key={option} onClick={() => {
+        setOpen(false);
+        if (option !== value) onSelect(option);
+      }}>{format(option)}</button>)}
+    </div> : null}
   </div>;
 }
 
@@ -339,7 +360,7 @@ function ThermostatControls({ thermostat, review }: { thermostat: ThermostatStat
       {thermostat.capabilities.setpointShapes.includes('RANGE') ? <form onSubmit={(event) => {
         event.preventDefault();
         review(requestReview({ type: 'NEST_SET_SETPOINT', target: 'nest_living_room', setpoint: { shape: 'RANGE', heatTemperatureF: heat, coolTemperatureF: cool } }, 'Living Room Nest', `${thermostat.heatSetpointF ?? '—'}–${thermostat.coolSetpointF ?? '—'}°F`, `${heat}–${cool}°F`, 'NEST_CLOUD', thermostat.stateVersion));
-      }}><label>Heat setpoint<input aria-label="Nest heat setpoint" type="number" min={min} max={max} step={step} value={heat} onChange={(event) => setHeat(Number(event.target.value))} disabled={disabled} /></label><label>Cool setpoint<input aria-label="Nest cool setpoint" type="number" min={min} max={max} step={step} value={cool} onChange={(event) => setCool(Number(event.target.value))} disabled={disabled} /></label><button type="submit" disabled={disabled || heat >= cool}>Review range</button></form> : null}
+      }}><label>Heat setpoint<input aria-label="Nest heat setpoint" type="number" min={min} max={max} step={step} value={heat} onChange={(event) => setHeat(Number(event.target.value))} disabled={disabled} /></label><label>Cool setpoint<input aria-label="Nest cool setpoint" type="number" min={min} max={max} step={step} value={cool} onChange={(event) => setCool(Number(event.target.value))} disabled={disabled} /></label><button type="submit" disabled={disabled || heat >= cool}>Save</button></form> : null}
       {thermostat.capabilities.fanTimerMinutes.supported ? <OptionButtonGroup label="Nest fan timer" options={thermostat.capabilities.fanTimerMinutes.values} value={thermostat.fanTimerEndsAt ? null : 0} disabled={disabled} format={(minutes) => minutes === 0 ? 'Off' : `${minutes}m`} onSelect={(minutes) =>
         review(requestReview({ type: 'NEST_SET_FAN_TIMER', target: 'nest_living_room', durationMinutes: minutes }, 'Living Room Nest', thermostat.fanTimerEndsAt ? 'Running' : 'Off', minutes === 0 ? 'Off' : `${minutes} minutes`, 'NEST_CLOUD', thermostat.stateVersion))
       } /> : null}
@@ -352,19 +373,19 @@ function PurifierControls({ purifier, review }: { purifier: PurifierState; revie
   const make = (command: IndoorCommand, current: string, requested: string) => review(requestReview(command, purifier.room === 'living_room' ? 'Living Room Coway' : 'Bedroom Coway', current, requested, 'COWAY_CLOUD', purifier.stateVersion));
   return (
     <div className="indoor-controls">
-      {purifier.capabilities.power.supported ? <CycleOptionButton label="Power" options={['On', 'Off']} value={purifier.power ? 'On' : 'Off'} disabled={disabled} onSelect={(value) =>
+      {purifier.capabilities.power.supported ? <PopoverOptionButton label="Power" options={['On', 'Off']} value={purifier.power ? 'On' : 'Off'} disabled={disabled} onSelect={(value) =>
         make({ type: 'COWAY_SET_POWER', target: purifier.alias, power: value === 'On' }, purifier.power ? 'On' : 'Off', value)
       } /> : null}
       {purifier.capabilities.speeds.supported ? <OptionButtonGroup label="Speed" options={purifier.capabilities.speeds.values} value={purifier.speed} disabled={disabled} onSelect={(value) =>
         make({ type: 'COWAY_SET_SPEED', target: purifier.alias, speed: value as 1 | 2 | 3 }, String(purifier.speed ?? 'Unknown'), String(value))
       } /> : null}
-      {purifier.capabilities.presets.supported ? <CycleOptionButton label="Preset" options={purifier.capabilities.presets.options} value={purifier.preset} disabled={disabled} onSelect={(value) =>
+      {purifier.capabilities.presets.supported ? <PopoverOptionButton label="Preset" options={purifier.capabilities.presets.options} value={purifier.preset} disabled={disabled} onSelect={(value) =>
         make({ type: 'COWAY_SET_PRESET', target: purifier.alias, preset: value }, purifier.preset ?? 'Unknown', value)
       } /> : null}
       {purifier.capabilities.timerMinutes.supported ? <OptionButtonGroup label="Timer" options={purifier.capabilities.timerMinutes.values} value={purifier.timerEndsAt ? null : 0} disabled={disabled} format={(value) => value === 0 ? 'Off' : `${value}m`} onSelect={(value) =>
         make({ type: 'COWAY_SET_TIMER', target: purifier.alias, durationMinutes: value }, purifier.timerEndsAt ? 'Running' : 'Off', value === 0 ? 'Off' : `${value} minutes`)
       } /> : null}
-      {purifier.capabilities.lightOptions.supported ? <CycleOptionButton label="Light" options={purifier.capabilities.lightOptions.options} value={purifier.light} disabled={disabled} format={(value) => value.replaceAll('_', ' ')} onSelect={(value) =>
+      {purifier.capabilities.lightOptions.supported ? <PopoverOptionButton label="Light" options={purifier.capabilities.lightOptions.options} value={purifier.light} disabled={disabled} format={(value) => value.replaceAll('_', ' ')} onSelect={(value) =>
         make({ type: 'COWAY_SET_LIGHT', target: purifier.alias, light: value }, purifier.light ?? 'Unknown', value)
       } /> : null}
       {purifier.capabilities.sensitivityOptions.supported ? <OptionButtonGroup label="Sensitivity" options={purifier.capabilities.sensitivityOptions.options} value={purifier.sensitivity} disabled={disabled} onSelect={(value) =>
@@ -387,7 +408,7 @@ function AirGradientControls({ device, review }: { device: IndoorState['sensors'
     event.preventDefault();
     const requested = Number(new FormData(event.currentTarget).get('value'));
     make({ type, target: 'airgradient_living_room', value: requested }, value === null ? 'Unknown' : `${value}%`, `${requested}%`);
-  }}><label>{label}<input name="value" aria-label={label} type="number" min={capability.min} max={capability.max} step={capability.step} defaultValue={value ?? capability.min} disabled={disabled} /></label><button type="submit" disabled={disabled}>Review</button></form> : null;
+  }}><label>{label}<input name="value" aria-label={label} type="number" min={capability.min} max={capability.max} step={capability.step} defaultValue={value ?? capability.min} disabled={disabled} /></label><button type="submit" disabled={disabled}>Save</button></form> : null;
   const optionControl = (
     label: string,
     value: string | null,
@@ -413,11 +434,10 @@ function ReviewDialog({ review, onClose, onSubmit, submitting, error }: { review
   return (
     <div className="help-overlay" role="dialog" aria-modal="true" aria-labelledby="indoor-review-title" onKeyDown={(event) => { if (event.key === 'Escape' && !submitting) onClose(); }}>
       <div className="help-card indoor-review-card">
-        <div className="drawer-header"><h2 id="indoor-review-title">Review device command</h2><button ref={close} type="button" onClick={onClose} disabled={submitting}>Cancel</button></div>
-        <dl><dt>Target</dt><dd>{review.target}</dd><dt>Current state</dt><dd>{review.current}</dd><dt>Requested state</dt><dd>{review.requested}</dd><dt>Dependency</dt><dd>{review.dependency === 'NEST_CLOUD' ? 'Google Nest cloud' : review.dependency === 'COWAY_CLOUD' ? 'Coway IoCare cloud' : 'AirGradient local HTTP'}</dd></dl>
-        <p className="control-warning">The dashboard will wait for Home Assistant to report convergence. It will not change the displayed device state optimistically.</p>
+        <div className="drawer-header"><h2 id="indoor-review-title">Confirm change</h2><button ref={close} type="button" onClick={onClose} disabled={submitting}>Cancel</button></div>
+        <p className="control-change-summary"><strong>{review.target}</strong><span>{review.current} → {review.requested}</span><small>{review.dependency === 'NEST_CLOUD' ? 'Nest cloud' : review.dependency === 'COWAY_CLOUD' ? 'Coway cloud' : 'AirGradient local'} · updates after confirmation</small></p>
         {error ? <p className="action-error" role="alert">{error}</p> : null}
-        <button className="confirm-action" type="button" onClick={onSubmit} disabled={submitting}>{submitting ? 'Submitting…' : 'Confirm command'}</button>
+        <button className="confirm-action" type="button" onClick={onSubmit} disabled={submitting}>{submitting ? 'Saving…' : 'Save'}</button>
       </div>
     </div>
   );

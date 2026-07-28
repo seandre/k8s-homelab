@@ -205,12 +205,12 @@ test('renders the responsive indoor dashboard and requires review before control
   const hvacModes = page.getByRole('group', { name: 'HVAC mode' });
   await expect(hvacModes.getByRole('button', { name: 'HEAT_COOL' })).toHaveAttribute('aria-pressed', 'true');
   await hvacModes.getByRole('button', { name: 'OFF' }).click();
-  const review = page.getByRole('dialog', { name: 'Review device command' });
+  const review = page.getByRole('dialog', { name: 'Confirm change' });
   await expect(review).toBeVisible();
   await expect(review.getByText('Living Room Nest')).toBeVisible();
   await expect(review.getByText('HEAT_COOL')).toBeVisible();
-  await expect(review.getByText('Google Nest cloud')).toBeVisible();
-  await review.getByRole('button', { name: 'Confirm command' }).click();
+  await expect(review.getByText(/Nest cloud · updates after confirmation/)).toBeVisible();
+  await review.getByRole('button', { name: 'Save' }).click();
   await expect(review).toBeHidden();
   await expect(hvacModes.getByRole('button', { name: 'HEAT_COOL' })).toHaveAttribute('aria-pressed', 'true');
   await expect(hvacModes.getByRole('button', { name: 'OFF' })).toHaveAttribute('aria-pressed', 'false');
@@ -218,9 +218,12 @@ test('renders the responsive indoor dashboard and requires review before control
 
 test('supports indoor keyboard cancellation and has no serious accessibility violations', async ({ page }) => {
   await page.goto('/indoor');
-  await page.getByRole('group', { name: 'Power' }).first().getByRole('button', { name: 'Power: On. Change to Off' }).focus();
+  const power = page.getByRole('group', { name: 'Power' }).first();
+  await power.getByRole('button', { name: 'Power: On. Show options' }).focus();
   await page.keyboard.press('Enter');
-  const review = page.getByRole('dialog', { name: 'Review device command' });
+  await power.getByRole('menuitemradio', { name: 'Off' }).focus();
+  await page.keyboard.press('Enter');
+  const review = page.getByRole('dialog', { name: 'Confirm change' });
   await expect(review).toBeVisible();
   await expect(review.getByRole('button', { name: 'Cancel' })).toBeFocused();
   await page.keyboard.press('Escape');

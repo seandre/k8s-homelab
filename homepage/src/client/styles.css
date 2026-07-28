@@ -382,6 +382,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .control-option-group { display: grid; gap: 0.2rem; }
 .control-option-label { color: var(--muted); font-size: 0.57rem; letter-spacing: 0.04em; }
 .control-option-group button[aria-pressed='true'] { border-color: var(--focus); background: color-mix(in srgb, var(--focus) 18%, var(--surface)); color: var(--title); }
+.control-option-popover { position: relative; }
+.control-option-menu { position: absolute; z-index: 3; top: calc(100% + 0.25rem); left: 0; display: grid; min-width: max(100%, 7rem); border: 1px solid var(--focus); background: var(--surface); box-shadow: 0 0.35rem 1rem rgb(0 0 0 / 24%); padding: 0.2rem; }
+.control-option-menu button { width: 100%; border-color: transparent; text-align: left; white-space: nowrap; }
+.control-option-menu button[aria-checked='true'] { border-color: var(--focus); background: color-mix(in srgb, var(--focus) 18%, var(--surface)); color: var(--title); }
 .indoor-history { margin-top: 1rem; }
 .indoor-history .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 1rem; }
 .indoor-history .section-heading h2 { margin: 0.15rem 0 0; color: var(--title); font-size: 0.9rem; }
@@ -458,10 +462,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .indoor-thermostat-grid { display: grid; margin-top: 1rem; }
 .indoor-action-status { display: grid; gap: 0.35rem; margin-top: 1rem; }
 .indoor-action-status small { color: var(--muted); }
-.indoor-review-card dl { display: grid; grid-template-columns: 8rem 1fr; gap: 0.45rem; font-size: 0.68rem; }
-.indoor-review-card dt { color: var(--muted); }
-.indoor-review-card dd { margin: 0; color: var(--title); }
-.control-warning { border-left: 0.2rem solid var(--warn); padding-left: 0.55rem; color: var(--muted); font-size: 0.62rem; line-height: 1.45; }
+.control-change-summary { display: grid; gap: 0.4rem; margin: 0.8rem 0; }
+.control-change-summary strong { color: var(--title); }
+.control-change-summary span { color: var(--fg); font-size: 0.78rem; }
+.control-change-summary small { color: var(--muted); font-size: 0.58rem; }
 .confirm-action { width: 100%; border-color: var(--focus); }
 .action-error { color: var(--crit); font-size: 0.65rem; }
 
@@ -512,8 +516,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .device-state-line { flex-direction: column; }
   .indoor-controls, .indoor-controls form { align-items: stretch; flex-direction: column; }
   .indoor-controls select, .indoor-controls input, .indoor-controls button { width: 100%; }
-  .indoor-review-card dl { grid-template-columns: 1fr; gap: 0.15rem; }
-  .indoor-review-card dd { margin-bottom: 0.45rem; }
   .pve-cpu-region { grid-template-columns: 1fr; }
   .proxmox-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .pve-cpu-summary { grid-template-columns: repeat(4, minmax(0, 1fr)); border-left: 0; border-top: 1px dotted var(--divider); padding: 0.35rem 0 0; }
