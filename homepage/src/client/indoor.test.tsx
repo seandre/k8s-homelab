@@ -11,8 +11,8 @@ describe('indoor dashboard', () => {
   it('uses the defined green theme token for active controls', () => {
     const stylesheet = readFileSync(new URL('./styles.css', import.meta.url), 'utf8');
     expect(stylesheet).not.toContain('var(--ok)');
-    expect(stylesheet).toMatch(/control-current-positive[^}]+var\(--focus\)/);
-    expect(stylesheet).toMatch(/ventilate-button-active[^}]+var\(--focus\)/);
+    expect(stylesheet).toMatch(/control-current-positive[^}]+color-mix\(in srgb, var\(--focus\) 18%, var\(--surface\)\)/);
+    expect(stylesheet).toMatch(/ventilate-button-active[^}]+color-mix\(in srgb, var\(--focus\) 18%, var\(--surface\)\)/);
   });
 
   it('renders normalized readings, both purifiers, history windows, and capability controls', () => {
