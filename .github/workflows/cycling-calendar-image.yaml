@@ -1,0 +1,139 @@
+name: Verify and publish Women’s Road Calendar image
+
+on:
+  pull_request:
+    paths:
+      - cycling-calendar/**
+      - kubernetes/apps/cycling-calendar/**
+      - .github/workflows/cycling-calendar-image.yaml
+  push:
+    branches: [main]
+    paths:
+      - cycling-calendar/**
+      - .github/workflows/cycling-calendar-image.yaml
+  workflow_dispatch:
+
+concurrency:
+  group: cycling-calendar-image-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/womens-road-calendar
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: cycling-calendar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: cycling-calendar/package-lock.json
+      - run: npm ci
+      - run: npm run validate:data
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: cycling-calendar
+          push: false
+          tags: womens-road-calendar:verify
+          load: true
+      - uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: womens-road-calendar:verify
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+      - run: kubectl kustomize ../kubernetes/apps/cycling-calendar >/dev/null
+
+  publish:
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: cycling-calendar
+          push: true
+          tags: ${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          sbom: true
+          provenance: mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Pin the immutable image
+        env:
+          DEPLOYMENT_FILE: kubernetes/apps/cycling-calendar/deployment.yaml
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          set -euo pipefail
+
+          image="${IMAGE_NAME}@${IMAGE_DIGEST}"
+          python3 - "${DEPLOYMENT_FILE}" "${image}" <<'PY'
+          import pathlib
+          import re
+          import sys
+
+          deployment = pathlib.Path(sys.argv[1])
+          image = sys.argv[2]
+          contents = deployment.read_text()
+          pattern = re.compile(
+              r"^([ \t]*image:[ \t]*)ghcr\.io/[^/]+/womens-road-calendar:(?:bootstrap-not-published|sha-[0-9a-f]+)(?:@sha256:[0-9a-f]{64})?([ \t]*)$|"
+              r"^([ \t]*image:[ \t]*)ghcr\.io/[^/]+/womens-road-calendar@sha256:[0-9a-f]{64}([ \t]*)$",
+              re.MULTILINE,
+          )
+
+          def replace(match):
+              prefix = match.group(1) or match.group(3)
+              suffix = match.group(2) or match.group(4)
+              return f"{prefix}{image}{suffix}"
+
+          updated, replacements = pattern.subn(replace, contents)
+          if replacements != 1:
+              raise SystemExit(f"expected one calendar image reference, found {replacements}")
+          deployment.write_text(updated)
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "${DEPLOYMENT_FILE}"
+          git commit -m "deploy cycling calendar image sha-${GITHUB_SHA::7}"
+
+          git fetch origin main
+          if [[ "$(git rev-parse origin/main)" != "${GITHUB_SHA}" ]]; then
+            if ! git diff --quiet "${GITHUB_SHA}..origin/main" -- \
+              cycling-calendar \
+              .github/workflows/cycling-calendar-image.yaml; then
+              echo "A newer calendar change exists; its workflow will deploy it"
+              exit 0
+            fi
+            git rebase origin/main
+          fi
+
+          git push origin HEAD:main

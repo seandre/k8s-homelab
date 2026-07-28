@@ -49,3 +49,8 @@ homepage/dist/
 homepage/test-results/
 homepage/playwright-report/
 homepage/tests/e2e/dashboard.spec.ts-snapshots/*-chromium-darwin.png
+
+# Cycling calendar local build and dependency artifacts
+cycling-calendar/node_modules/
+cycling-calendar/dist/
+cycling-calendar/*.tsbuildinfo

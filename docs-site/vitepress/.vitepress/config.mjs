@@ -49,6 +49,8 @@ export default defineConfig({
           {text: 'Homepage Architecture', link: '/overview/homepage-architecture'},
           {text: 'Homepage Build Plan', link: '/build/homepage-rework'},
           {text: 'AirGradient ONE Build Plan', link: '/build/airgradient-one-integration'},
+          {text: 'Women’s Road Calendar', link: '/build/womens-road-calendar'},
+          {text: 'Calendar Checkpoint 3 Evidence', link: '/overview/womens-road-calendar-checkpoint-3'},
         ],
       },
       {
@@ -83,6 +85,7 @@ export default defineConfig({
           {text: '05 · Proxmox Backup Server', link: '/operations/proxmox-backup-server'},
           {text: '06 · Home Assistant on k3s', link: '/operations/home-assistant-k3s'},
           {text: '07 · AtomS3 Lite Bluetooth Proxy', link: '/operations/atom-living-room-ble-proxy'},
+          {text: '08 · Women’s Road Calendar', link: '/operations/womens-road-calendar'},
         ],
       },
     ],
