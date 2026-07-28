@@ -132,6 +132,14 @@ test('renders the responsive indoor dashboard and requires review before control
   await expect(page.getByRole('heading', { name: 'Living Room Aranet' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Living Room Coway' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Bedroom Coway' })).toBeVisible();
+  const airGradientSettings = page.getByRole('heading', { name: 'AirGradient settings' });
+  const nestSettings = page.getByRole('heading', { name: 'Living Room Nest' });
+  await expect(airGradientSettings).toBeVisible();
+  await expect(nestSettings).toBeVisible();
+  await expect.poll(async () => {
+    const [airGradientBox, nestBox] = await Promise.all([airGradientSettings.boundingBox(), nestSettings.boundingBox()]);
+    return Math.abs((airGradientBox?.y ?? 0) - (nestBox?.y ?? 1_000));
+  }).toBeLessThan(2);
   const ventilate = page.getByRole('button', { name: 'Ventilate', exact: true });
   await expect(ventilate).not.toHaveClass(/ventilate-button-active/);
   await ventilate.click();
@@ -245,7 +253,8 @@ test('renders the responsive indoor dashboard and requires review before control
   await expect(sensitivity.getByRole('menuitemradio', { name: 'NORMAL' })).toHaveAttribute('aria-checked', 'true');
   await page.keyboard.press('Escape');
 
-  const cowayTimer = page.getByRole('group', { name: 'Timer' }).first();
+  const livingCowayPanel = page.getByRole('region', { name: 'Living Room Coway' });
+  const cowayTimer = livingCowayPanel.getByRole('group', { name: 'Timer' });
   await cowayTimer.getByRole('button', { name: 'Timer: Off. Show options' }).click();
   await expect(cowayTimer.getByRole('menuitemradio')).toHaveCount(5);
   await page.keyboard.press('Escape');

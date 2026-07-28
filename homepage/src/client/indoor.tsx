@@ -680,20 +680,18 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
           <div className="device-state-line"><strong>{aranet.sourceState}</strong><span>{aranet.readings.co2.metadata.freshness}</span></div>
         </Panel>
       </section>
-      <section className="indoor-settings-grid" aria-label="AirGradient settings">
+      <section className="indoor-settings-grid" aria-label="Indoor device settings">
         <Panel title="AirGradient settings" eyebrow="AVAILABLE CONTROLS" severity={sourceSeverity(airgradient.sourceState)} freshness={panelFreshness(airgradient.readings.co2.metadata.freshness)}>
           <AirGradientControls device={airgradient} review={setReview} />
+        </Panel>
+        <Panel title="Living Room Nest" eyebrow="THERMOSTAT / CLOUD" severity={sourceSeverity(thermostat.sourceState)} freshness={panelFreshness(thermostat.currentTemperature.metadata.freshness)}>
+          <div className="device-state-line"><strong>{thermostat.sourceState}</strong><span>{thermostat.hvacMode ?? 'NO DATA'} · {thermostat.heatSetpointF ?? '—'}–{thermostat.coolSetpointF ?? '—'}°F</span></div><ThermostatControls thermostat={thermostat} review={setReview} />
         </Panel>
       </section>
       <section className="purifier-grid" aria-label="Air purifiers">
         {indoor.purifiers.map((purifier) => <Panel key={purifier.alias} title={`${purifier.room === 'living_room' ? 'Living Room' : 'Bedroom'} Coway`} eyebrow="AIRMEGA 250S / CLOUD" severity={sourceSeverity(purifier.sourceState)} freshness={panelFreshness(purifier.readings.pm25.metadata.freshness)}><div className="indoor-reading-grid"><Metric label="PM2.5" value={display(purifier.readings.pm25)} unit="µg/m³" /><Metric label="PM10" value={display(purifier.readings.pm10)} unit="µg/m³" /><Metric label="AQI" value={display(purifier.readings.aqi)} /><Metric label="FILTER" value={display(purifier.readings.filterLife)} unit="%" /></div><div className="device-state-line"><strong>{purifier.sourceState}</strong><span>{purifier.power === null ? 'NO DATA' : purifier.power ? 'ON' : 'OFF'} · {purifier.preset ?? '—'} · speed {purifier.speed ?? '—'}</span></div><PurifierControls purifier={purifier} review={setReview} /></Panel>)}
       </section>
       {indoor.actions.length ? <section className="indoor-action-status" aria-live="polite" aria-label="Recent indoor commands">{indoor.actions.slice(0, 5).map((action) => <div key={action.actionId}><StateBadge severity={action.status === 'SUCCEEDED' ? 'OK' : action.status === 'PENDING' ? 'INFO' : 'CRIT'} label={action.status} /><span>{action.target.replaceAll('_', ' ')}</span>{action.message ? <small>{action.message}</small> : null}</div>)}</section> : null}
-      <section className="indoor-thermostat-grid" aria-label="Thermostat">
-        <Panel title="Living Room Nest" eyebrow="THERMOSTAT / CLOUD" severity={sourceSeverity(thermostat.sourceState)} freshness={panelFreshness(thermostat.currentTemperature.metadata.freshness)}>
-          <div className="device-state-line"><strong>{thermostat.sourceState}</strong><span>{thermostat.hvacMode ?? 'NO DATA'} · {thermostat.heatSetpointF ?? '—'}–{thermostat.coolSetpointF ?? '—'}°F</span></div><ThermostatControls thermostat={thermostat} review={setReview} />
-        </Panel>
-      </section>
       {review ? <ReviewDialog review={review} onClose={() => { setReview(null); setError(null); }} onSubmit={() => void submit()} submitting={submitting} error={error} /> : null}
     </main>
   );

@@ -56,7 +56,8 @@ describe('indoor dashboard', () => {
       expect(markup.indexOf(`NO DATA · ${graphOrder[index - 1]}`)).toBeLessThan(markup.indexOf(`NO DATA · ${graphOrder[index]}`));
     }
     for (const setting of ['Display brightness', 'LED brightness', 'Display temperature unit', 'PM standard', 'LED mode']) expect(markup).toContain(setting);
-    expect(markup.indexOf('Bedroom Coway')).toBeLessThan(markup.indexOf('Living Room Nest'));
+    expect(markup.indexOf('AirGradient settings')).toBeLessThan(markup.indexOf('Living Room Nest'));
+    expect(markup.indexOf('Living Room Nest')).toBeLessThan(markup.indexOf('Living Room Coway'));
     expect(markup).toContain('indoor-primary-readings');
     expect(markup.indexOf('Environmental trends')).toBeLessThan(markup.indexOf('Living Room Aranet'));
     expect(markup.indexOf('Living Room Aranet')).toBeLessThan(markup.indexOf('AirGradient settings'));
