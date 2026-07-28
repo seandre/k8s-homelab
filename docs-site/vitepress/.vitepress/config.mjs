@@ -48,6 +48,7 @@ export default defineConfig({
           {text: 'Architecture Decisions', link: '/overview/architecture-decisions'},
           {text: 'Homepage Architecture', link: '/overview/homepage-architecture'},
           {text: 'Homepage Build Plan', link: '/build/homepage-rework'},
+          {text: 'Homepage Actions Optimization', link: '/build/github-actions-workflow-optimization'},
           {text: 'AirGradient ONE Build Plan', link: '/build/airgradient-one-integration'},
           {text: 'Women’s Road Calendar', link: '/build/womens-road-calendar'},
           {text: 'Calendar Checkpoint 3 Evidence', link: '/overview/womens-road-calendar-checkpoint-3'},

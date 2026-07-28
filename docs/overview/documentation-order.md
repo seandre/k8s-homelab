@@ -13,6 +13,7 @@ Use the explicit VitePress sidebar and the numbered entries below as the navigat
 7. [AirGradient ONE Integration Build Plan](../build/airgradient-one-integration.md) is the self-contained controlling plan for the Living Room AirGradient monitor, including schema v4, local Home Assistant onboarding, source precedence, alerts, history, reviewed controls, UI, production acceptance, and rollback. **AG-000 through AG-009 are complete; production evidence is recorded in IE-015.**
 8. [Women’s Road Calendar Build and Architecture](../build/womens-road-calendar.md) defines the private 2026 Women Elite road calendar, curated data contract, editorial interface, review gates, static application architecture, security boundary, and acceptance criteria. **All three checkpoints were approved on 27 July 2026; production artifacts are verified.**
 9. [Women’s Road Calendar Checkpoint 3 Evidence](womens-road-calendar-checkpoint-3.md) records automated accessibility, responsive, interaction, edge-case, contrast, and dependency evidence plus the required live viewport review. **Approved on 27 July 2026.**
+10. [Homepage GitHub Actions Workflow Optimization](../build/github-actions-workflow-optimization.md) controls the hosted-runner workflow refactor, security gates, automated immutable-digest promotion, rollback, and five-run performance acceptance. **Implementation and production evidence are in progress.**
 
 ## Required Build Sequence
 

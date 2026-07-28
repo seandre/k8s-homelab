@@ -13,6 +13,12 @@ Read the [complete documentation order](overview/documentation-order.md) for opt
 
 The approved [Homelab Homepage Architecture](overview/homepage-architecture.md) defines the btop-inspired private Homepage, including its views, telemetry sources, security boundary, k3s rollout, deferred OKD migration, and rollback gates. The custom app now serves production; the [Homepage Rework Build Plan](build/homepage-rework.md), [operations runbook](operations/homepage-rework.md), and [v1 evidence index](overview/homepage-v1-evidence.md) record implementation, operation, and closeout status.
 
+The [Homepage GitHub Actions Workflow Optimization](build/github-actions-workflow-optimization.md)
+is the controlling plan for parallel hosted-runner verification, a single
+attested container build, exact-digest scanning, automated GitOps promotion,
+and five-run performance acceptance. It keeps all existing application,
+supply-chain, and GitOps gates.
+
 The [AirGradient ONE Integration Build
 Plan](build/airgradient-one-integration.md) defines the ordered agent packages,
 strict schema-v4 contract, local Home Assistant onboarding gate, alert and
