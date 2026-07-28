@@ -1,4 +1,5 @@
 import React from 'react';
+import { readFileSync } from 'node:fs';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { healthyBootstrapFixture } from '../shared/fixtures.js';
@@ -7,6 +8,13 @@ import { computeHistoryDomain, nextHistoryRefreshDelay } from './indoor-chart.js
 import { HistoryGraph, IndoorOverviewCard, IndoorScreen } from './indoor.js';
 
 describe('indoor dashboard', () => {
+  it('uses the defined green theme token for active controls', () => {
+    const stylesheet = readFileSync(new URL('./styles.css', import.meta.url), 'utf8');
+    expect(stylesheet).not.toContain('var(--ok)');
+    expect(stylesheet).toMatch(/control-current-positive[^}]+var\(--focus\)/);
+    expect(stylesheet).toMatch(/ventilate-button-active[^}]+var\(--focus\)/);
+  });
+
   it('renders normalized readings, both purifiers, history windows, and capability controls', () => {
     const markup = renderToStaticMarkup(<IndoorScreen bootstrap={healthyBootstrapFixture} />);
     expect(markup).toContain('AirGradient + Nest');
