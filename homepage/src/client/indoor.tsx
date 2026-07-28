@@ -356,7 +356,7 @@ function ThermostatControls({ thermostat, review }: { thermostat: ThermostatStat
   const [heat, setHeat] = useState(thermostat.heatSetpointF ?? 68);
   const [cool, setCool] = useState(thermostat.coolSetpointF ?? 74);
   return (
-    <div className="indoor-controls">
+    <div className="indoor-controls indoor-controls-single-row thermostat-controls">
       {thermostat.capabilities.hvacModes.supported ? <PopoverOptionButton label="HVAC mode" options={thermostat.capabilities.hvacModes.options} value={thermostat.hvacMode} disabled={disabled} positive={thermostat.hvacMode !== null && thermostat.hvacMode !== 'OFF'} onSelect={(mode) =>
         review(requestReview({ type: 'NEST_SET_HVAC_MODE', target: 'nest_living_room', mode: mode as NonNullable<ThermostatState['hvacMode']> }, 'Living Room Nest', thermostat.hvacMode ?? 'Unknown', mode, 'NEST_CLOUD', thermostat.stateVersion))
       } /> : null}
@@ -428,7 +428,7 @@ function AirGradientControls({ device, review }: { device: IndoorState['sensors'
     optionControl('PM standard', device.settings.pmStandard, device.capabilities.pmStandards.options, device.capabilities.pmStandards.supported, 'AIRGRADIENT_SET_PM_STANDARD'),
     optionControl('LED mode', device.settings.ledMode, device.capabilities.ledModes.options, device.capabilities.ledModes.supported, 'AIRGRADIENT_SET_LED_MODE'),
   ];
-  return controls.some(Boolean) ? <div className="indoor-controls" aria-label="AirGradient settings">{controls.map((control, index) => <React.Fragment key={index}>{control}</React.Fragment>)}</div> : null;
+  return controls.some(Boolean) ? <div className="indoor-controls indoor-controls-single-row airgradient-controls" aria-label="AirGradient settings">{controls.map((control, index) => <React.Fragment key={index}>{control}</React.Fragment>)}</div> : null;
 }
 
 function ReviewDialog({ review, onClose, onSubmit, submitting, error }: { review: Review; onClose: () => void; onSubmit: () => void; submitting: boolean; error: string | null }) {

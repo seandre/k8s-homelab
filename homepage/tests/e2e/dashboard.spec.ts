@@ -140,6 +140,18 @@ test('renders the responsive indoor dashboard and requires review before control
     const [airGradientBox, nestBox] = await Promise.all([airGradientSettings.boundingBox(), nestSettings.boundingBox()]);
     return Math.abs((airGradientBox?.y ?? 0) - (nestBox?.y ?? 1_000));
   }).toBeLessThan(2);
+  for (const panelName of ['AirGradient settings', 'Living Room Nest']) {
+    const controls = page.getByRole('region', { name: panelName }).locator('.indoor-controls-single-row');
+    const layout = await controls.evaluate((element) => {
+      const bottoms = [...element.children].map((child) => child.getBoundingClientRect().bottom);
+      return {
+        overflow: element.scrollWidth - element.clientWidth,
+        rowSpread: Math.max(...bottoms) - Math.min(...bottoms),
+      };
+    });
+    expect(layout.overflow).toBeLessThanOrEqual(1);
+    expect(layout.rowSpread).toBeLessThan(2);
+  }
   const ventilate = page.getByRole('button', { name: 'Ventilate', exact: true });
   await expect(ventilate).not.toHaveClass(/ventilate-button-active/);
   await ventilate.click();

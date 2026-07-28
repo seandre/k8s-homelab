@@ -397,6 +397,19 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .control-option-menu { position: absolute; z-index: 3; top: calc(100% + 0.25rem); left: 0; display: grid; min-width: max(100%, 7rem); border: 1px solid var(--focus); background: var(--surface); box-shadow: 0 0.35rem 1rem rgb(0 0 0 / 24%); padding: 0.2rem; }
 .control-option-menu button { width: 100%; border-color: transparent; text-align: left; white-space: nowrap; }
 .control-option-menu button[aria-checked='true'] { border-color: var(--focus); background: color-mix(in srgb, var(--focus) 18%, var(--surface)); color: var(--title); }
+@media (min-width: 901px) {
+  .indoor-settings-grid .indoor-controls-single-row { flex-wrap: nowrap; gap: 0.3rem; }
+  .indoor-settings-grid .indoor-controls-single-row > form { flex: 0 1 auto; flex-wrap: nowrap; width: auto; min-width: 0; gap: 0.2rem; }
+  .indoor-settings-grid .indoor-controls-single-row > .control-option-group { flex: 0 1 auto; min-width: 0; }
+  .airgradient-controls > form label { width: 3.25rem; min-width: 0; line-height: 1.1; }
+  .airgradient-controls > form input { width: 3.25rem; min-width: 0; }
+  .airgradient-controls > form button { padding-inline: 0.35rem; }
+  .airgradient-controls .control-option-popover > button { max-width: 8.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .thermostat-controls > form { flex: 1 1 auto; }
+  .thermostat-controls > form label { flex: 1 1 3.75rem; min-width: 0; }
+  .thermostat-controls > form input { width: 100%; min-width: 3.75rem; }
+  .thermostat-controls .control-option-popover > button { white-space: nowrap; }
+}
 .indoor-history { margin-top: 1rem; }
 .indoor-history .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 1rem; }
 .indoor-history .section-heading h2 { margin: 0.15rem 0 0; color: var(--title); font-size: 0.9rem; }
