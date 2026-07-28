@@ -43,7 +43,7 @@ export function IndoorOverviewCard({ indoor }: { indoor: IndoorState }) {
   const room = indoor.rooms.find((item) => item.alias === 'living_room')!;
   const severity = room.activeAlertCount > 0 ? 'WARN' : room.freshness === 'CURRENT' ? 'OK' : 'INFO';
   return (
-    <Panel title="Indoor environment" eyebrow="LIVING ROOM" severity={severity} freshness={panelFreshness(room.freshness)}>
+    <Panel className="overview-summary-card" title="Indoor" eyebrow="LIVING ROOM" severity={severity} freshness={panelFreshness(room.freshness)}>
       <div className="indoor-overview-metrics">
         <Metric label="TEMP" value={room.temperatureF === null ? '—' : room.temperatureF.toFixed(1)} unit="°F" />
         <Metric label="HUMIDITY" value={room.humidityPercent ?? '—'} unit="%" />

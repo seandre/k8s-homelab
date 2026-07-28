@@ -389,6 +389,25 @@ for (const viewport of [{ name: 'mobile', width: 320, height: 900 }, { name: 'ta
   });
 }
 
+for (const viewport of [
+  { name: 'mobile', width: 320, height: 900, columns: 1 },
+  { name: 'tablet', width: 768, height: 1024, columns: 2 },
+  { name: 'desktop', width: 1440, height: 1080, columns: 4 },
+]) {
+  test(`lays out the overview summaries in ${viewport.columns} column${viewport.columns === 1 ? '' : 's'} at ${viewport.name} width`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto('/');
+    const summaries = page.locator('.overview-summary-grid > .panel');
+    await expect(summaries).toHaveCount(4);
+    const topEdges = await summaries.evaluateAll((cards) => cards.map((card) => Math.round(card.getBoundingClientRect().top)));
+    expect(new Set(topEdges.slice(0, viewport.columns)).size).toBe(1);
+    if (viewport.columns < 4) expect(topEdges[viewport.columns]).toBeGreaterThan(topEdges[0]!);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await expect(page.getByRole('heading', { name: 'Services', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'OKD', exact: true })).toHaveCount(0);
+  });
+}
+
 for (const viewport of [{ name: 'mobile', width: 320, height: 900 }, { name: 'tablet', width: 768, height: 1024 }, { name: 'desktop', width: 1440, height: 1080 }]) {
   for (const appearance of ['dark', 'light'] as const) {
     test(`matches the ${appearance} overview at ${viewport.name} width`, async ({ page }) => {

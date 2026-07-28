@@ -130,7 +130,7 @@ describe('indoor dashboard', () => {
 
   it('adds the compact Living Room summary to overview', () => {
     const markup = renderToStaticMarkup(<IndoorOverviewCard indoor={healthyBootstrapFixture.indoor} />);
-    expect(markup).toContain('Indoor environment');
+    expect(markup).toContain('>Indoor<');
     expect(markup).toContain('WORST PM2.5');
     expect(markup).toContain('Open indoor dashboard');
     expect(markup).toContain('href="/indoor"');

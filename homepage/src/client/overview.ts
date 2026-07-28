@@ -30,12 +30,6 @@ export function buildOverviewModel(bootstrap: Bootstrap): OverviewModel {
   };
 }
 
-export function servicePanelSeverity(services: Bootstrap['services']) {
-  if (services.some((service) => service.status === 'DOWN')) return 'CRIT' as const;
-  if (services.some((service) => service.status === 'DEGRADED')) return 'WARN' as const;
-  return 'OK' as const;
-}
-
 export function bytesToGiB(value: number | null) {
   return value === null ? '—' : (value / (1024 ** 3)).toFixed(1);
 }
