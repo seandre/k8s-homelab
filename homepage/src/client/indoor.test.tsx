@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { healthyBootstrapFixture } from '../shared/fixtures.js';
 import { unsupportedIndoorFixture } from '../shared/indoor-fixtures.js';
-import { computeHistoryDomain, nextHistoryRefreshDelay } from './indoor-chart.js';
+import { computeHistoryDomain, nextHistoryRefreshDelay, ventilationTimeRemaining } from './indoor-chart.js';
 import { HistoryGraph, IndoorOverviewCard, IndoorScreen } from './indoor.js';
 
 describe('indoor dashboard', () => {
@@ -13,6 +13,11 @@ describe('indoor dashboard', () => {
     expect(stylesheet).not.toContain('var(--ok)');
     expect(stylesheet).toMatch(/control-current-positive[^}]+color-mix\(in srgb, var\(--focus\) 18%, var\(--surface\)\)/);
     expect(stylesheet).toMatch(/ventilate-button-active[^}]+color-mix\(in srgb, var\(--focus\) 18%, var\(--surface\)\)/);
+  });
+
+  it('formats the ventilation countdown as zero-padded minutes and seconds', () => {
+    expect(ventilationTimeRemaining('2026-07-28T12:30:00.000Z', Date.parse('2026-07-28T12:00:01.000Z'))).toBe('29:59');
+    expect(ventilationTimeRemaining('2026-07-28T12:00:00.000Z', Date.parse('2026-07-28T12:00:01.000Z'))).toBe('00:00');
   });
 
   it('renders normalized readings, both purifiers, history windows, and capability controls', () => {
@@ -66,11 +71,13 @@ describe('indoor dashboard', () => {
       status: 'PENDING',
       acceptedAt: '2026-07-19T12:00:00.000Z',
       resolvedAt: null,
+      endsAt: '2026-07-19T12:30:00.000Z',
     });
     const activeMarkup = renderToStaticMarkup(<IndoorScreen bootstrap={active} />);
     expect(activeMarkup).toContain('ventilate-button ventilate-button-active');
     expect(activeMarkup).toContain('>Ventilating…<');
     expect(activeMarkup).toContain('>Cancel ventilation<');
+    expect(activeMarkup).toContain('remaining</span>');
     expect(activeMarkup).toMatch(/class="control-current-positive"[^>]*aria-label="Power: On/);
     expect(activeMarkup).toMatch(/class="control-current-positive"[^>]*aria-label="Light: ON/);
     expect(activeMarkup).toMatch(/class="control-current-positive"[^>]*aria-label="Timer: Running/);
@@ -204,14 +211,14 @@ describe('indoor dashboard', () => {
   it('smooths the CO₂ trace and emphasizes visible threshold ticks', () => {
     const markup = renderToStaticMarkup(<HistoryGraph
       label="CO₂"
-      thresholds={[{ value: 900, tone: 'yellow' }, { value: 1000, tone: 'red' }]}
+      thresholds={[{ value: 600, tone: 'blue' }, { value: 900, tone: 'yellow' }, { value: 1000, tone: 'red' }]}
       scale={{ fixedMin: 400, fixedMax: 1400, ticks: [400, 600, 800, 1000, 1200, 1400] }}
       series={{
         metric: 'airgradient_living_room.co2',
         unit: 'ppm',
         window: '1h',
         points: [
-          { timestamp: '2026-07-25T00:00:00.000Z', value: 700 },
+          { timestamp: '2026-07-25T00:00:00.000Z', value: 500 },
           { timestamp: '2026-07-25T00:05:00.000Z', value: 900 },
           { timestamp: '2026-07-25T00:10:00.000Z', value: 1100 },
         ],
@@ -223,6 +230,8 @@ describe('indoor dashboard', () => {
     expect(markup).toContain('y-axis-label-threshold');
     expect(markup).toContain('threshold-tone-yellow');
     expect(markup).toContain('threshold-tone-red');
+    expect(markup).toContain('threshold-tone-blue');
+    expect(markup).toContain('history-trace-stop-blue');
     expect(markup).toContain('history-trace-stop-green');
     expect(markup).toContain('history-trace-stop-yellow');
     expect(markup).toContain('history-trace-stop-red');

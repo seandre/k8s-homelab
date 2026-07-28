@@ -463,7 +463,12 @@ export class IndoorActionGateway {
           .map((target) => [target, commandCompletedAt]));
         progress.phase = 'RUNNING';
         progress.runUntil = commandCompletedAt + this.ventilationMs;
-        action.status = { ...action.accepted, resolvedAt: null, message: 'Ventilating for 30 minutes; Coway Rapid is maintained until cancelled or overridden.' };
+        action.status = {
+          ...action.accepted,
+          resolvedAt: null,
+          endsAt: new Date(progress.runUntil).toISOString(),
+          message: 'Ventilating for 30 minutes; Coway Rapid is maintained until cancelled or overridden.',
+        };
         for (const alias of progress.changedTargets) this.running.delete(alias);
         await this.persist();
       }

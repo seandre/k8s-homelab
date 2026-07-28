@@ -259,6 +259,7 @@ describe('indoor action gateway', () => {
       command: { type: 'VENTILATE', target: 'indoor_environment', durationMinutes: 30 },
     }, context)).toMatchObject({ ok: true });
     await vi.waitFor(() => expect(gateway.statuses()[0]?.message).toContain('Ventilating for 30 minutes'));
+    expect(gateway.statuses()[0]?.endsAt).toBe('2026-07-24T12:30:00.000Z');
 
     expect(await gateway.accept({
       idempotencyKey: '89b93e06-702f-442b-92c5-74a5a0d777d2',

@@ -372,6 +372,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .indoor-alerts strong { color: var(--title); }
 .ventilate-button { min-height: 2rem; border: 1px solid var(--divider); background: var(--surface); color: var(--fg); padding: 0.35rem 0.7rem; font: 700 0.62rem/1 var(--mono); cursor: pointer; }
 .ventilation-controls { display: flex; align-items: center; gap: 0.4rem; }
+.ventilation-remaining { min-width: 7rem; color: var(--focus); font: 700 0.62rem/1 var(--mono); font-variant-numeric: tabular-nums; text-align: center; }
 .ventilate-button-active { border-color: var(--focus); background: color-mix(in srgb, var(--focus) 18%, var(--surface)); color: var(--title); }
 .ventilate-button:disabled { cursor: not-allowed; opacity: 0.5; }
 .ventilate-button-active:disabled { opacity: 1; }

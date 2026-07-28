@@ -8,6 +8,13 @@ export type HistoryScale = {
   digits?: number;
 };
 
+export function ventilationTimeRemaining(endsAt: string, now = Date.now()) {
+  const remainingSeconds = Math.max(0, Math.ceil((Date.parse(endsAt) - now) / 1_000));
+  const minutes = Math.floor(remainingSeconds / 60);
+  const seconds = remainingSeconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
 export type ChartPoint = { x: number; y: number };
 export const INDOOR_HISTORY_REFRESH_MS = 30_000;
 

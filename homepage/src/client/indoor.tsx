@@ -4,7 +4,7 @@ import type {
 } from '../shared/contracts.js';
 import { BootstrapSchema, HistoryResponseSchema, IndoorActionAcceptedSchema, indoorVentilationStateVersion } from '../shared/contracts.js';
 import { Metric, Panel, StateBadge } from './components.js';
-import { computeHistoryDomain, nextHistoryRefreshDelay, smoothSvgPath, type HistoryScale } from './indoor-chart.js';
+import { computeHistoryDomain, nextHistoryRefreshDelay, smoothSvgPath, ventilationTimeRemaining, type HistoryScale } from './indoor-chart.js';
 
 const WINDOWS = ['1h', '3h', '6h', '24h', '7d', '30d'] as const;
 type Window = typeof WINDOWS[number];
@@ -462,12 +462,16 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ventilationActionId, setVentilationActionId] = useState<string | null>(null);
+  const [ventilationOptimisticEndsAt, setVentilationOptimisticEndsAt] = useState<string | null>(null);
   const [cancellingVentilation, setCancellingVentilation] = useState(false);
+  const [countdownNow, setCountdownNow] = useState(Date.now());
   const aranet = indoor.sensors[0];
   const airgradient = indoor.sensors[1];
   const thermostat = indoor.thermostats[0];
-  const ventilationPending = indoor.actions.some((action) => action.target === 'indoor_environment' && action.status === 'PENDING');
+  const pendingVentilation = indoor.actions.filter((action) => action.target === 'indoor_environment' && action.status === 'PENDING').at(-1);
+  const ventilationPending = pendingVentilation !== undefined;
   const ventilationActive = ventilationPending || ventilationActionId !== null;
+  const ventilationEndsAt = pendingVentilation?.endsAt ?? ventilationOptimisticEndsAt;
   const ventilationAvailable = thermostat.sourceState === 'AVAILABLE'
     && thermostat.capabilities.fanTimerMinutes.supported
     && thermostat.capabilities.fanTimerMinutes.values.includes(0)
@@ -492,6 +496,7 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
             const tracked = parsed.data.indoor.actions.find((action) => action.actionId === ventilationActionId);
             if (tracked && tracked.status !== 'PENDING') {
               setVentilationActionId(null);
+              setVentilationOptimisticEndsAt(null);
               setCancellingVentilation(false);
             }
           }
@@ -505,8 +510,14 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
       if (timer !== undefined) window.clearTimeout(timer);
     };
   }, [ventilationActionId]);
+  useEffect(() => {
+    if (!ventilationActive) return;
+    setCountdownNow(Date.now());
+    const interval = window.setInterval(() => setCountdownNow(Date.now()), 1_000);
+    return () => window.clearInterval(interval);
+  }, [ventilationActive]);
   const metrics = useMemo<HistoryMetric[]>(() => [
-    { alias: 'airgradient_living_room.co2', label: 'AirGradient CO₂', thresholds: [{ value: 800, tone: 'yellow' }, { value: 1000, tone: 'red' }], scale: { fixedMin: 400, fixedMax: 1400, ticks: [400, 600, 800, 1000, 1200, 1400], digits: 0 } },
+    { alias: 'airgradient_living_room.co2', label: 'AirGradient CO₂', thresholds: [{ value: 600, tone: 'blue' }, { value: 800, tone: 'yellow' }, { value: 1000, tone: 'red' }], scale: { fixedMin: 400, fixedMax: 1400, ticks: [400, 600, 800, 1000, 1200, 1400], digits: 0 } },
     { alias: 'airgradient_living_room.pm25', secondaryAlias: 'airgradient_living_room.pm10', secondaryLabel: 'PM10', label: 'AirGradient particulate matter', thresholds: [{ value: 5, tone: 'yellow' }, { value: 15, tone: 'red' }], scale: { minSpan: 20, hardMin: 0, digits: 0 } },
     { alias: 'airgradient_living_room.tvoc_index', label: 'AirGradient TVOC index', thresholds: [{ value: 100, tone: 'blue' }, { value: 150, tone: 'yellow' }, { value: 250, tone: 'red' }], scale: { fixedMin: 0, fixedMax: 500, ticks: [0, 100, 200, 300, 400, 500], digits: 0 } },
     { alias: 'airgradient_living_room.nox_index', label: 'AirGradient NOx index', thresholds: [{ value: 20, tone: 'yellow' }, { value: 150, tone: 'red' }], scale: { fixedMin: 0, fixedMax: 500, ticks: [0, 100, 200, 300, 400, 500], digits: 0 } },
@@ -600,7 +611,10 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
       const body: unknown = await response.json();
       const parsed = IndoorActionAcceptedSchema.safeParse((body as { data?: IndoorActionAccepted }).data);
       if (!response.ok || !parsed.success) throw new Error((body as { error?: { message?: string } }).error?.message ?? 'The command was not accepted.');
-      if (review.command.type === 'VENTILATE') setVentilationActionId(parsed.data.actionId);
+      if (review.command.type === 'VENTILATE') {
+        setVentilationActionId(parsed.data.actionId);
+        setVentilationOptimisticEndsAt(new Date(Date.parse(parsed.data.acceptedAt) + 30 * 60_000).toISOString());
+      }
       if (review.command.type === 'CANCEL_VENTILATION') {
         setVentilationActionId(parsed.data.actionId);
         setCancellingVentilation(true);
@@ -618,7 +632,7 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
         'Both Coways Rapid + Nest fan for 30 minutes',
         'MULTI_CLOUD',
         indoorVentilationStateVersion(indoor),
-      ))}>{ventilationActive ? 'Ventilating…' : 'Ventilate'}</button>{ventilationActive ? <button className="cancel-ventilation-button" type="button" disabled={cancellingVentilation} onClick={() => setReview(requestReview(
+      ))}>{ventilationActive ? 'Ventilating…' : 'Ventilate'}</button>{ventilationActive && ventilationEndsAt ? <span className="ventilation-remaining" role="timer">{ventilationTimeRemaining(ventilationEndsAt, countdownNow)} remaining</span> : null}{ventilationActive ? <button className="cancel-ventilation-button" type="button" disabled={cancellingVentilation} onClick={() => setReview(requestReview(
         { type: 'CANCEL_VENTILATION', target: 'indoor_environment' },
         'Indoor environment',
         'Ventilating',

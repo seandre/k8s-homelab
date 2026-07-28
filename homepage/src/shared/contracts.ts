@@ -324,6 +324,7 @@ export const IndoorActionStatusSchema = z.object({
   actionId: z.string().min(1), target: z.enum(['nest_living_room', 'coway_living_room', 'coway_bedroom', 'airgradient_living_room', 'indoor_environment']),
   status: z.enum(['PENDING', 'SUCCEEDED', 'FAILED', 'TIMED_OUT']), acceptedAt: z.string().datetime({ offset: true }),
   resolvedAt: z.string().datetime({ offset: true }).nullable(), message: z.string().max(240).optional(),
+  endsAt: z.string().datetime({ offset: true }).optional(),
 }).strict();
 export type IndoorActionStatus = z.infer<typeof IndoorActionStatusSchema>;
 export const IndoorStateSchema = z.object({
