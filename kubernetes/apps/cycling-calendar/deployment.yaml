@@ -25,7 +25,7 @@ spec:
       containers:
         - name: calendar
           # CI replaces this bootstrap reference with image@sha256:<digest>.
-          image: ghcr.io/seandre/womens-road-calendar:bootstrap-not-published
+          image: ghcr.io/seandre/womens-road-calendar@sha256:1c5a81047e2c378fe768cfc33b51cecaefeecf389e139297cd3d396f9720f157None
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
