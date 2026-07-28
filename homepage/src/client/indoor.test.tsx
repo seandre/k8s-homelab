@@ -11,6 +11,7 @@ describe('indoor dashboard', () => {
     const markup = renderToStaticMarkup(<IndoorScreen bootstrap={healthyBootstrapFixture} />);
     expect(markup).toContain('AirGradient + Nest');
     expect(markup).toContain('>Ventilate<');
+    expect(markup).not.toContain('ventilate-button-active');
     expect(markup).toContain('Living Room Aranet');
     expect(markup).toContain('Living Room Coway');
     expect(markup).toContain('Bedroom Coway');
@@ -48,7 +49,23 @@ describe('indoor dashboard', () => {
     expect(markup.indexOf('Living Room Aranet')).toBeLessThan(markup.indexOf('AirGradient settings'));
   });
 
-  it('uses positive outlines only for active power, light, and HVAC states', () => {
+  it('uses green active styling only for on power, light, timers, HVAC, and Ventilate states', () => {
+    const active = structuredClone(healthyBootstrapFixture);
+    active.indoor.purifiers[0].timerEndsAt = '2026-07-19T13:00:00.000Z';
+    active.indoor.actions.push({
+      actionId: 'fixture-ventilate-active',
+      target: 'indoor_environment',
+      status: 'PENDING',
+      acceptedAt: '2026-07-19T12:00:00.000Z',
+      resolvedAt: null,
+    });
+    const activeMarkup = renderToStaticMarkup(<IndoorScreen bootstrap={active} />);
+    expect(activeMarkup).toContain('ventilate-button ventilate-button-active');
+    expect(activeMarkup).toContain('>Ventilating…<');
+    expect(activeMarkup).toMatch(/class="control-current-positive"[^>]*aria-label="Power: On/);
+    expect(activeMarkup).toMatch(/class="control-current-positive"[^>]*aria-label="Light: ON/);
+    expect(activeMarkup).toMatch(/class="control-current-positive"[^>]*aria-label="Timer: Running/);
+
     const inactive = structuredClone(healthyBootstrapFixture);
     inactive.indoor.thermostats[0].hvacMode = 'OFF';
     inactive.indoor.purifiers[0].power = false;
@@ -57,6 +74,7 @@ describe('indoor dashboard', () => {
     inactive.indoor.purifiers[1].light = 'OFF';
     const markup = renderToStaticMarkup(<IndoorScreen bootstrap={inactive} />);
     expect(markup).not.toContain('class="control-current-positive"');
+    expect(markup).not.toContain('ventilate-button-active');
   });
 
   it('aligns live history refreshes to the next 30-second scrape boundary', () => {

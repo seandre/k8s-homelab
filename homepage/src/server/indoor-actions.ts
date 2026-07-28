@@ -436,9 +436,8 @@ export class IndoorActionGateway {
       if (progress.phase === 'STARTING') {
         for (const alias of progress.changedTargets) this.running.add(alias);
         const snapshot = (await this.bootstrap()).indoor;
-        for (const target of progress.changedTargets) {
-          await this.executor.execute(this.ventilationStartCommand(target, snapshot));
-        }
+        await Promise.all(progress.changedTargets.map((target) =>
+          this.executor.execute(this.ventilationStartCommand(target, snapshot))));
         const convergenceStarted = this.now().getTime();
         let current = snapshot;
         while (this.now().getTime() - convergenceStarted < this.timeoutMs) {

@@ -132,12 +132,16 @@ test('renders the responsive indoor dashboard and requires review before control
   await expect(page.getByRole('heading', { name: 'Living Room Aranet' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Living Room Coway' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Bedroom Coway' })).toBeVisible();
-  await page.getByRole('button', { name: 'Ventilate', exact: true }).click();
+  const ventilate = page.getByRole('button', { name: 'Ventilate', exact: true });
+  await expect(ventilate).not.toHaveClass(/ventilate-button-active/);
+  await ventilate.click();
   const ventilationReview = page.getByRole('dialog', { name: 'Confirm change' });
   await expect(ventilationReview).toContainText('Both Coways Rapid + Nest fan for 30 minutes');
   await expect(ventilationReview).toContainText('Nest + Coway clouds');
   await ventilationReview.getByRole('button', { name: 'Save' }).click();
   await expect(ventilationReview).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Ventilating…' })).toHaveClass(/ventilate-button-active/);
+  await expect(page.getByRole('button', { name: 'Ventilating…' })).toBeDisabled();
   expect(indoorCommands).toContainEqual({ type: 'VENTILATE', target: 'indoor_environment', durationMinutes: 30 });
   await expect.poll(() => historyRequestCount).toBe(7);
   const co2Graph = page.getByRole('img', { name: /CO₂, 1h/ });

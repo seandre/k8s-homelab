@@ -370,7 +370,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .indoor-alerts { display: grid; gap: 0.35rem; margin-bottom: 0.65rem; }
 .indoor-alerts > div, .indoor-action-status > div { display: flex; align-items: center; gap: 0.55rem; border: 1px solid var(--divider); border-left: 0.2rem solid var(--warn); padding: 0.45rem 0.55rem; font-size: 0.65rem; }
 .indoor-alerts strong { color: var(--title); }
-.ventilate-button { min-height: 2rem; border: 1px solid var(--focus); background: color-mix(in srgb, var(--focus) 18%, var(--surface)); color: var(--title); padding: 0.35rem 0.7rem; font: 700 0.62rem/1 var(--mono); cursor: pointer; }
+.ventilate-button { min-height: 2rem; border: 1px solid var(--divider); background: var(--surface); color: var(--fg); padding: 0.35rem 0.7rem; font: 700 0.62rem/1 var(--mono); cursor: pointer; }
+.ventilate-button-active { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 28%, var(--surface)); color: var(--title); box-shadow: inset 0 0 0 1px var(--ok); }
 .ventilate-button:disabled { cursor: not-allowed; opacity: 0.5; }
 .device-state-line { display: flex; justify-content: space-between; gap: 0.6rem; margin-top: 0.65rem; border-top: 1px dotted var(--divider); padding-top: 0.5rem; color: var(--muted); font-size: 0.62rem; }
 .device-state-line strong { color: var(--title); }
@@ -385,7 +386,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .control-option-label { color: var(--muted); font-size: 0.57rem; letter-spacing: 0.04em; }
 .control-option-group button[aria-pressed='true'] { border-color: var(--focus); background: color-mix(in srgb, var(--focus) 18%, var(--surface)); color: var(--title); }
 .control-option-popover { position: relative; }
-.control-option-popover > button.control-current-positive { border-color: var(--ok); box-shadow: inset 0 0 0 1px var(--ok); }
+.control-option-popover > button.control-current-positive { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 28%, var(--surface)); color: var(--title); box-shadow: inset 0 0 0 1px var(--ok); }
 .control-option-menu { position: absolute; z-index: 3; top: calc(100% + 0.25rem); left: 0; display: grid; min-width: max(100%, 7rem); border: 1px solid var(--focus); background: var(--surface); box-shadow: 0 0.35rem 1rem rgb(0 0 0 / 24%); padding: 0.2rem; }
 .control-option-menu button { width: 100%; border-color: transparent; text-align: left; white-space: nowrap; }
 .control-option-menu button[aria-checked='true'] { border-color: var(--focus); background: color-mix(in srgb, var(--focus) 18%, var(--surface)); color: var(--title); }

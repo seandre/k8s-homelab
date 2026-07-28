@@ -2,7 +2,7 @@ import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type {
   Bootstrap, IndoorActionAccepted, IndoorCommand, IndoorState, TimeSeries,
 } from '../shared/contracts.js';
-import { HistoryResponseSchema, IndoorActionAcceptedSchema, indoorVentilationStateVersion } from '../shared/contracts.js';
+import { BootstrapSchema, HistoryResponseSchema, IndoorActionAcceptedSchema, indoorVentilationStateVersion } from '../shared/contracts.js';
 import { Metric, Panel, StateBadge } from './components.js';
 import { computeHistoryDomain, nextHistoryRefreshDelay, smoothSvgPath, type HistoryScale } from './indoor-chart.js';
 
@@ -305,13 +305,14 @@ function OptionButtonGroup<T extends string | number>({ label, options, value, d
   </div>;
 }
 
-function PopoverOptionButton<T extends string | number>({ label, options, value, disabled, format = String, positive = false, onSelect }: {
+function PopoverOptionButton<T extends string | number>({ label, options, value, disabled, format = String, positive = false, currentLabel, onSelect }: {
   label: string;
   options: T[];
   value: T | null;
   disabled: boolean;
   format?: (option: T) => string;
   positive?: boolean;
+  currentLabel?: string | undefined;
   onSelect: (option: T) => void;
 }) {
   const root = useRef<HTMLDivElement>(null);
@@ -334,8 +335,8 @@ function PopoverOptionButton<T extends string | number>({ label, options, value,
   if (!options.length) return null;
   return <div className="control-option-group control-option-popover" role="group" aria-label={label} ref={root}>
     <span className="control-option-label">{label}</span>
-    <button className={positive ? 'control-current-positive' : undefined} type="button" disabled={disabled} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((current) => !current)} aria-label={`${label}: ${value === null ? 'unknown' : format(value)}. Show options`}>
-      {value === null ? 'Unknown' : format(value)}
+    <button className={positive ? 'control-current-positive' : undefined} type="button" disabled={disabled} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((current) => !current)} aria-label={`${label}: ${currentLabel ?? (value === null ? 'unknown' : format(value))}. Show options`}>
+      {currentLabel ?? (value === null ? 'Unknown' : format(value))}
     </button>
     {open ? <div className="control-option-menu" role="menu" aria-label={`${label} options`}>
       {options.map((option) => <button type="button" role="menuitemradio" aria-checked={option === value} key={option} onClick={() => {
@@ -362,7 +363,7 @@ function ThermostatControls({ thermostat, review }: { thermostat: ThermostatStat
         event.preventDefault();
         review(requestReview({ type: 'NEST_SET_SETPOINT', target: 'nest_living_room', setpoint: { shape: 'RANGE', heatTemperatureF: heat, coolTemperatureF: cool } }, 'Living Room Nest', `${thermostat.heatSetpointF ?? '—'}–${thermostat.coolSetpointF ?? '—'}°F`, `${heat}–${cool}°F`, 'NEST_CLOUD', thermostat.stateVersion));
       }}><label>Heat setpoint<input aria-label="Nest heat setpoint" type="number" min={min} max={max} step={step} value={heat} onChange={(event) => setHeat(Number(event.target.value))} disabled={disabled} /></label><label>Cool setpoint<input aria-label="Nest cool setpoint" type="number" min={min} max={max} step={step} value={cool} onChange={(event) => setCool(Number(event.target.value))} disabled={disabled} /></label><button type="submit" disabled={disabled || heat >= cool}>Save</button></form> : null}
-      {thermostat.capabilities.fanTimerMinutes.supported ? <PopoverOptionButton label="Nest fan timer" options={thermostat.capabilities.fanTimerMinutes.values} value={thermostat.fanTimerEndsAt ? null : 0} disabled={disabled} positive={Boolean(thermostat.fanTimerEndsAt)} format={(minutes) => minutes === 0 ? 'Off' : `${minutes}m`} onSelect={(minutes) =>
+      {thermostat.capabilities.fanTimerMinutes.supported ? <PopoverOptionButton label="Nest fan timer" options={thermostat.capabilities.fanTimerMinutes.values} value={thermostat.fanTimerEndsAt ? null : 0} disabled={disabled} positive={Boolean(thermostat.fanTimerEndsAt)} currentLabel={thermostat.fanTimerEndsAt ? 'Running' : undefined} format={(minutes) => minutes === 0 ? 'Off' : `${minutes}m`} onSelect={(minutes) =>
         review(requestReview({ type: 'NEST_SET_FAN_TIMER', target: 'nest_living_room', durationMinutes: minutes }, 'Living Room Nest', thermostat.fanTimerEndsAt ? 'Running' : 'Off', minutes === 0 ? 'Off' : `${minutes} minutes`, 'NEST_CLOUD', thermostat.stateVersion))
       } /> : null}
     </div>
@@ -383,7 +384,7 @@ function PurifierControls({ purifier, review }: { purifier: PurifierState; revie
       {purifier.capabilities.presets.supported ? <PopoverOptionButton label="Preset" options={purifier.capabilities.presets.options} value={purifier.preset} disabled={disabled} onSelect={(value) =>
         make({ type: 'COWAY_SET_PRESET', target: purifier.alias, preset: value }, purifier.preset ?? 'Unknown', value)
       } /> : null}
-      {purifier.capabilities.timerMinutes.supported ? <PopoverOptionButton label="Timer" options={purifier.capabilities.timerMinutes.values} value={purifier.timerEndsAt ? null : 0} disabled={disabled} positive={Boolean(purifier.timerEndsAt)} format={(value) => value === 0 ? 'Off' : `${value}m`} onSelect={(value) =>
+      {purifier.capabilities.timerMinutes.supported ? <PopoverOptionButton label="Timer" options={purifier.capabilities.timerMinutes.values} value={purifier.timerEndsAt ? null : 0} disabled={disabled} positive={Boolean(purifier.timerEndsAt)} currentLabel={purifier.timerEndsAt ? 'Running' : undefined} format={(value) => value === 0 ? 'Off' : `${value}m`} onSelect={(value) =>
         make({ type: 'COWAY_SET_TIMER', target: purifier.alias, durationMinutes: value }, purifier.timerEndsAt ? 'Running' : 'Off', value === 0 ? 'Off' : `${value} minutes`)
       } /> : null}
       {purifier.capabilities.lightOptions.supported ? <PopoverOptionButton label="Light" options={purifier.capabilities.lightOptions.options} value={purifier.light} disabled={disabled} positive={purifier.light === 'ON' || purifier.light === 'AQI_OFF'} format={(value) => value.replaceAll('_', ' ')} onSelect={(value) =>
@@ -463,6 +464,7 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
   const airgradient = indoor.sensors[1];
   const thermostat = indoor.thermostats[0];
   const ventilationPending = indoor.actions.some((action) => action.target === 'indoor_environment' && action.status === 'PENDING');
+  const [ventilationActive, setVentilationActive] = useState(ventilationPending);
   const ventilationAvailable = thermostat.sourceState === 'AVAILABLE'
     && thermostat.capabilities.fanTimerMinutes.supported
     && thermostat.capabilities.fanTimerMinutes.values.includes(0)
@@ -470,6 +472,31 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
     && indoor.purifiers.every((purifier) => purifier.sourceState === 'AVAILABLE'
       && purifier.capabilities.presets.supported
       && purifier.capabilities.presets.options.includes('RAPID'));
+  useEffect(() => {
+    if (ventilationPending) setVentilationActive(true);
+  }, [ventilationPending]);
+  useEffect(() => {
+    if (!ventilationActive) return;
+    let cancelled = false;
+    let timer: number | undefined;
+    const refresh = async () => {
+      try {
+        const response = await fetch('/api/v1/bootstrap');
+        const body: unknown = await response.json();
+        const parsed = BootstrapSchema.safeParse((body as { data?: unknown }).data);
+        if (!cancelled && response.ok && parsed.success) {
+          const latest = parsed.data.indoor.actions.filter((action) => action.target === 'indoor_environment').at(-1);
+          if (!latest || latest.status !== 'PENDING') setVentilationActive(false);
+        }
+      } catch { /* retain active state until a successful status read */ }
+      if (!cancelled) timer = window.setTimeout(() => void refresh(), 2_000);
+    };
+    timer = window.setTimeout(() => void refresh(), 2_000);
+    return () => {
+      cancelled = true;
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
+  }, [ventilationActive]);
   const metrics = useMemo<HistoryMetric[]>(() => [
     { alias: 'airgradient_living_room.co2', label: 'AirGradient CO₂', thresholds: [{ value: 800, tone: 'yellow' }, { value: 1000, tone: 'red' }], scale: { fixedMin: 400, fixedMax: 1400, ticks: [400, 600, 800, 1000, 1200, 1400], digits: 0 } },
     { alias: 'airgradient_living_room.pm25', secondaryAlias: 'airgradient_living_room.pm10', secondaryLabel: 'PM10', label: 'AirGradient particulate matter', thresholds: [{ value: 5, tone: 'yellow' }, { value: 15, tone: 'red' }], scale: { minSpan: 20, hardMin: 0, digits: 0 } },
@@ -565,20 +592,21 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
       const body: unknown = await response.json();
       const parsed = IndoorActionAcceptedSchema.safeParse((body as { data?: IndoorActionAccepted }).data);
       if (!response.ok || !parsed.success) throw new Error((body as { error?: { message?: string } }).error?.message ?? 'The command was not accepted.');
+      if (review.command.type === 'VENTILATE') setVentilationActive(true);
       setReview(null);
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'The command failed.'); }
     finally { setSubmitting(false); }
   };
   return (
     <main className="dashboard indoor-dashboard" id="indoor">
-      <section className="hero-row"><div><span className="panel-eyebrow">INDOOR / HOME ASSISTANT</span><h1>Indoor environment</h1></div><div className="hero-state"><button className="ventilate-button" type="button" disabled={!ventilationAvailable || ventilationPending} onClick={() => setReview(requestReview(
+      <section className="hero-row"><div><span className="panel-eyebrow">INDOOR / HOME ASSISTANT</span><h1>Indoor environment</h1></div><div className="hero-state"><button className={`ventilate-button${ventilationActive ? ' ventilate-button-active' : ''}`} type="button" disabled={!ventilationAvailable || ventilationActive} onClick={() => setReview(requestReview(
         { type: 'VENTILATE', target: 'indoor_environment', durationMinutes: 30 },
         'Indoor environment',
         `Nest fan ${thermostat.fanTimerEndsAt ? 'on' : 'off'}; Coways ${indoor.purifiers.map((purifier) => purifier.power ? `speed ${purifier.speed ?? 'unknown'}` : 'off').join(' / ')}`,
         'Both Coways Rapid + Nest fan for 30 minutes',
         'MULTI_CLOUD',
         indoorVentilationStateVersion(indoor),
-      ))}>{ventilationPending ? 'Ventilating…' : 'Ventilate'}</button><StateBadge severity={indoor.alerts.some((item) => item.severity === 'CRIT') ? 'CRIT' : indoor.alerts.length ? 'WARN' : 'OK'} label={`${indoor.alerts.length} active alert${indoor.alerts.length === 1 ? '' : 's'}`} /><span>Updated {bootstrap.generatedAt.slice(11, 19)} UTC</span></div></section>
+      ))}>{ventilationActive ? 'Ventilating…' : 'Ventilate'}</button><StateBadge severity={indoor.alerts.some((item) => item.severity === 'CRIT') ? 'CRIT' : indoor.alerts.length ? 'WARN' : 'OK'} label={`${indoor.alerts.length} active alert${indoor.alerts.length === 1 ? '' : 's'}`} /><span>Updated {bootstrap.generatedAt.slice(11, 19)} UTC</span></div></section>
       {indoor.alerts.length ? <section className="indoor-alerts" aria-label="Indoor alerts">{indoor.alerts.map((alert) => <div key={alert.id}><StateBadge severity={alert.severity} /><strong>{alert.kind.replaceAll('_', ' ')}</strong><span>{alert.summary}</span></div>)}</section> : null}
       <section className="indoor-current-grid" id="indoor-current" aria-label="Current indoor readings">
         <Panel title="AirGradient + Nest" eyebrow="LIVING ROOM / LOCAL PRIMARY" severity={sourceSeverity(airgradient.sourceState)} freshness={panelFreshness(airgradient.readings.co2.metadata.freshness)}>
