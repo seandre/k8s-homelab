@@ -299,9 +299,12 @@ function SortHeading({
       }`}
     >
       {label}
-      <span aria-hidden="true">
-        {active ? (state.direction === 'asc' ? '↑' : '↓') : '↕'}
-      </span>
+      <span
+        className={`sort-indicator${
+          active ? ` is-${state.direction}` : ''
+        }`}
+        aria-hidden="true"
+      />
     </button>
   );
 }
@@ -450,7 +453,7 @@ function App() {
       </a>
       <header className="site-header">
         <a className="wordmark" href="#top" aria-label="Women’s Road Calendar">
-          WRC<span>26</span>
+          Women’s Road
         </a>
         <p>Women Elite · Road</p>
         <p className="review-state">
@@ -461,7 +464,6 @@ function App() {
       </header>
 
       <section className="masthead" id="top" aria-labelledby="page-title">
-        <p className="eyebrow">The 2026 season, from first flag to final line</p>
         <h1 id="page-title">
           <span>Women’s Road</span>
           <span>
@@ -791,14 +793,14 @@ function App() {
 
       <footer className="site-footer">
         <div>
-          <span>WRC / 26</span>
+          <span>2026 Calendar</span>
           <p>A private calendar for the road season.</p>
         </div>
         <div>
           <p>Schedule reviewed</p>
           <p>{formatLongDate(dataset.reviewedOn)}</p>
         </div>
-        <a href="#top">Back to top ↑</a>
+        <a href="#top">Back to top</a>
       </footer>
     </main>
   );
