@@ -19,6 +19,10 @@ describe('indoor dashboard', () => {
     expect(markup).toContain('HVAC mode');
     expect(markup).toContain('aria-label="Power"');
     expect(markup).toContain('aria-label="HVAC mode"');
+    expect(markup).toContain('Power: On. Change to Off');
+    expect(markup).toContain('Preset: AUTO. Change to NIGHT');
+    expect(markup).toContain('Light: ON. Change to OFF');
+    expect(markup).not.toContain('aria-label="Button lock"');
     expect(markup).not.toContain('<select');
     for (const graph of ['AirGradient CO₂', 'AirGradient particulate matter', 'AirGradient temperature', 'AirGradient humidity', 'AirGradient TVOC index', 'AirGradient NOx index']) {
       expect(markup).toContain(`NO DATA · ${graph}`);

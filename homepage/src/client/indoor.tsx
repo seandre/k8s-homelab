@@ -305,6 +305,25 @@ function OptionButtonGroup<T extends string | number>({ label, options, value, d
   </div>;
 }
 
+function CycleOptionButton<T extends string>({ label, options, value, disabled, format = String, onSelect }: {
+  label: string;
+  options: T[];
+  value: T | null;
+  disabled: boolean;
+  format?: (option: T) => string;
+  onSelect: (option: T) => void;
+}) {
+  if (!options.length) return null;
+  const currentIndex = value === null ? -1 : options.indexOf(value);
+  const next = options[(currentIndex + 1) % options.length]!;
+  return <div className="control-option-group" role="group" aria-label={label}>
+    <span className="control-option-label">{label}</span>
+    <button type="button" disabled={disabled} onClick={() => onSelect(next)} aria-label={`${label}: ${value === null ? 'unknown' : format(value)}. Change to ${format(next)}`}>
+      {value === null ? 'Unknown' : format(value)}
+    </button>
+  </div>;
+}
+
 function ThermostatControls({ thermostat, review }: { thermostat: ThermostatState; review: (item: Review) => void }) {
   const disabled = thermostat.sourceState !== 'AVAILABLE';
   const min = thermostat.capabilities.setpointMinF ?? 50;
@@ -333,23 +352,20 @@ function PurifierControls({ purifier, review }: { purifier: PurifierState; revie
   const make = (command: IndoorCommand, current: string, requested: string) => review(requestReview(command, purifier.room === 'living_room' ? 'Living Room Coway' : 'Bedroom Coway', current, requested, 'COWAY_CLOUD', purifier.stateVersion));
   return (
     <div className="indoor-controls">
-      {purifier.capabilities.power.supported ? <OptionButtonGroup label="Power" options={['On', 'Off']} value={purifier.power ? 'On' : 'Off'} disabled={disabled} onSelect={(value) =>
+      {purifier.capabilities.power.supported ? <CycleOptionButton label="Power" options={['On', 'Off']} value={purifier.power ? 'On' : 'Off'} disabled={disabled} onSelect={(value) =>
         make({ type: 'COWAY_SET_POWER', target: purifier.alias, power: value === 'On' }, purifier.power ? 'On' : 'Off', value)
       } /> : null}
       {purifier.capabilities.speeds.supported ? <OptionButtonGroup label="Speed" options={purifier.capabilities.speeds.values} value={purifier.speed} disabled={disabled} onSelect={(value) =>
         make({ type: 'COWAY_SET_SPEED', target: purifier.alias, speed: value as 1 | 2 | 3 }, String(purifier.speed ?? 'Unknown'), String(value))
       } /> : null}
-      {purifier.capabilities.presets.supported ? <OptionButtonGroup label="Preset" options={purifier.capabilities.presets.options} value={purifier.preset} disabled={disabled} onSelect={(value) =>
+      {purifier.capabilities.presets.supported ? <CycleOptionButton label="Preset" options={purifier.capabilities.presets.options} value={purifier.preset} disabled={disabled} onSelect={(value) =>
         make({ type: 'COWAY_SET_PRESET', target: purifier.alias, preset: value }, purifier.preset ?? 'Unknown', value)
       } /> : null}
       {purifier.capabilities.timerMinutes.supported ? <OptionButtonGroup label="Timer" options={purifier.capabilities.timerMinutes.values} value={purifier.timerEndsAt ? null : 0} disabled={disabled} format={(value) => value === 0 ? 'Off' : `${value}m`} onSelect={(value) =>
         make({ type: 'COWAY_SET_TIMER', target: purifier.alias, durationMinutes: value }, purifier.timerEndsAt ? 'Running' : 'Off', value === 0 ? 'Off' : `${value} minutes`)
       } /> : null}
-      {purifier.capabilities.lightOptions.supported ? <OptionButtonGroup label="Light" options={purifier.capabilities.lightOptions.options} value={purifier.light} disabled={disabled} format={(value) => value.replaceAll('_', ' ')} onSelect={(value) =>
+      {purifier.capabilities.lightOptions.supported ? <CycleOptionButton label="Light" options={purifier.capabilities.lightOptions.options} value={purifier.light} disabled={disabled} format={(value) => value.replaceAll('_', ' ')} onSelect={(value) =>
         make({ type: 'COWAY_SET_LIGHT', target: purifier.alias, light: value }, purifier.light ?? 'Unknown', value)
-      } /> : null}
-      {purifier.capabilities.buttonLock.supported ? <OptionButtonGroup label="Button lock" options={['Unlocked', 'Locked']} value={purifier.buttonLock ? 'Locked' : 'Unlocked'} disabled={disabled} onSelect={(value) =>
-        make({ type: 'COWAY_SET_BUTTON_LOCK', target: purifier.alias, locked: value === 'Locked' }, purifier.buttonLock ? 'Locked' : 'Unlocked', value)
       } /> : null}
       {purifier.capabilities.sensitivityOptions.supported ? <OptionButtonGroup label="Sensitivity" options={purifier.capabilities.sensitivityOptions.options} value={purifier.sensitivity} disabled={disabled} onSelect={(value) =>
         make({ type: 'COWAY_SET_SENSITIVITY', target: purifier.alias, sensitivity: value }, purifier.sensitivity ?? 'Unknown', value)

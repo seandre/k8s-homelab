@@ -218,7 +218,7 @@ test('renders the responsive indoor dashboard and requires review before control
 
 test('supports indoor keyboard cancellation and has no serious accessibility violations', async ({ page }) => {
   await page.goto('/indoor');
-  await page.getByRole('group', { name: 'Power' }).first().getByRole('button', { name: 'Off' }).focus();
+  await page.getByRole('group', { name: 'Power' }).first().getByRole('button', { name: 'Power: On. Change to Off' }).focus();
   await page.keyboard.press('Enter');
   const review = page.getByRole('dialog', { name: 'Review device command' });
   await expect(review).toBeVisible();
