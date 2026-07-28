@@ -405,6 +405,20 @@ for (const viewport of [
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await expect(page.getByRole('heading', { name: 'Services', exact: true })).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'OKD', exact: true })).toHaveCount(0);
+    const cpuGraphs = page.locator('.pve-cpu-region .dot-graph-fill-width .dot-graph-trace');
+    await expect(cpuGraphs).toHaveCount(2);
+    const graphCoverage = await cpuGraphs.evaluateAll((graphs) => graphs.map((graph) => {
+      const bounds = graph.getBoundingClientRect();
+      const bottomRow = graph.querySelector('.dot-graph-row:last-child');
+      const paintedCells = [...(bottomRow?.querySelectorAll('.braille-cell') ?? [])].filter((cell) => cell.textContent !== '\u2800');
+      const first = paintedCells[0]?.getBoundingClientRect();
+      const last = paintedCells.at(-1)?.getBoundingClientRect();
+      return {
+        start: first ? (first.left - bounds.left) / bounds.width : 1,
+        end: last ? (last.right - bounds.left) / bounds.width : 0,
+      };
+    }));
+    expect(graphCoverage.every(({ start, end }) => start <= 0.02 && end >= 0.98), JSON.stringify(graphCoverage)).toBe(true);
   });
 }
 

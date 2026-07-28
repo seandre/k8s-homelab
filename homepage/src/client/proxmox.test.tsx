@@ -25,6 +25,7 @@ describe('Proxmox drill-down', () => {
     expect(markup).toContain('CONTAINERS');
     expect(markup).toContain('VIRTUAL MACHINES');
     expect(markup).toContain('32 vertical Braille dot levels');
+    expect(markup).toContain('dot-graph-fill-width');
     expect(markup).toContain('4 historical samples');
     expect(markup).toContain('core-history-low');
     expect(markup).not.toContain('core-total');
