@@ -13,10 +13,10 @@ spec:
   ingressClassName: traefik
   tls:
     - hosts:
-        - cycling.lab.seandre.dev
+        - cycling.seandre.dev
       secretName: cycling-calendar-public-tls
   rules:
-    - host: cycling.lab.seandre.dev
+    - host: cycling.seandre.dev
       http:
         paths:
           - path: /

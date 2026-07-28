@@ -104,7 +104,7 @@ These names and addresses are reserved for later work but intentionally do not r
 | `api-int.okd.lab.seandre.dev` | CNAME to `api.okd.lab.seandre.dev` |
 | `*.apps.okd.lab.seandre.dev` | `192.168.40.31` |
 | `k8s-worker-03.lab.seandre.dev` | `192.168.40.32`; optional exercise only |
-| `cycling.lab.seandre.dev` | CNAME to `ingress.lab.seandre.dev`; approved but not yet created, pending the namespace pull secret and ready private Ingress |
+| `cycling.seandre.dev` | Private CNAME to `ingress.lab.seandre.dev`; active |
 
 `bastion-01` already forwards unmatched DNS queries, but the OKD records and UniFi Forward Domain remain inactive until Gate 3 of Build 04.
 
@@ -112,14 +112,14 @@ These names and addresses are reserved for later work but intentionally do not r
 
 | Item | Value |
 |---|---|
-| Hostname | `cycling.lab.seandre.dev` |
+| Hostname | `cycling.seandre.dev` |
 | Namespace | `cycling-calendar` |
 | Image | `ghcr.io/seandre/womens-road-calendar@sha256:…` |
 | Service port | `8080` |
 | Access boundary | Private LAN and VPN through Traefik; no public DNS or route |
 | Runtime data | None; static `races-2026.json` bundled at build time |
 | Primary data source | UCI 2026 Road International Calendar, cross-checked against organizer/federation pages and ProCyclingStats |
-| Current status | Application, container, CI, and manifests verified; Argo CD registration awaits the namespace-local `ghcr-pull` secret |
+| Current status | Active; Argo CD `Synced/Healthy`, trusted TLS, private DNS, and immutable image pin verified |
 
 The application design and source contract are in
 [Women’s Road Calendar — Build and Architecture](../build/womens-road-calendar.md).

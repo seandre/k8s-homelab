@@ -1,7 +1,7 @@
 # Women’s Road Calendar
 
 Private, static 2026 women’s professional road calendar for
-`cycling.lab.seandre.dev`.
+`cycling.seandre.dev`.
 
 ## Local preview
 

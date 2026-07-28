@@ -1,7 +1,7 @@
 # Women’s Road Calendar — Operations Runbook
 
 This runbook covers local review, dataset maintenance, final verification, and
-GitOps operation of `cycling.lab.seandre.dev`. All three review checkpoints in
+GitOps operation of `cycling.seandre.dev`. All three review checkpoints in
 the [build and architecture document](../build/womens-road-calendar.md) were
 approved on 27 July 2026.
 
@@ -121,11 +121,11 @@ overwrite newer application work.
 
 ## DNS and TLS
 
-Create private split DNS only after the deployment and Ingress are ready:
+The active private split-DNS record is:
 
 | Record | Value |
 |---|---|
-| `cycling.lab.seandre.dev` | CNAME to `ingress.lab.seandre.dev` |
+| `cycling.seandre.dev` | CNAME to `ingress.lab.seandre.dev` |
 
 Do not add a public Cloudflare A, AAAA, CNAME, or proxied application record.
 Cloudflare may answer only the DNS-01 ACME challenge used by cert-manager.
@@ -133,11 +133,11 @@ Cloudflare may answer only the DNS-01 ACME challenge used by cert-manager.
 Verify from LAN and VPN:
 
 ```bash
-dig A cycling.lab.seandre.dev +short
-curl --fail --head https://cycling.lab.seandre.dev/
+dig A cycling.seandre.dev +short
+curl --fail --head https://cycling.seandre.dev/
 openssl s_client \
-  -connect cycling.lab.seandre.dev:443 \
-  -servername cycling.lab.seandre.dev </dev/null
+  -connect cycling.seandre.dev:443 \
+  -servername cycling.seandre.dev </dev/null
 ```
 
 The private resolver should lead to Traefik’s `192.168.40.30` ingress VIP, and
@@ -190,11 +190,11 @@ The expected runtime contract is:
 
 ```bash
 curl --fail --silent --show-error \
-  https://cycling.lab.seandre.dev/ >/dev/null
+  https://cycling.seandre.dev/ >/dev/null
 curl --fail --silent --show-error \
-  https://cycling.lab.seandre.dev/ | rg 'noindex'
+  https://cycling.seandre.dev/ | rg 'noindex'
 curl --fail --head \
-  https://cycling.lab.seandre.dev/
+  https://cycling.seandre.dev/
 ```
 
 Confirm the response includes the approved static security headers. Open the
@@ -220,7 +220,7 @@ incorrect championship level, or a changed event without `dateNote`.
 
 ### Ingress returns 404
 
-Confirm the Ingress host exactly matches `cycling.lab.seandre.dev`, the
+Confirm the Ingress host exactly matches `cycling.seandre.dev`, the
 IngressClass is Traefik, and the Service has ready endpoints on port `8080`.
 
 ### TLS is not ready
@@ -247,5 +247,5 @@ revert, and allow Argo CD to reconcile. Verify the rollout, hostname, TLS,
 headers, and calendar behavior again.
 
 If the new DNS record itself caused the incident, remove only
-`cycling.lab.seandre.dev`; do not alter the shared
+`cycling.seandre.dev`; do not alter the shared
 `ingress.lab.seandre.dev` record.

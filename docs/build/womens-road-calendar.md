@@ -1,14 +1,14 @@
 # Women’s Road Calendar — Build and Architecture
 
 The Women’s Road Calendar is a standalone static React application for the
-2026 Women Elite road season. Its planned private endpoint is
-`https://cycling.lab.seandre.dev`. The application is developed through three
+2026 Women Elite road season. Its private endpoint is
+`https://cycling.seandre.dev`. The application was developed through three
 owner-review checkpoints and is not built into a container or deployed until
 the third checkpoint is approved.
 
-All three checkpoints were approved on 27 July 2026. The approved application
-has been production-built; cluster enablement remains gated on the
-namespace-local GHCR pull secret and private DNS creation.
+All three checkpoints were approved on 27 July 2026. The production image is
+published and immutably pinned, and Argo CD deploys it behind the private
+`cycling.seandre.dev` DNS record.
 
 ## Product scope
 
