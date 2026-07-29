@@ -149,6 +149,14 @@ function visibleGraphValues(values: number[], width: number) {
   return scaleValuesToWidth(values, Math.max(historyColumns, visibleColumns)).slice(-visibleColumns);
 }
 
+function dotLevelClass(index: number, rows: number) {
+  const ratio = rows <= 1 ? 1 : index / (rows - 1);
+  if (ratio >= 0.75) return 'high';
+  if (ratio >= 0.5) return 'upper';
+  if (ratio >= 0.25) return 'medium';
+  return ratio > 0 ? 'low-mid' : 'low';
+}
+
 function FixedDotMatrix({ values }: { values: number[] }) {
   const { svg, size } = useMeasuredGraphSize(76);
   const rows = Math.max(1, Math.floor(size.height / dotPitch));
@@ -158,8 +166,7 @@ function FixedDotMatrix({ values }: { values: number[] }) {
       {graphValues.map((value, column) => {
         const filledRows = Math.ceil(Math.min(100, Math.max(0, value)) / 100 * rows);
         return <g className="dot-matrix-column" key={column}>{Array.from({ length: filledRows }, (_, index) => {
-          const level = index / rows;
-          const levelClass = level >= 0.66 ? 'high' : level >= 0.33 ? 'medium' : 'low';
+          const levelClass = dotLevelClass(index, rows);
           const x = size.width - ((graphValues.length - column - 0.5) * dotPitch);
           return <circle className={`dot-matrix-level-${levelClass}`} cx={x} cy={size.height - ((index + 0.5) * dotPitch)} r={dotRadius} key={index} />;
         })}</g>;
@@ -189,8 +196,7 @@ function FixedMirroredDotMatrix({ upload, download }: { upload: number[]; downlo
     const offset = columnCount - values.length;
     const filledRows = Math.ceil(value / 100 * rows);
     return <g className={`traffic-matrix-column traffic-matrix-column-${direction}`} key={`${direction}-${column}`}>{Array.from({ length: filledRows }, (_, index) => {
-      const level = index / rows;
-      const levelClass = level >= 0.66 ? 'high' : level >= 0.33 ? 'medium' : 'low';
+      const levelClass = dotLevelClass(index, rows);
       const y = direction === 'download'
         ? halfHeight - ((index + 0.5) * dotPitch)
         : halfHeight + ((index + 0.5) * dotPitch);
