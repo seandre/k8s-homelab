@@ -4,7 +4,6 @@ resources:
   - namespace.yaml
   - configmap.yaml
   - alerts-configmap.yaml
-  - coway-schedule-configmap.yaml
   - backup-cronjob.yaml
   - pvc.yaml
   - deployment.yaml

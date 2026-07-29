@@ -8,7 +8,7 @@ live_fixture="$repository_root/home-assistant/coway/fixtures/capabilities.live.j
 baseline="$repository_root/docs/overview/indoor-dashboard-baseline.md"
 runbook="$repository_root/docs/operations/coway-live-onboarding.md"
 evidence="$repository_root/docs/operations/indoor-dashboard-ie-008-evidence.md"
-schedule="$repository_root/kubernetes/apps/home-assistant/coway-schedule-configmap.yaml"
+schedule="$repository_root/home-assistant/coway/night-schedule.yaml"
 
 jq -e '
   .schema_version == 1 and

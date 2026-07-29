@@ -1333,3 +1333,79 @@ data:
           - event: indoor_alert_notification
             event_data: {incident: source_coway_bedroom, level: recovery, path: /indoor}
     # END GENERATED INCIDENTS
+  coway-night-schedule.yaml: |
+    # Dynamic integration discovery keeps private Coway entity IDs out of Git.
+    # The integration exposes two fan entities and two Light selects with the
+    # documented "AQI Off" option for the Airmega 250S units.
+    automation:
+      - id: coway_night_mode_start
+        alias: Coways - night mode start
+        mode: single
+        trigger:
+          - platform: time
+            at: "22:00:00"
+          - platform: homeassistant
+            event: start
+        condition:
+          - condition: template
+            value_template: >-
+              {{ now().strftime('%H:%M:%S') >= '22:00:00' or
+                 now().strftime('%H:%M:%S') < '06:30:00' }}
+        variables:
+          coway_fans: >-
+            {{ integration_entities('coway') | select('match', '^fan\.') | list }}
+          coway_aqi_lights: >-
+            {% set ns = namespace(entities=[]) %}
+            {% for entity in integration_entities('coway') | select('match', '^select\.') %}
+              {% if 'AQI Off' in (state_attr(entity, 'options') | default([], true)) %}
+                {% set ns.entities = ns.entities + [entity] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.entities }}
+        action:
+          - condition: template
+            value_template: "{{ coway_fans | count == 2 and coway_aqi_lights | count == 2 }}"
+          - service: fan.turn_on
+            target:
+              entity_id: "{{ coway_fans }}"
+          - service: fan.set_percentage
+            target:
+              entity_id: "{{ coway_fans }}"
+            data:
+              percentage: 66
+          - service: select.select_option
+            target:
+              entity_id: "{{ coway_aqi_lights }}"
+            data:
+              option: "AQI Off"
+
+      - id: coway_night_mode_end
+        alias: Coways - night mode end
+        mode: single
+        trigger:
+          - platform: time
+            at: "06:30:00"
+        variables:
+          coway_fans: >-
+            {{ integration_entities('coway') | select('match', '^fan\.') | list }}
+          coway_aqi_lights: >-
+            {% set ns = namespace(entities=[]) %}
+            {% for entity in integration_entities('coway') | select('match', '^select\.') %}
+              {% if 'AQI Off' in (state_attr(entity, 'options') | default([], true)) %}
+                {% set ns.entities = ns.entities + [entity] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.entities }}
+        action:
+          - condition: template
+            value_template: "{{ coway_fans | count == 2 and coway_aqi_lights | count == 2 }}"
+          - service: fan.set_preset_mode
+            target:
+              entity_id: "{{ coway_fans }}"
+            data:
+              preset_mode: "Auto"
+          - service: select.select_option
+            target:
+              entity_id: "{{ coway_aqi_lights }}"
+            data:
+              option: "On"
