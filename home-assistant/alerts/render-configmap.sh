@@ -13,7 +13,7 @@ trap 'rm -f "${temp_file}"' EXIT
   # replace only the generated indoor_alerts.yaml value.
   sed -n '1,/^  indoor_alerts.yaml: |$/p' "${target_file}"
   sed -e 's/^/    /' -e 's/[[:space:]]*$//' "${source_file}"
-  printf '  coway-night-schedule.yaml: |\n'
+  printf '  coway_night_schedule.yaml: |\n'
   sed -e 's/^/    /' -e 's/[[:space:]]*$//' "${schedule_file}"
 } > "${temp_file}"
 cp "${temp_file}" "${target_file}"

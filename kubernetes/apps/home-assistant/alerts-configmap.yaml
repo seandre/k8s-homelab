@@ -1333,7 +1333,7 @@ data:
           - event: indoor_alert_notification
             event_data: {incident: source_coway_bedroom, level: recovery, path: /indoor}
     # END GENERATED INCIDENTS
-  coway-night-schedule.yaml: |
+  coway_night_schedule.yaml: |
     # Dynamic integration discovery keeps private Coway entity IDs out of Git.
     # The integration exposes two fan entities and two Light selects with the
     # documented "AQI Off" option for the Airmega 250S units.

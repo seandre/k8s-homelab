@@ -18,7 +18,7 @@ spec:
   template:
     metadata:
       annotations:
-        homelab.seandre.dev/config-revision: "coway-night-schedule-v2"
+        homelab.seandre.dev/config-revision: "coway-night-schedule-v3"
       labels:
         app.kubernetes.io/name: home-assistant
         app.kubernetes.io/component: control-hub
