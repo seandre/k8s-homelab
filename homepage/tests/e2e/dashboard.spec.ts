@@ -416,6 +416,33 @@ test('uses mirrored midline traffic graphs on every Proxmox card', async ({ page
   }
 });
 
+test('uses saturated semantic colors only on graph dots', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('combobox', { name: 'Appearance' }).selectOption('dark');
+  const colors = await page.locator('.pve-card').first().evaluate((card) => {
+    const color = (selector: string) => getComputedStyle(card.querySelector(selector)!).color;
+    const fill = (selector: string) => getComputedStyle(card.querySelector(selector)!).fill;
+    return {
+      neutral: color('.pve-resource p'),
+      text: [
+        ...card.querySelectorAll<HTMLElement>('.dot-graph small, .traffic-graph > small span'),
+      ].map((element) => getComputedStyle(element).color),
+      cpu: fill('.dot-graph-cpu .dot-matrix-level-low'),
+      memory: fill('.memory-resource .dot-matrix-level-low'),
+      disk: fill('.disk-resource .dot-matrix-level-low'),
+      download: fill('.traffic-matrix-download-low'),
+      upload: fill('.traffic-matrix-upload-low'),
+    };
+  });
+
+  expect(colors.text.every((color) => color === colors.neutral), JSON.stringify(colors)).toBe(true);
+  expect(colors.cpu).toBe('rgb(57, 217, 138)');
+  expect(colors.memory).toBe('rgb(228, 0, 43)');
+  expect(colors.disk).toBe('rgb(217, 154, 0)');
+  expect(colors.download).toBe('rgb(102, 87, 217)');
+  expect(colors.upload).toBe('rgb(180, 42, 183)');
+});
+
 test('renders network traffic as dot bars growing outward from the midline', async ({ page }) => {
   const bootstrap = structuredClone(healthyBootstrapFixture);
   const baseSeries = bootstrap.timeSeries[0]!;

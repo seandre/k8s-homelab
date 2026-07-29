@@ -12,21 +12,21 @@
   --workload: #805252;
   --divider: #303030;
   --focus: #77ca9b;
-  --cpu-start: #77ca9b;
-  --cpu-mid: #cbc06c;
-  --cpu-end: #dc4c4c;
-  --memory-start: #592b26;
-  --memory-mid: #d9626d;
-  --memory-end: #ff4769;
-  --disk-start: #4e3f0e;
-  --disk-mid: #ffd77a;
-  --disk-end: #ffb814;
-  --download-start: #291f75;
-  --download-mid: #4f43a3;
-  --download-end: #b0a9de;
-  --upload-start: #620665;
-  --upload-mid: #7d4180;
-  --upload-end: #dcafde;
+  --cpu-start: #39d98a;
+  --cpu-mid: #e0c94f;
+  --cpu-end: #ff5151;
+  --memory-start: #e4002b;
+  --memory-mid: #ff1744;
+  --memory-end: #ff5a70;
+  --disk-start: #d99a00;
+  --disk-mid: #ffc400;
+  --disk-end: #ffe066;
+  --download-start: #6657d9;
+  --download-mid: #887af0;
+  --download-end: #b9afff;
+  --upload-start: #b42ab7;
+  --upload-mid: #d447d7;
+  --upload-end: #f080f2;
   --muted: #8b938d;
   --info: #8da3d6;
   --warn: #e3bd72;
@@ -61,18 +61,18 @@
   --cpu-start: #087f5b;
   --cpu-mid: #697000;
   --cpu-end: #9d2424;
-  --memory-start: #713a35;
-  --memory-mid: #a63b4b;
-  --memory-end: #bd2343;
-  --disk-start: #725b12;
-  --disk-mid: #8f6500;
-  --disk-end: #a26300;
-  --download-start: #383075;
-  --download-mid: #4f43a3;
-  --download-end: #5b5485;
-  --upload-start: #620665;
-  --upload-mid: #7d4180;
-  --upload-end: #873c8a;
+  --memory-start: #b00020;
+  --memory-mid: #d0002f;
+  --memory-end: #ed174c;
+  --disk-start: #8a5a00;
+  --disk-mid: #a96f00;
+  --disk-end: #c78300;
+  --download-start: #3d2db3;
+  --download-mid: #513cc8;
+  --download-end: #6752d8;
+  --upload-start: #801483;
+  --upload-mid: #991d9d;
+  --upload-end: #b32ab7;
   --muted: #536158;
   --info: #304f8e;
   --warn: #8a6500;
@@ -317,8 +317,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .traffic-matrix-download-medium { fill: var(--download-mid); }
 .traffic-matrix-download-high { fill: var(--download-end); }
 .traffic-graph > small { display: grid; gap: 0.12rem; font-size: 0.6rem; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
-.traffic-upload-label { color: var(--upload-end); }
-.traffic-download-label { color: var(--download-end); }
+.traffic-upload-label, .traffic-download-label { color: var(--muted); }
 .cpu-box { --box-color: var(--cpu); }
 .memory-box { --box-color: var(--memory); }
 .network-box { --box-color: var(--network); }
