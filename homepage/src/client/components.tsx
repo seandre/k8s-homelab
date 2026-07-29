@@ -124,8 +124,6 @@ function scaleValuesToWidth(values: number[], sampleCount: number) {
 
 const dotPitch = 3;
 const dotRadius = 0.55;
-const historyColumns = 640;
-
 function useMeasuredGraphSize(initialHeight: number) {
   const svg = useRef<SVGSVGElement>(null);
   const [size, setSize] = useState({ width: 416, height: initialHeight });
@@ -146,7 +144,7 @@ function useMeasuredGraphSize(initialHeight: number) {
 
 function visibleGraphValues(values: number[], width: number) {
   const visibleColumns = Math.max(1, Math.floor(width / dotPitch));
-  return scaleValuesToWidth(values, Math.max(historyColumns, visibleColumns)).slice(-visibleColumns);
+  return values.slice(-visibleColumns);
 }
 
 function dotLevelClass(index: number, rows: number) {
