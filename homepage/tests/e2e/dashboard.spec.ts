@@ -436,11 +436,11 @@ test('uses saturated semantic colors only on graph dots', async ({ page }) => {
   });
 
   expect(colors.text.every((color) => color === colors.neutral), JSON.stringify(colors)).toBe(true);
-  expect(colors.cpu).toBe('rgb(57, 217, 138)');
-  expect(colors.memory).toBe('rgb(228, 0, 43)');
-  expect(colors.disk).toBe('rgb(217, 154, 0)');
-  expect(colors.download).toBe('rgb(102, 87, 217)');
-  expect(colors.upload).toBe('rgb(180, 42, 183)');
+  expect(colors.cpu).toBe('rgb(52, 211, 153)');
+  expect(colors.memory).toBe('rgb(239, 68, 68)');
+  expect(colors.disk).toBe('rgb(234, 179, 8)');
+  expect(colors.download).toBe('rgb(99, 102, 241)');
+  expect(colors.upload).toBe('rgb(192, 38, 211)');
 });
 
 test('renders network traffic as dot bars growing outward from the midline', async ({ page }) => {
