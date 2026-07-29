@@ -16,6 +16,7 @@ import { buildOverviewModel } from './overview.js';
 import { findRoute, appRoutes, type AppRoute } from './routes.js';
 import { persistAppearance, readStoredAppearance, resolveAppearance, type AppearanceMode } from './theme.js';
 import { buildGlobalAlertItems } from './global-alerts.js';
+import type { Bootstrap } from '../shared/contracts.js';
 
 function useAppearance() {
   const [mode, setMode] = useState<AppearanceMode>(() => readStoredAppearance(window.localStorage));
@@ -48,7 +49,7 @@ function usePortlandClock() {
   return clock;
 }
 
-function headerWeatherLabel(weather: NonNullable<ReturnType<typeof useBootstrapData>['weather']>) {
+function headerWeatherLabel(weather: Bootstrap['weather']) {
   const temperature = weather.temperatureFahrenheit === null ? '—' : `${weather.temperatureFahrenheit}°F`;
   const condition = weather.condition ?? weather.conditionsMetadata.message ?? 'No conditions';
   return { temperature, condition };
@@ -74,7 +75,7 @@ function NotFoundView() {
   );
 }
 
-export function AppShell() {
+function DashboardShell({ bootstrap }: { bootstrap: Bootstrap }) {
   const appearance = useAppearance();
   const [pathname, setPathname] = useState(() => window.location.pathname);
   const [search, setSearch] = useState('');
@@ -87,7 +88,6 @@ export function AppShell() {
   const searchInput = useRef<HTMLInputElement>(null);
   const alertsMenu = useRef<HTMLDivElement>(null);
   const clock = usePortlandClock();
-  const bootstrap = useBootstrapData();
   const headerWeather = headerWeatherLabel(bootstrap.weather);
   const route = findRoute(pathname);
   const overview = buildOverviewModel(bootstrap);
@@ -171,4 +171,12 @@ export function AppShell() {
       {showLayout ? <div className="help-overlay" role="dialog" aria-modal="true" aria-label="Customize dashboard layout"><div className="help-card layout-card"><div className="drawer-header"><h2>Dashboard layout</h2><button type="button" onClick={() => setShowLayout(false)}>Close</button></div><label>Navigation<select value={layout.navigation} onChange={(event) => updateLayout({ ...layout, navigation: event.target.value as DashboardLayout['navigation'] })}><option value="expanded">Expanded</option><option value="compact">Compact</option></select></label><label>Density<select value={layout.density} onChange={(event) => updateLayout({ ...layout, density: event.target.value as DashboardLayout['density'] })}><option value="compact">Compact</option><option value="comfortable">Comfortable</option></select></label><label>Overview emphasis<select value={layout.overview} onChange={(event) => updateLayout({ ...layout, overview: event.target.value as DashboardLayout['overview'] })}><option value="balanced">Balanced</option><option value="systems-first">Systems first</option></select></label></div></div> : null}
     </div>
   );
+}
+
+export function AppShell() {
+  const bootstrap = useBootstrapData();
+  if (!bootstrap) {
+    return <main className="bootstrap-loading" role="status" aria-live="polite"><span className="panel-eyebrow">CONNECTING</span><strong>Loading live telemetry…</strong></main>;
+  }
+  return <DashboardShell bootstrap={bootstrap} />;
 }

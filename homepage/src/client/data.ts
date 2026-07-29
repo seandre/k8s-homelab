@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { BootstrapSchema, type Bootstrap, type IndoorActionStatus, type TimeSeries } from '../shared/contracts.js';
-import { healthyBootstrapFixture } from '../shared/fixtures.js';
 
 const HISTORY_CACHE_KEY = 'homepage.telemetry.history.v1';
 const HISTORY_LIMIT = 104;
@@ -38,8 +37,8 @@ export function mergeBootstrapHistory(current: Bootstrap, cached: Bootstrap | nu
   return { ...current, timeSeries: current.timeSeries.map((series) => mergeSeries(series, cachedSeries.get(`${series.metric}\u0000${series.window}`))) };
 }
 
-export function useBootstrapData(initial: Bootstrap = healthyBootstrapFixture) {
-  const [data, setData] = useState<Bootstrap>(initial);
+export function useBootstrapData(initial: Bootstrap | null = null) {
+  const [data, setData] = useState<Bootstrap | null>(initial);
   useEffect(() => {
     let disposed = false;
     let stream: EventSource | undefined;
@@ -55,7 +54,7 @@ export function useBootstrapData(initial: Bootstrap = healthyBootstrapFixture) {
         const body: unknown = await response.json();
         const parsed = BootstrapSchema.safeParse((body as { data?: unknown }).data);
         if (parsed.success) apply(parsed.data);
-      } catch { /* Fixture data remains the safe offline fallback. */ }
+      } catch { /* The neutral loading state remains visible until a live update arrives. */ }
     };
     const connect = () => {
       if (document.hidden || typeof EventSource === 'undefined') return;

@@ -96,6 +96,8 @@ button, a, input, select, [tabindex='0'] { outline-offset: 3px; }
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, [tabindex='0']:focus-visible { outline: 2px solid var(--focus); }
 
 .app-frame { min-height: 100vh; background: var(--bg); }
+.bootstrap-loading { min-height: 100vh; display: grid; place-content: center; gap: 0.5rem; background: var(--bg); color: var(--muted); text-align: center; }
+.bootstrap-loading strong { color: var(--title); font-size: 0.9rem; font-weight: 600; }
 .global-header { display: flex; align-items: center; gap: 1rem; padding: 0.45rem 0.75rem; border-bottom: 1px solid var(--divider); min-height: 3rem; }
 .brand, .header-status, .header-actions, .panel-state, .hero-state, .drawer-header { display: flex; align-items: center; gap: 0.75rem; }
 .brand { flex: 0 0 auto; color: var(--title); }
