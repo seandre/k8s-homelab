@@ -159,19 +159,11 @@ function FixedDotMatrix({ values }: { values: number[] }) {
   const { svg, size } = useMeasuredGraphSize(76);
   const rows = Math.max(1, Math.floor(size.height / dotPitch));
   const visibleColumns = Math.max(1, Math.floor(size.width / dotPitch));
-  const previousValues = useRef<number[]>([]);
-  const renderedValues = useRef<number[]>([]);
-  const previousWidth = useRef(0);
-  if (previousValues.current.length === 0 || previousWidth.current !== visibleColumns || values.length < previousValues.current.length) {
-    renderedValues.current = scaleValuesToWidth(values, visibleColumns);
-  } else if (values.length > previousValues.current.length) {
-    renderedValues.current = [...renderedValues.current, ...values.slice(previousValues.current.length)].slice(-visibleColumns);
-  } else if (values.length > 0 && values.at(-1) !== previousValues.current.at(-1)) {
-    renderedValues.current = [...renderedValues.current.slice(0, -1), values.at(-1)!];
-  }
-  previousValues.current = values;
-  previousWidth.current = visibleColumns;
-  const graphValues = visibleGraphValues(renderedValues.current, size.width);
+  // Each bootstrap carries a complete, timestamped history window.  Its length can
+  // remain constant while the window advances, so retaining columns by array index
+  // displays a stale frame after a page refresh.  Rebuild from that authoritative
+  // window on every render; dots remain fixed-pitch and excess history clips left.
+  const graphValues = visibleGraphValues(scaleValuesToWidth(values, visibleColumns), size.width);
   return (
     <svg ref={svg} className="dot-matrix dot-matrix-fixed" viewBox={`0 0 ${size.width} ${size.height}`} preserveAspectRatio="none">
       {graphValues.map((value, column) => {
