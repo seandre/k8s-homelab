@@ -8,6 +8,7 @@ live_fixture="$repository_root/home-assistant/coway/fixtures/capabilities.live.j
 baseline="$repository_root/docs/overview/indoor-dashboard-baseline.md"
 runbook="$repository_root/docs/operations/coway-live-onboarding.md"
 evidence="$repository_root/docs/operations/indoor-dashboard-ie-008-evidence.md"
+schedule="$repository_root/kubernetes/apps/home-assistant/coway-schedule-configmap.yaml"
 
 jq -e '
   .schema_version == 1 and
@@ -75,6 +76,20 @@ if rg -n -i \
   '(password|username|email|access[_ -]?token|refresh[_ -]?token|device[_ -]?id|serial|mac address|entity_id)[[:space:]]*[:=][[:space:]]*[^[:space:]<{]+' \
   "$contract" "$fixture" "$live_fixture" "$runbook" "$evidence"; then
   echo 'Coway package contains a forbidden credential, vendor ID, or raw entity ID assignment' >&2
+  exit 1
+fi
+
+grep -Fq 'id: coway_night_mode_start' "$schedule"
+grep -Fq 'at: "22:00:00"' "$schedule"
+grep -Fq 'percentage: 66' "$schedule"
+grep -Fq 'option: "AQI Off"' "$schedule"
+grep -Fq 'id: coway_night_mode_end' "$schedule"
+grep -Fq 'at: "06:30:00"' "$schedule"
+grep -Fq 'preset_mode: "Auto"' "$schedule"
+grep -Fq 'option: "On"' "$schedule"
+grep -Fq "integration_entities('coway')" "$schedule"
+if rg -n 'entity_id:[[:space:]]+(fan|select)\.[a-z0-9_]+$' "$schedule"; then
+  echo 'Coway schedule contains a raw entity ID' >&2
   exit 1
 fi
 

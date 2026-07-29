@@ -18,7 +18,7 @@ spec:
   template:
     metadata:
       annotations:
-        homelab.seandre.dev/config-revision: "airgradient-last-reported-v1"
+        homelab.seandre.dev/config-revision: "coway-night-schedule-v1"
       labels:
         app.kubernetes.io/name: home-assistant
         app.kubernetes.io/component: control-hub
@@ -78,6 +78,10 @@ spec:
             - name: alerts
               mountPath: /config/packages
               readOnly: true
+            - name: coway-night-schedule
+              mountPath: /config/packages/coway-night-schedule.yaml
+              subPath: coway-night-schedule.yaml
+              readOnly: true
       volumes:
         - name: config
           persistentVolumeClaim:
@@ -88,3 +92,6 @@ spec:
         - name: alerts
           configMap:
             name: home-assistant-alerts
+        - name: coway-night-schedule
+          configMap:
+            name: home-assistant-coway-night-schedule
