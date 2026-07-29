@@ -189,9 +189,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .pve-resource p { margin: 0.25rem 0 0; color: var(--muted); font-size: 0.56rem; line-height: 1.35; }
 .pve-resource p b { color: var(--fg); }
 .pve-resource .dot-graph { gap: 0.12rem; }
+.dot-graph-memory, .dot-graph-disk, .dot-graph-download, .dot-graph-upload { --graph-label-width: 8ch; }
 .pve-resource .dot-graph-row { font-size: 0.65rem; line-height: 0.74; }
 .pve-resource .dot-graph small { font-size: 0.5rem; }
-.network-resource .dot-graph { --graph-label-width: 15ch; }
 .process-box { grid-column: span 8; min-height: 100%; display: flex; flex-direction: column; }
 .process-box .panel-body { flex: 1; }
 .process-box .service-columns, .process-box .service-list a { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) 4.5rem; align-items: center; column-gap: 0.5rem; }
@@ -307,7 +307,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .dot-graph-trace { container-type: inline-size; overflow: visible; padding-block: 0.08rem; }
 .dot-graph-row { overflow: visible; font-size: clamp(0.5rem, calc(100cqi / var(--graph-columns)), 0.82rem); letter-spacing: 0; line-height: 1.1; }
 .pve-resource .dot-graph-row { display: flex; align-items: center; justify-content: flex-end; font-size: clamp(0.5rem, calc(100cqi / var(--graph-columns)), 0.65rem); line-height: 1.1; }
-.traffic-graph { display: grid; grid-template-columns: minmax(0, 1fr) 18ch; align-items: center; gap: 0.2rem; margin-top: 0.45rem; color: var(--muted); }
+.traffic-graph { display: grid; grid-template-columns: minmax(0, 1fr) 14ch; align-items: center; gap: 0.2rem; margin-top: 0.45rem; color: var(--muted); }
 .traffic-graph-trace { contain: paint; display: flex; justify-content: flex-end; min-width: 0; width: 100%; height: max(3rem, calc(var(--traffic-rows) * 1.2rem)); overflow: hidden; clip-path: inset(0); }
 .traffic-matrix-fixed { min-width: 0; }
 .traffic-matrix-upload-low { fill: var(--upload-start); }
@@ -316,7 +316,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .traffic-matrix-download-low { fill: var(--download-start); }
 .traffic-matrix-download-medium { fill: var(--download-mid); }
 .traffic-matrix-download-high { fill: var(--download-end); }
-.traffic-graph > small { display: grid; gap: 0.12rem; font-size: 0.6rem; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.traffic-graph > small { display: grid; gap: 0.12rem; font-size: 0.6rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.traffic-graph > small > span { display: grid; grid-template-columns: 4ch minmax(0, 1fr); column-gap: 0.3rem; align-items: baseline; }
+.traffic-graph > small b { color: var(--muted); font: inherit; text-align: left; }
+.traffic-graph > small i { color: var(--fg); font-style: normal; text-align: right; }
 .traffic-upload-label, .traffic-download-label { color: var(--muted); }
 .cpu-box { --box-color: var(--cpu); }
 .memory-box { --box-color: var(--memory); }

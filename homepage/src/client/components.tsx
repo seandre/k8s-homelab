@@ -204,13 +204,22 @@ function FixedMirroredDotMatrix({ upload, download }: { upload: number[]; downlo
   </svg>;
 }
 
+function formatTrafficIndicator(value: number | undefined, unit: string) {
+  if (value === undefined) return 'N/S';
+  return `${new Intl.NumberFormat('en-US', {
+    minimumSignificantDigits: 2,
+    maximumSignificantDigits: 2,
+    useGrouping: false,
+  }).format(value)}${unit}`;
+}
+
 export function MirroredTrafficGraph({ upload, download, unit, height = 4 }: { upload: number[]; download: number[]; unit: string; height?: number }) {
-  const upCurrent = upload.length > 0 ? `${upload.at(-1)}${unit}` : 'N/S';
-  const downCurrent = download.length > 0 ? `${download.at(-1)}${unit}` : 'N/S';
+  const upCurrent = formatTrafficIndicator(upload.at(-1), unit);
+  const downCurrent = formatTrafficIndicator(download.at(-1), unit);
   const summary = `Download: ${downCurrent}, above midline; upload: ${upCurrent}, below midline; ${Math.max(upload.length, download.length)} samples rendered as fixed-pitch dot bars.`;
 
   return <div className="traffic-graph" role="img" aria-label={summary}>
     <div className="traffic-graph-trace" style={{ '--traffic-rows': height } as CSSProperties} aria-hidden="true"><FixedMirroredDotMatrix upload={upload} download={download} /></div>
-    <small><span className="traffic-download-label">DOWNLOAD {downCurrent}</span><span className="traffic-upload-label">UPLOAD {upCurrent}</span></small>
+    <small><span className="traffic-download-label"><b>DOWN</b><i>{downCurrent}</i></span><span className="traffic-upload-label"><b>UP</b><i>{upCurrent}</i></span></small>
   </div>;
 }
