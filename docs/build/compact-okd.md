@@ -699,6 +699,82 @@ Before booting any Agent USB, confirm every row:
 | Installer input | no placeholders; protected copy exists |
 | USB image | checksum recorded and verified |
 
+Run this command checklist before approving the final GO. Run the first block
+from `utility-01` and the HAProxy block from `bastion-01`:
+
+```bash
+# utility-01: preserve the existing k3s kubeconfig and verify the cluster.
+export KUBECONFIG="$HOME/.kube/k8s-homelab.yaml"
+kubectl get nodes -o wide
+
+# utility-01: verify the pinned OKD clients.
+oc version --client
+openshift-install version
+
+# utility-01: confirm protected installer inputs and no template placeholders.
+test -f ~/okd-install/install-config.yaml
+test -f ~/okd-install/agent-config.yaml
+if grep -R -nE '<CP|<PASTE|PLACEHOLDER' ~/okd-install; then
+  echo 'STOP: placeholder remains'
+else
+  echo 'No placeholders found'
+fi
+stat -c '%a %n' \
+  ~/okd-install/install-config.yaml \
+  ~/okd-install/agent-config.yaml
+
+# utility-01: the three Ryzen nodes must be powered off or disconnected.
+sudo arping -D -I ens18 -c 3 192.168.40.26
+sudo arping -D -I ens18 -c 3 192.168.40.27
+sudo arping -D -I ens18 -c 3 192.168.40.28
+
+# utility-01: verify gateway, Internet, and private DNS.
+ping -c 3 192.168.40.1
+getent hosts quay.io
+curl --silent --show-error --output /dev/null \
+  --write-out 'quay registry HTTP status: %{http_code}\n' \
+  https://quay.io/v2/
+
+dig @192.168.40.33 +short A okd-cp-01.okd.lab.seandre.dev
+dig @192.168.40.33 +short A okd-cp-02.okd.lab.seandre.dev
+dig @192.168.40.33 +short A okd-cp-03.okd.lab.seandre.dev
+dig @192.168.40.33 +short A api.okd.lab.seandre.dev
+dig @192.168.40.33 +short A test.apps.okd.lab.seandre.dev
+dig @192.168.40.33 api-int.okd.lab.seandre.dev +noall +answer
+
+for ip in 192.168.40.26 192.168.40.27 192.168.40.28 192.168.40.29; do
+  dig @192.168.40.33 -x "$ip" +short
+done
+
+# utility-01: private OKD names must not be public DNS records.
+dig @1.1.1.1 +short A api.okd.lab.seandre.dev
+dig @1.1.1.1 +short AAAA api.okd.lab.seandre.dev
+dig @1.1.1.1 +short A console-openshift-console.apps.okd.lab.seandre.dev
+
+# utility-01: verify the USB image checksum.
+sha256sum -c ~/okd-build-log/agent.usb.x86_64.iso.sha256
+lsblk -p -o NAME,SIZE,MODEL,SERIAL,TRAN,MOUNTPOINTS
+```
+
+The duplicate-address probes must receive zero replies. The Quay test may
+return HTTP `401`, which is expected and proves registry connectivity. DNS
+must return `.26`, `.27`, `.28`, `.29`, and `.31` for the corresponding
+queries. `api-int` should show its CNAME to `api.okd.lab.seandre.dev`; verify
+the target returns `.29`. Public DNS queries must return no A or AAAA result.
+
+On `bastion-01`, verify HAProxy before booting the Agent media:
+
+```bash
+sudo haproxy -c -f /etc/haproxy/haproxy.cfg
+systemctl is-active haproxy
+sudo ss -ltnp | grep -E '192\.168\.40\.(29|31):(80|443|6443|22623)'
+```
+
+HAProxy syntax must be valid and listeners must exist on `.29:6443`,
+`.29:22623`, `.31:80`, and `.31:443`. If every check passes and the recorded
+MAC-to-host and disk worksheet is correct, approve GO for Step 12. Booting the
+Agent ISO can directly install onto the selected SSDs.
+
 This is the last safe stopping point. Booting the generated ISO can lead directly to installation on the selected SSDs.
 
 ## Step 12: Boot the Three Nodes
