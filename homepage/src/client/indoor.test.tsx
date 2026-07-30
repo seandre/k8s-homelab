@@ -15,8 +15,7 @@ describe('indoor dashboard', () => {
     expect(stylesheet).toMatch(/ventilate-button-active[^}]+color-mix\(in srgb, var\(--focus\) 18%, var\(--surface\)\)/);
     expect(stylesheet).toMatch(/nest-setpoint-track \{[^}]+height: 0\.5rem/);
     expect(stylesheet).toMatch(/indoor-slider-thumb \{[^}]+width: 1\.5rem; height: 1rem/);
-    expect(stylesheet).toMatch(/indoor-slider-thumb \{[^}]+font: 700 0\.5rem\/1/);
-    expect(stylesheet).toMatch(/nest-setpoint-thumb \{ font-weight: 500; \}/);
+    expect(stylesheet).toMatch(/indoor-slider-thumb \{[^}]+font: 500 0\.5rem\/1/);
     expect(stylesheet).toMatch(/nest-setpoint-track-inactive \{ filter: grayscale\(1\) saturate\(0\); \}/);
   });
 
@@ -87,6 +86,9 @@ describe('indoor dashboard', () => {
     expect(markup).toContain('airgradient-brightness-row');
     expect(markup).toContain('airgradient-display-row');
     expect(markup).toContain('indoor-slider-thumb airgradient-slider-thumb');
+    expect(markup).toContain('>80%</span>');
+    expect(markup).toContain('>60%</span>');
+    expect(markup).not.toContain('<output>');
     expect(markup).toContain('indoor-slider-thumb nest-setpoint-thumb nest-setpoint-thumb-heat');
     expect(markup).toContain('indoor-slider-thumb nest-setpoint-thumb nest-setpoint-thumb-cool');
     expect(markup).toContain('>68°</span>');

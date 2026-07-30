@@ -497,7 +497,7 @@ function AirGradientBrightnessControl({
   };
   if (!capability.supported) return null;
   const position = (requested - capability.min) / (capability.max - capability.min) * 100;
-  return <div className="airgradient-brightness-control"><label><span className="airgradient-brightness-label">{label}</span><div className="airgradient-slider-shell"><input aria-label={label} type="range" min={capability.min} max={capability.max} step={capability.step} value={requested} onChange={(event) => setRequested(Number(event.target.value))} onPointerUp={(event) => commit(Number(event.currentTarget.value))} onKeyUp={(event) => { if (sliderCommitKey(event.key)) commit(Number(event.currentTarget.value)); }} disabled={disabled} /><SliderThumb className="airgradient-slider-thumb" position={position} /></div></label><output>{requested}%</output></div>;
+  return <div className="airgradient-brightness-control"><label><span className="airgradient-brightness-label">{label}</span><div className="airgradient-slider-shell"><input aria-label={label} type="range" min={capability.min} max={capability.max} step={capability.step} value={requested} onChange={(event) => setRequested(Number(event.target.value))} onPointerUp={(event) => commit(Number(event.currentTarget.value))} onKeyUp={(event) => { if (sliderCommitKey(event.key)) commit(Number(event.currentTarget.value)); }} disabled={disabled} /><SliderThumb className="airgradient-slider-thumb" position={position} label={`${requested}%`} /></div></label></div>;
 }
 
 function AirGradientControls({ device, review, onCommit }: { device: IndoorState['sensors'][1]; review: (item: Review) => void; onCommit: DirectCommand }) {
