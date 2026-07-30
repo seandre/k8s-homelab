@@ -21,7 +21,7 @@ type PurifierState = IndoorState['purifiers'][number];
 type ThresholdTone = 'blue' | 'light-blue' | 'dark-blue' | 'yellow' | 'red';
 type TraceTone = 'green' | ThresholdTone | 'secondary';
 type HistoryThreshold = { value: number; tone: ThresholdTone };
-type HistoryMetric = { alias: string; label: string; thresholds: HistoryThreshold[]; scale: HistoryScale; secondaryAlias?: string; secondaryLabel?: string };
+type HistoryMetric = { alias: string; label: string; source: string; thresholds: HistoryThreshold[]; scale: HistoryScale; secondaryAlias?: string; secondaryLabel?: string };
 type DirectCommand = (command: IndoorCommand, stateVersion: string) => Promise<void>;
 
 function display(reading: IndoorReading, digits = 0) {
@@ -110,10 +110,30 @@ function actionHistorySeverity(actions: IndoorState['actions']) {
   return 'OK' as const;
 }
 
-export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, thresholds, scale }: {
+function trendTone(metric: string, value: number, thresholds: HistoryThreshold[]): Exclude<TraceTone, 'secondary'> {
+  if (metric === 'airgradient_living_room.humidity') {
+    return value < thresholds[0]!.value || value > thresholds.at(-1)!.value ? 'blue' : 'green';
+  }
+  if (metric === 'airgradient_living_room.temperature') {
+    const darkBlue = thresholds.find(({ tone }) => tone === 'dark-blue')!.value;
+    const lightBlue = thresholds.find(({ tone }) => tone === 'light-blue')!.value;
+    if (value < darkBlue) return 'dark-blue';
+    if (value < lightBlue) return 'light-blue';
+  }
+  const blue = thresholds.find(({ tone }) => tone === 'blue')?.value;
+  const yellow = thresholds.find(({ tone }) => tone === 'yellow')?.value;
+  const red = thresholds.find(({ tone }) => tone === 'red')?.value;
+  if (blue !== undefined && value < blue) return 'blue';
+  if (red !== undefined && value >= red) return 'red';
+  if (yellow !== undefined && value >= yellow) return 'yellow';
+  return 'green';
+}
+
+export function HistoryGraph({ series, secondarySeries, label, source, secondaryLabel, thresholds, scale }: {
   series: TimeSeries | undefined;
   secondarySeries?: TimeSeries;
   label: string;
+  source?: string;
   secondaryLabel?: string;
   thresholds: HistoryThreshold[];
   scale: HistoryScale;
@@ -173,15 +193,7 @@ export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, t
       'airgradient_living_room.tvoc_index',
       'airgradient_living_room.nox_index',
     ].includes(series.metric)));
-  const traceTone = (value: number): TraceTone => {
-    if (humidityTrace) return value < humidityLow! || value > humidityHigh! ? 'blue' : 'green';
-    if (temperatureTrace) {
-      if (value < temperatureDarkBlue!) return 'dark-blue';
-      if (value < temperatureLightBlue!) return 'light-blue';
-    }
-    if (blueThreshold !== undefined && value < blueThreshold) return 'blue';
-    return value >= redThreshold! ? 'red' : value >= yellowThreshold! ? 'yellow' : 'green';
-  };
+  const traceTone = (value: number): TraceTone => trendTone(series?.metric ?? '', value, thresholds);
   const traceBoundaries = humidityTrace
     ? [humidityLow!, humidityHigh!]
     : temperatureTrace
@@ -236,12 +248,12 @@ export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, t
     'airgradient_living_room.temperature',
     ].includes(series?.metric ?? '') && chartPoints.length > 2;
   const valueLabel = (value: number) => value.toFixed(scale.digits ?? 0);
-  const summary = `${label}, ${interactionSeries.window}, ${interactionSeries.points.length} samples, latest ${interactionSeries.points.at(-1)!.value} ${interactionSeries.unit}.`
+  const summary = `${label}${source ? `, ${source}` : ''}, ${interactionSeries.window}, ${interactionSeries.points.length} samples, latest ${interactionSeries.points.at(-1)!.value} ${interactionSeries.unit}.`
     + (secondarySeries?.points.length ? ` ${secondaryLabel}, ${secondarySeries.points.length} samples, latest ${secondarySeries.points.at(-1)!.value} ${secondarySeries.unit}.` : '')
     + ` Thresholds ${thresholds.map((threshold) => threshold.value).join(', ')} ${interactionSeries.unit}.`;
   return (
     <figure className="indoor-history-graph">
-      <figcaption><strong>{label}</strong><span>{valueLabel(interactionSeries.points.at(-1)!.value)} {interactionSeries.unit}</span></figcaption>
+      <figcaption><strong>{label}</strong><span>{valueLabel(interactionSeries.points.at(-1)!.value)} {interactionSeries.unit}{source ? <small className="history-graph-source">{source}</small> : null}</span></figcaption>
       {secondaryLabel ? <div className="history-legend" aria-label={`${label} graph legend`}>
         <span><i className="history-legend-primary" aria-hidden="true" />PM2.5</span>
         <span><i className="history-legend-secondary" aria-hidden="true" />{secondaryLabel}</span>
@@ -376,6 +388,14 @@ function sliderCommitKey(key: string) {
   return ['ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'End', 'Home', 'PageDown', 'PageUp'].includes(key);
 }
 
+function sliderThumbPosition(position: number) {
+  return `calc(${position}% + ${(0.75 - 1.5 * position / 100).toFixed(4)}rem)`;
+}
+
+function SliderThumb({ position, label, className = '' }: { position: number; label?: string; className?: string }) {
+  return <span className={`indoor-slider-thumb${className ? ` ${className}` : ''}`} style={{ left: sliderThumbPosition(position) }} aria-hidden="true">{label}</span>;
+}
+
 function NestSetpointRange({ thermostat, disabled, onCommit }: { thermostat: ThermostatState; disabled: boolean; onCommit: DirectCommand }) {
   const min = thermostat.capabilities.setpointMinF ?? 50;
   const max = thermostat.capabilities.setpointMaxF ?? 90;
@@ -406,10 +426,9 @@ function NestSetpointRange({ thermostat, disabled, onCommit }: { thermostat: The
   };
   const heatPosition = (heat - min) / (max - min) * 100;
   const coolPosition = (cool - min) / (max - min) * 100;
-  const thumbPosition = (position: number) => `calc(${position}% + ${(0.75 - 1.5 * position / 100).toFixed(4)}rem)`;
   const updateHeat = (value: number) => setHeat(Math.min(value, cool - step));
   const updateCool = (value: number) => setCool(Math.max(value, heat + step));
-  return <div className="nest-setpoint-range"><span className="control-option-label">Setpoint range</span><div className={`nest-setpoint-track${windowFocused ? '' : ' nest-setpoint-track-inactive'}`} style={{ background: `linear-gradient(to right, var(--threshold-red) 0 ${heatPosition}%, var(--divider) ${heatPosition}% ${coolPosition}%, var(--threshold-blue) ${coolPosition}% 100%)` }}><input className="nest-setpoint-heat" aria-label={`Nest heat setpoint: ${heat} degrees Fahrenheit`} type="range" min={min} max={max} step={step} value={heat} onChange={(event) => updateHeat(Number(event.target.value))} onPointerUp={(event) => commit(Math.min(Number(event.currentTarget.value), cool - step), cool)} onKeyUp={(event) => { if (sliderCommitKey(event.key)) commit(Math.min(Number(event.currentTarget.value), cool - step), cool); }} disabled={disabled} /><input className="nest-setpoint-cool" aria-label={`Nest cool setpoint: ${cool} degrees Fahrenheit`} type="range" min={min} max={max} step={step} value={cool} onChange={(event) => updateCool(Number(event.target.value))} onPointerUp={(event) => commit(heat, Math.max(Number(event.currentTarget.value), heat + step))} onKeyUp={(event) => { if (sliderCommitKey(event.key)) commit(heat, Math.max(Number(event.currentTarget.value), heat + step)); }} disabled={disabled} /><span className="nest-setpoint-thumb nest-setpoint-thumb-heat" style={{ left: thumbPosition(heatPosition) }} aria-hidden="true">{heat}°</span><span className="nest-setpoint-thumb nest-setpoint-thumb-cool" style={{ left: thumbPosition(coolPosition) }} aria-hidden="true">{cool}°</span></div></div>;
+  return <div className="nest-setpoint-range"><span className="control-option-label">Setpoint range</span><div className={`nest-setpoint-track${windowFocused ? '' : ' nest-setpoint-track-inactive'}`} style={{ background: `linear-gradient(to right, var(--threshold-red) 0 ${heatPosition}%, var(--divider) ${heatPosition}% ${coolPosition}%, var(--threshold-blue) ${coolPosition}% 100%)` }}><input className="nest-setpoint-heat" aria-label={`Nest heat setpoint: ${heat} degrees Fahrenheit`} type="range" min={min} max={max} step={step} value={heat} onChange={(event) => updateHeat(Number(event.target.value))} onPointerUp={(event) => commit(Math.min(Number(event.currentTarget.value), cool - step), cool)} onKeyUp={(event) => { if (sliderCommitKey(event.key)) commit(Math.min(Number(event.currentTarget.value), cool - step), cool); }} disabled={disabled} /><input className="nest-setpoint-cool" aria-label={`Nest cool setpoint: ${cool} degrees Fahrenheit`} type="range" min={min} max={max} step={step} value={cool} onChange={(event) => updateCool(Number(event.target.value))} onPointerUp={(event) => commit(heat, Math.max(Number(event.currentTarget.value), heat + step))} onKeyUp={(event) => { if (sliderCommitKey(event.key)) commit(heat, Math.max(Number(event.currentTarget.value), heat + step)); }} disabled={disabled} /><SliderThumb className="nest-setpoint-thumb nest-setpoint-thumb-heat" position={heatPosition} label={`${heat}°`} /><SliderThumb className="nest-setpoint-thumb nest-setpoint-thumb-cool" position={coolPosition} label={`${cool}°`} /></div></div>;
 }
 
 function ThermostatControls({ thermostat, review, onCommit }: { thermostat: ThermostatState; review: (item: Review) => void; onCommit: DirectCommand }) {
@@ -478,7 +497,8 @@ function AirGradientBrightnessControl({
     void onCommit({ type, target: 'airgradient_living_room', value: next }).catch(() => { lastCommitted.current = null; });
   };
   if (!capability.supported) return null;
-  return <div className="airgradient-brightness-control"><label><span>{label}</span><input aria-label={label} type="range" min={capability.min} max={capability.max} step={capability.step} value={requested} onChange={(event) => setRequested(Number(event.target.value))} onPointerUp={(event) => commit(Number(event.currentTarget.value))} onKeyUp={(event) => { if (sliderCommitKey(event.key)) commit(Number(event.currentTarget.value)); }} disabled={disabled} /></label><output>{requested}%</output></div>;
+  const position = (requested - capability.min) / (capability.max - capability.min) * 100;
+  return <div className="airgradient-brightness-control"><label><span className="airgradient-brightness-label">{label}</span><div className="airgradient-slider-shell"><input aria-label={label} type="range" min={capability.min} max={capability.max} step={capability.step} value={requested} onChange={(event) => setRequested(Number(event.target.value))} onPointerUp={(event) => commit(Number(event.currentTarget.value))} onKeyUp={(event) => { if (sliderCommitKey(event.key)) commit(Number(event.currentTarget.value)); }} disabled={disabled} /><SliderThumb className="airgradient-slider-thumb" position={position} /></div></label><output>{requested}%</output></div>;
 }
 
 function AirGradientControls({ device, review, onCommit }: { device: IndoorState['sensors'][1]; review: (item: Review) => void; onCommit: DirectCommand }) {
@@ -600,13 +620,17 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
     return () => window.clearInterval(interval);
   }, [ventilationActive]);
   const metrics = useMemo<HistoryMetric[]>(() => [
-    { alias: 'airgradient_living_room.co2', label: 'AirGradient CO₂', thresholds: [{ value: 600, tone: 'blue' }, { value: 800, tone: 'yellow' }, { value: 1000, tone: 'red' }], scale: { fixedMin: 400, fixedMax: 1400, ticks: [400, 600, 800, 1000, 1200, 1400], digits: 0 } },
-    { alias: 'airgradient_living_room.pm25', secondaryAlias: 'airgradient_living_room.pm10', secondaryLabel: 'PM10', label: 'AirGradient particulate matter', thresholds: [{ value: 5, tone: 'yellow' }, { value: 15, tone: 'red' }], scale: { minSpan: 20, hardMin: 0, digits: 0 } },
-    { alias: 'airgradient_living_room.tvoc_index', label: 'AirGradient TVOC index', thresholds: [{ value: 100, tone: 'blue' }, { value: 150, tone: 'yellow' }, { value: 250, tone: 'red' }], scale: { fixedMin: 0, fixedMax: 500, ticks: [0, 100, 200, 300, 400, 500], digits: 0 } },
-    { alias: 'airgradient_living_room.nox_index', label: 'AirGradient NOx index', thresholds: [{ value: 20, tone: 'yellow' }, { value: 150, tone: 'red' }], scale: { fixedMin: 0, fixedMax: 500, ticks: [0, 100, 200, 300, 400, 500], digits: 0 } },
-    { alias: 'airgradient_living_room.temperature', label: 'AirGradient temperature', thresholds: [{ value: 65, tone: 'dark-blue' }, { value: 68, tone: 'light-blue' }, { value: 72, tone: 'yellow' }, { value: 75, tone: 'red' }], scale: { fixedMin: 60, fixedMax: 80, ticks: [60, 65, 70, 75, 80], digits: 0 } },
-    { alias: 'airgradient_living_room.humidity', label: 'AirGradient humidity', thresholds: [{ value: 30, tone: 'light-blue' }, { value: 50, tone: 'light-blue' }], scale: { fixedMin: 0, fixedMax: 100, ticks: [0, 20, 40, 60, 80, 100], digits: 0 } },
+    { alias: 'airgradient_living_room.co2', label: 'CO₂', source: 'AirGradient', thresholds: [{ value: 600, tone: 'blue' }, { value: 800, tone: 'yellow' }, { value: 1000, tone: 'red' }], scale: { fixedMin: 400, fixedMax: 1400, ticks: [400, 600, 800, 1000, 1200, 1400], digits: 0 } },
+    { alias: 'airgradient_living_room.pm25', secondaryAlias: 'airgradient_living_room.pm10', secondaryLabel: 'PM10', label: 'Particulate matter', source: 'AirGradient', thresholds: [{ value: 5, tone: 'yellow' }, { value: 15, tone: 'red' }], scale: { minSpan: 20, hardMin: 0, digits: 0 } },
+    { alias: 'airgradient_living_room.tvoc_index', label: 'TVOC index', source: 'AirGradient', thresholds: [{ value: 100, tone: 'blue' }, { value: 150, tone: 'yellow' }, { value: 250, tone: 'red' }], scale: { fixedMin: 0, fixedMax: 500, ticks: [0, 100, 200, 300, 400, 500], digits: 0 } },
+    { alias: 'airgradient_living_room.nox_index', label: 'NOx index', source: 'AirGradient', thresholds: [{ value: 20, tone: 'yellow' }, { value: 150, tone: 'red' }], scale: { fixedMin: 0, fixedMax: 500, ticks: [0, 100, 200, 300, 400, 500], digits: 0 } },
+    { alias: 'airgradient_living_room.temperature', label: 'Temperature', source: 'AirGradient', thresholds: [{ value: 65, tone: 'dark-blue' }, { value: 68, tone: 'light-blue' }, { value: 72, tone: 'yellow' }, { value: 75, tone: 'red' }], scale: { fixedMin: 60, fixedMax: 80, ticks: [60, 65, 70, 75, 80], digits: 0 } },
+    { alias: 'airgradient_living_room.humidity', label: 'Humidity', source: 'AirGradient', thresholds: [{ value: 30, tone: 'light-blue' }, { value: 50, tone: 'light-blue' }], scale: { fixedMin: 0, fixedMax: 100, ticks: [0, 20, 40, 60, 80, 100], digits: 0 } },
   ], []);
+  const summaryTrendTone = (reading: IndoorReading, metric: string, thresholdsMetric = metric) => {
+    const configuration = metrics.find((item) => item.alias === thresholdsMetric);
+    return reading.value === null || !configuration ? undefined : trendTone(metric, reading.value, configuration.thresholds);
+  };
   useEffect(() => {
     let active = true;
     let timer: number | undefined;
@@ -739,7 +763,7 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
       {indoor.alerts.length ? <section className="indoor-alerts" aria-label="Indoor alerts">{indoor.alerts.map((alert) => <div key={alert.id}><StateBadge severity={alert.severity} /><strong>{alert.kind.replaceAll('_', ' ')}</strong><span>{alert.summary}</span></div>)}</section> : null}
       {directActionError ? <p className="action-error indoor-action-error" role="alert">{directActionError}</p> : null}
       <section className="indoor-current-grid" id="indoor-current" aria-label="Current indoor readings">
-        <section className="panel indoor-summary-panel" aria-label="Indoor summary"><div className="panel-body indoor-summary-row"><div className="indoor-reading-grid indoor-primary-readings"><Metric label="TEMPERATURE" value={display(thermostat.currentTemperature, 1)} unit="°F" detail={freshnessDetail(thermostat.currentTemperature)} /><Metric label="HUMIDITY" value={display(airgradient.readings.humidity)} unit="%" detail={freshnessDetail(airgradient.readings.humidity)} /><Metric label="CO₂" value={display(airgradient.readings.co2)} unit="ppm" detail={freshnessDetail(airgradient.readings.co2)} /><Metric label="PM2.5" value={display(airgradient.readings.pm25)} unit="µg/m³" detail={freshnessDetail(airgradient.readings.pm25)} /><Metric label="PM10" value={display(airgradient.readings.pm10)} unit="µg/m³" detail={freshnessDetail(airgradient.readings.pm10)} /><Metric label="TVOC INDEX" value={display(airgradient.readings.tvocIndex)} detail={freshnessDetail(airgradient.readings.tvocIndex)} /><Metric label="NOx INDEX" value={display(airgradient.readings.noxIndex)} detail={freshnessDetail(airgradient.readings.noxIndex)} /></div><StateBadge severity={sourceSeverity(airgradient.sourceState)} /></div></section>
+        <section className="panel indoor-summary-panel" aria-label="Indoor summary"><div className="panel-body indoor-summary-row"><div className="indoor-reading-grid indoor-primary-readings"><Metric label="TEMPERATURE" value={display(thermostat.currentTemperature, 1)} unit="°F" detail={freshnessDetail(thermostat.currentTemperature)} indicatorTone={summaryTrendTone(thermostat.currentTemperature, 'airgradient_living_room.temperature')} /><Metric label="HUMIDITY" value={display(airgradient.readings.humidity)} unit="%" detail={freshnessDetail(airgradient.readings.humidity)} indicatorTone={summaryTrendTone(airgradient.readings.humidity, 'airgradient_living_room.humidity')} /><Metric label="CO₂" value={display(airgradient.readings.co2)} unit="ppm" detail={freshnessDetail(airgradient.readings.co2)} indicatorTone={summaryTrendTone(airgradient.readings.co2, 'airgradient_living_room.co2')} /><Metric label="PM2.5" value={display(airgradient.readings.pm25)} unit="µg/m³" detail={freshnessDetail(airgradient.readings.pm25)} indicatorTone={summaryTrendTone(airgradient.readings.pm25, 'airgradient_living_room.pm25')} /><Metric label="PM10" value={display(airgradient.readings.pm10)} unit="µg/m³" detail={freshnessDetail(airgradient.readings.pm10)} indicatorTone={summaryTrendTone(airgradient.readings.pm10, 'airgradient_living_room.pm10', 'airgradient_living_room.pm25')} /><Metric label="TVOC INDEX" value={display(airgradient.readings.tvocIndex)} detail={freshnessDetail(airgradient.readings.tvocIndex)} indicatorTone={summaryTrendTone(airgradient.readings.tvocIndex, 'airgradient_living_room.tvoc_index')} /><Metric label="NOx INDEX" value={display(airgradient.readings.noxIndex)} detail={freshnessDetail(airgradient.readings.noxIndex)} indicatorTone={summaryTrendTone(airgradient.readings.noxIndex, 'airgradient_living_room.nox_index')} /></div><StateBadge severity={sourceSeverity(airgradient.sourceState)} /></div></section>
       </section>
       <section className="indoor-history" aria-labelledby="indoor-history-title">
         <div className="section-heading"><div><h2 id="indoor-history-title">Trend History</h2><span className={`history-update-status history-update-${historyUpdate.status.toLowerCase()}`} role="status">{historyUpdate.status === 'LOADING' ? 'Loading history…' : historyUpdate.status === 'STALE' ? `Update failed · retaining data${historyUpdate.updatedAt ? ` from ${historyUpdatedTime(historyUpdate.updatedAt)} PT` : ''}` : `Updated ${historyUpdatedTime(historyUpdate.updatedAt!)} PT`}</span></div><div className="history-window" role="group" aria-label="History window">{WINDOWS.map((item) => <button type="button" aria-pressed={selection.window === item} onClick={() => { setSelection({ window: item }); setCustomOpen(false); }} key={item}>{item}</button>)}<button type="button" aria-pressed={selection.window === 'custom'} aria-expanded={customOpen} onClick={() => setCustomOpen((open) => !open)}>Custom</button></div></div>
@@ -762,6 +786,7 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
           key={metric.alias}
           series={history[metric.alias]}
           label={metric.label}
+          source={metric.source}
           thresholds={metric.thresholds}
           scale={metric.scale}
           {...(metric.secondaryAlias && history[metric.secondaryAlias] ? { secondarySeries: history[metric.secondaryAlias] } : {})}

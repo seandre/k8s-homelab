@@ -145,6 +145,9 @@ test('renders the responsive indoor dashboard and requires review before control
   expect(summaryRowLayout.bodyMinHeight).toBe('0px');
   expect(summaryRowLayout.columnCount).toBe(2);
   expect(summaryRowLayout.badgeAfterMetrics).toBe(true);
+  await expect(summaryPanel.locator('.metric-indicator')).toHaveCount(7);
+  await expect(summaryPanel.getByRole('img', { name: 'PM2.5 trend status: yellow' })).toBeVisible();
+  await expect(summaryPanel.getByRole('img', { name: 'TVOC INDEX trend status: blue' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Living Room Aranet' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Living Room Coway' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Bedroom Coway' })).toBeVisible();
@@ -194,6 +197,18 @@ test('renders the responsive indoor dashboard and requires review before control
   const airGradientControls = page.getByRole('region', { name: 'AirGradient settings' }).locator('.airgradient-controls');
   await expect(airGradientControls.getByRole('slider', { name: 'Display brightness' })).toBeVisible();
   await expect(airGradientControls.getByRole('slider', { name: 'LED brightness' })).toBeVisible();
+  const handleStyleProperties = ['width', 'height', 'boxSizing', 'borderTopWidth', 'borderTopStyle', 'borderTopColor', 'borderRadius', 'backgroundColor', 'boxShadow', 'translate'] as const;
+  const [airGradientHandleStyle, nestHandleStyle] = await Promise.all([
+    airGradientControls.locator('.airgradient-slider-thumb').first().evaluate((element, properties) => {
+      const style = getComputedStyle(element);
+      return Object.fromEntries(properties.map((property) => [property, style[property]]));
+    }, handleStyleProperties),
+    thermostatControls.locator('.nest-setpoint-thumb').first().evaluate((element, properties) => {
+      const style = getComputedStyle(element);
+      return Object.fromEntries(properties.map((property) => [property, style[property]]));
+    }, handleStyleProperties),
+  ]);
+  expect(nestHandleStyle).toEqual(airGradientHandleStyle);
   const airGradientLayout = await airGradientControls.evaluate((element) => {
     const rows = [...element.children];
     return {
@@ -242,7 +257,7 @@ test('renders the responsive indoor dashboard and requires review before control
   await expect(page.getByRole('button', { name: 'Cancelling…' })).toBeDisabled();
   expect(indoorCommands).toContainEqual({ type: 'CANCEL_VENTILATION', target: 'indoor_environment' });
   await expect.poll(() => historyRequestCount).toBe(7);
-  const co2Graph = page.getByRole('img', { name: /CO₂, 1h/ });
+  const co2Graph = page.getByRole('img', { name: /CO₂, AirGradient, 1h/ });
   await expect(co2Graph).toBeVisible();
   await co2Graph.hover({ position: { x: 120, y: 60 } });
   await expect(co2Graph.locator('.history-tooltip')).toContainText('ppm');
@@ -252,21 +267,28 @@ test('renders the responsive indoor dashboard and requires review before control
   await expect(co2Graph.locator('.history-trace-stop-blue')).not.toHaveCount(0);
   await expect(co2Graph.locator('.history-trace-stop-yellow')).not.toHaveCount(0);
   await expect(co2Graph.locator('.history-trace-stop-red')).not.toHaveCount(0);
-  const particulateGraph = page.getByRole('img', { name: /AirGradient particulate matter, 1h/ });
+  const co2IndicatorColor = await summaryPanel.getByRole('img', { name: 'CO₂ trend status: green' }).evaluate((indicator) => getComputedStyle(indicator).backgroundColor);
+  const graphGreen = await co2Graph.locator('.history-trace-stop-green').first().evaluate((stop) => getComputedStyle(stop).stopColor);
+  expect(co2IndicatorColor).toBe(graphGreen);
+  const particulateGraph = page.getByRole('img', { name: /Particulate matter, AirGradient, 1h/ });
   await expect(particulateGraph).toBeVisible();
   await expect(page.locator('.indoor-history-graph figcaption strong')).toHaveText([
-    'AirGradient CO₂',
-    'AirGradient particulate matter',
-    'AirGradient TVOC index',
-    'AirGradient NOx index',
-    'AirGradient temperature',
-    'AirGradient humidity',
+    'CO₂',
+    'Particulate matter',
+    'TVOC index',
+    'NOx index',
+    'Temperature',
+    'Humidity',
   ]);
-  await expect(page.getByLabel('AirGradient particulate matter graph legend')).toContainText('PM2.5');
-  await expect(page.getByLabel('AirGradient particulate matter graph legend')).toContainText('PM10');
+  await expect(page.locator('.history-graph-source')).toHaveText(Array(6).fill('AirGradient'));
+  await expect(page.getByLabel('Particulate matter graph legend')).toContainText('PM2.5');
+  await expect(page.getByLabel('Particulate matter graph legend')).toContainText('PM10');
   await expect(particulateGraph.locator('.history-line-secondary')).toHaveCount(1);
   await expect(particulateGraph.locator('.history-line-secondary')).toHaveCSS('stroke-dasharray', '2px, 4px');
-  const temperatureGraph = page.getByRole('img', { name: /AirGradient temperature, 1h/ });
+  const pmIndicatorColor = await summaryPanel.getByRole('img', { name: 'PM2.5 trend status: yellow' }).evaluate((indicator) => getComputedStyle(indicator).backgroundColor);
+  const graphYellow = await particulateGraph.locator('.history-trace-stop-yellow').first().evaluate((stop) => getComputedStyle(stop).stopColor);
+  expect(pmIndicatorColor).toBe(graphYellow);
+  const temperatureGraph = page.getByRole('img', { name: /Temperature, AirGradient, 1h/ });
   await temperatureGraph.focus();
   await page.keyboard.press('ArrowLeft');
   await expect(temperatureGraph.locator('.history-tooltip-marker-yellow')).toHaveCount(1);
@@ -275,7 +297,7 @@ test('renders the responsive indoor dashboard and requires review before control
     trace: getComputedStyle(graph.querySelector('.history-trace-stop-yellow')!).stopColor,
   }));
   expect(temperatureYellowColors.marker).toBe(temperatureYellowColors.trace);
-  const tvocGraph = page.getByRole('img', { name: /AirGradient TVOC index, 1h/ });
+  const tvocGraph = page.getByRole('img', { name: /TVOC index, AirGradient, 1h/ });
   await tvocGraph.focus();
   await page.keyboard.press('ArrowLeft');
   const tvocBlueColors = await tvocGraph.evaluate((graph) => ({
@@ -402,7 +424,7 @@ test('refreshes live history on visibility return and retains graphs after failu
   await page.goto('/indoor');
   await expect.poll(() => requestCount).toBe(7);
   await expect(page.getByText(/Updated .* PT/)).toBeVisible();
-  const co2Graph = page.getByRole('img', { name: /CO₂, 1h/ });
+  const co2Graph = page.getByRole('img', { name: /CO₂, AirGradient, 1h/ });
   await expect(co2Graph).toBeVisible();
   failRefresh = true;
   await page.evaluate(() => {

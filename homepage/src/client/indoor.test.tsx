@@ -14,7 +14,9 @@ describe('indoor dashboard', () => {
     expect(stylesheet).toMatch(/control-current-positive[^}]+color-mix\(in srgb, var\(--focus\) 18%, var\(--surface\)\)/);
     expect(stylesheet).toMatch(/ventilate-button-active[^}]+color-mix\(in srgb, var\(--focus\) 18%, var\(--surface\)\)/);
     expect(stylesheet).toMatch(/nest-setpoint-track \{[^}]+height: 0\.5rem/);
-    expect(stylesheet).toMatch(/nest-setpoint-thumb \{[^}]+width: 1\.5rem; height: 1rem/);
+    expect(stylesheet).toMatch(/indoor-slider-thumb \{[^}]+width: 1\.5rem; height: 1rem/);
+    expect(stylesheet).toMatch(/indoor-slider-thumb \{[^}]+font: 700 0\.5rem\/1/);
+    expect(stylesheet).toMatch(/nest-setpoint-thumb \{ font-weight: 500; \}/);
     expect(stylesheet).toMatch(/nest-setpoint-track-inactive \{ filter: grayscale\(1\) saturate\(0\); \}/);
   });
 
@@ -58,6 +60,12 @@ describe('indoor dashboard', () => {
     expect(markup).toContain('DISPLAY 80% · LED 60%');
     expect(markup).toContain('68–74°F · HEAT_COOL');
     expect(markup).toContain('ON · AUTO · SPEED 2');
+    expect(markup.match(/metric-indicator-green/g)).toHaveLength(4);
+    expect(markup.match(/metric-indicator-yellow/g)).toHaveLength(2);
+    expect(markup.match(/metric-indicator-blue/g)).toHaveLength(1);
+    for (const label of ['TEMPERATURE', 'HUMIDITY', 'CO₂', 'PM2.5', 'PM10', 'TVOC INDEX', 'NOx INDEX']) {
+      expect(markup).toContain(`aria-label="${label} trend status:`);
+    }
     expect(markup).not.toContain('class="panel-footer"');
     expect(markup).toContain('Temperature unit: °F. Show options');
     expect(markup).toContain('PM standard: US AQI. Show options');
@@ -65,8 +73,9 @@ describe('indoor dashboard', () => {
     expect(markup).toContain('type="range"');
     expect(markup).toContain('airgradient-brightness-row');
     expect(markup).toContain('airgradient-display-row');
-    expect(markup).toContain('nest-setpoint-thumb nest-setpoint-thumb-heat');
-    expect(markup).toContain('nest-setpoint-thumb nest-setpoint-thumb-cool');
+    expect(markup).toContain('indoor-slider-thumb airgradient-slider-thumb');
+    expect(markup).toContain('indoor-slider-thumb nest-setpoint-thumb nest-setpoint-thumb-heat');
+    expect(markup).toContain('indoor-slider-thumb nest-setpoint-thumb nest-setpoint-thumb-cool');
     expect(markup).toContain('>68°</span>');
     expect(markup).toContain('>74°</span>');
     expect(markup.indexOf('nest-setpoint-range')).toBeLessThan(markup.indexOf('thermostat-option-row'));
@@ -74,10 +83,10 @@ describe('indoor dashboard', () => {
     expect(markup).not.toContain('aria-label="Button lock"');
     expect(markup).not.toContain('Review');
     expect(markup).not.toContain('<select');
-    for (const graph of ['AirGradient CO₂', 'AirGradient particulate matter', 'AirGradient temperature', 'AirGradient humidity', 'AirGradient TVOC index', 'AirGradient NOx index']) {
+    for (const graph of ['CO₂', 'Particulate matter', 'Temperature', 'Humidity', 'TVOC index', 'NOx index']) {
       expect(markup).toContain(`NO DATA · ${graph}`);
     }
-    const graphOrder = ['AirGradient CO₂', 'AirGradient particulate matter', 'AirGradient TVOC index', 'AirGradient NOx index', 'AirGradient temperature', 'AirGradient humidity'];
+    const graphOrder = ['CO₂', 'Particulate matter', 'TVOC index', 'NOx index', 'Temperature', 'Humidity'];
     for (let index = 1; index < graphOrder.length; index += 1) {
       expect(markup.indexOf(`NO DATA · ${graphOrder[index - 1]}`)).toBeLessThan(markup.indexOf(`NO DATA · ${graphOrder[index]}`));
     }
@@ -232,7 +241,8 @@ describe('indoor dashboard', () => {
 
   it('colors the AirGradient temperature trace across blue, green, yellow, and red zones', () => {
     const markup = renderToStaticMarkup(<HistoryGraph
-      label="AirGradient temperature"
+      label="Temperature"
+      source="AirGradient"
       thresholds={[{ value: 65, tone: 'dark-blue' }, { value: 68, tone: 'light-blue' }, { value: 72, tone: 'yellow' }, { value: 75, tone: 'red' }]}
       scale={{ fixedMin: 60, fixedMax: 80, ticks: [60, 65, 70, 75, 80] }}
       series={{
@@ -260,6 +270,7 @@ describe('indoor dashboard', () => {
   it('smooths the CO₂ trace and emphasizes visible threshold ticks', () => {
     const markup = renderToStaticMarkup(<HistoryGraph
       label="CO₂"
+      source="AirGradient"
       thresholds={[{ value: 600, tone: 'blue' }, { value: 900, tone: 'yellow' }, { value: 1000, tone: 'red' }]}
       scale={{ fixedMin: 400, fixedMax: 1400, ticks: [400, 600, 800, 1000, 1200, 1400] }}
       series={{
@@ -284,12 +295,14 @@ describe('indoor dashboard', () => {
     expect(markup).toContain('history-trace-stop-green');
     expect(markup).toContain('history-trace-stop-yellow');
     expect(markup).toContain('history-trace-stop-red');
+    expect(markup).toContain('<small class="history-graph-source">AirGradient</small>');
     expect(markup).not.toContain('<circle');
   });
 
   it('combines smoothed PM2.5 and dotted PM10 traces with a legend', () => {
     const markup = renderToStaticMarkup(<HistoryGraph
-      label="AirGradient particulate matter"
+      label="Particulate matter"
+      source="AirGradient"
       secondaryLabel="PM10"
       thresholds={[{ value: 5, tone: 'yellow' }, { value: 15, tone: 'red' }]}
       scale={{ minSpan: 20, hardMin: 0 }}
@@ -330,7 +343,8 @@ describe('indoor dashboard', () => {
 
   it('colors humidity outside the 30–50% band blue', () => {
     const markup = renderToStaticMarkup(<HistoryGraph
-      label="AirGradient humidity"
+      label="Humidity"
+      source="AirGradient"
       thresholds={[{ value: 30, tone: 'light-blue' }, { value: 50, tone: 'light-blue' }]}
       scale={{ fixedMin: 0, fixedMax: 100, ticks: [0, 20, 40, 60, 80, 100] }}
       series={{
@@ -399,7 +413,8 @@ describe('indoor dashboard', () => {
 
   it('renders the humidity lower and upper dotted thresholds', () => {
     const markup = renderToStaticMarkup(<HistoryGraph
-      label="AirGradient humidity"
+      label="Humidity"
+      source="AirGradient"
       thresholds={[{ value: 30, tone: 'light-blue' }, { value: 50, tone: 'light-blue' }]}
       scale={{ fixedMin: 0, fixedMax: 100, ticks: [0, 20, 40, 60, 80, 100] }}
       series={{

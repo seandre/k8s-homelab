@@ -277,6 +277,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .metric { min-width: 0; display: flex; flex-direction: column; gap: 0.1rem; }
 .metric-value { color: var(--title); font-size: clamp(0.9rem, 1.6vw, 1.15rem); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .metric-value small { color: var(--muted); font-size: 0.6rem; font-weight: 400; margin-left: 0.2rem; }
+.metric-indicator { display: inline-block; width: 0.45rem; height: 0.45rem; margin-right: 0.35rem; border-radius: 50%; box-shadow: 0 0 0 1px color-mix(in srgb, currentcolor 24%, transparent); vertical-align: 0.08em; }
+.metric-indicator-green { background: var(--focus); color: var(--focus); }
+.metric-indicator-blue { background: var(--threshold-blue); color: var(--threshold-blue); }
+.metric-indicator-light-blue { background: var(--threshold-light-blue); color: var(--threshold-light-blue); }
+.metric-indicator-dark-blue { background: var(--threshold-dark-blue); color: var(--threshold-dark-blue); }
+.metric-indicator-yellow { background: var(--threshold-yellow); color: var(--threshold-yellow); }
+.metric-indicator-red { background: var(--threshold-red); color: var(--threshold-red); }
 .metric-detail { letter-spacing: 0; text-transform: none; }
 .resource-graphs { display: grid; gap: 0.05rem; margin-top: 0.45rem; }
 .dot-graph { --graph-label-width: 12ch; display: grid; grid-template-columns: minmax(0, 1fr) var(--graph-label-width); align-items: end; gap: 0.2rem; margin-top: 0; overflow: hidden; color: var(--graph-color, var(--focus)); }
@@ -433,8 +440,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .airgradient-display-row { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; }
 .airgradient-brightness-control { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 0.35rem; width: auto !important; }
 .airgradient-brightness-control label { min-width: 0; }
-.airgradient-brightness-control label span { display: block; margin-bottom: 0.25rem; }
+.airgradient-brightness-label { display: block; margin-bottom: 0.25rem; }
+.airgradient-slider-shell { position: relative; min-width: 0; }
 .airgradient-brightness-control input[type='range'] { width: 100%; min-width: 0; min-height: 2rem; padding: 0; accent-color: color-mix(in srgb, var(--focus) 55%, var(--surface)); cursor: pointer; }
+.airgradient-brightness-control input[type='range']::-webkit-slider-thumb { opacity: 0; }
+.airgradient-brightness-control input[type='range']::-moz-range-thumb { opacity: 0; }
 .airgradient-brightness-control output { min-width: 2.5rem; padding-bottom: 0.55rem; color: var(--title); font-size: 0.62rem; text-align: right; }
 .airgradient-display-row .control-option-group { min-width: 0; }
 .airgradient-display-row .control-option-popover > button { width: 100%; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -446,12 +456,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .nest-setpoint-track { position: relative; height: 0.5rem; margin: 0.75rem 0; translate: 0 0.325rem; border-radius: 999px; transition: filter 120ms ease; }
 .nest-setpoint-track-inactive { filter: grayscale(1) saturate(0); }
 .nest-setpoint-track input[type='range'] { position: absolute; top: 50%; right: 0; left: 0; z-index: 2; width: 100%; height: 2rem; margin: 0; appearance: none; border: 0; background: transparent; padding: 0; translate: 0 -50%; pointer-events: none; }
-.nest-setpoint-track input[type='range']::-webkit-slider-thumb { width: 1.5rem; height: 1rem; appearance: none; border: 0; border-radius: 999px; background: transparent; cursor: pointer; pointer-events: auto; }
-.nest-setpoint-track input[type='range']::-moz-range-thumb { width: 1.5rem; height: 1rem; border: 0; border-radius: 999px; background: transparent; cursor: pointer; pointer-events: auto; }
+.nest-setpoint-track input[type='range']::-webkit-slider-thumb { width: 1.75rem; height: 1.25rem; appearance: none; border: 0; border-radius: 999px; background: transparent; cursor: pointer; pointer-events: auto; }
+.nest-setpoint-track input[type='range']::-moz-range-thumb { width: 1.75rem; height: 1.25rem; border: 0; border-radius: 999px; background: transparent; cursor: pointer; pointer-events: auto; }
 .nest-setpoint-track input[type='range']::-webkit-slider-runnable-track { height: 100%; background: transparent; }
 .nest-setpoint-track input[type='range']::-moz-range-track { height: 100%; background: transparent; }
 .nest-setpoint-cool { z-index: 3 !important; }
-.nest-setpoint-thumb { position: absolute; z-index: 4; top: 50%; display: grid; box-sizing: border-box; width: 1.5rem; height: 1rem; translate: -50% -50%; place-items: center; border: 1px solid rgb(0 0 0 / 12%); border-radius: 999px; background: var(--surface); box-shadow: 0 0.08rem 0.18rem rgb(0 0 0 / 20%); color: var(--title); font: 700 0.4rem/1 var(--mono); letter-spacing: -0.04em; pointer-events: none; }
+.indoor-slider-thumb { position: absolute; z-index: 4; top: 50%; display: grid; box-sizing: border-box; width: 1.5rem; height: 1rem; translate: -50% -50%; place-items: center; border: 1px solid rgb(0 0 0 / 12%); border-radius: 999px; background: var(--surface); box-shadow: 0 0.0625rem 0.125rem rgb(0 0 0 / 18%), 0 0.125rem 0.3rem rgb(0 0 0 / 12%); color: var(--title); font: 700 0.5rem/1 var(--mono); letter-spacing: -0.04em; pointer-events: none; }
+.nest-setpoint-thumb { font-weight: 500; }
 .indoor-action-error { margin: 0 0 0.65rem; }
 .indoor-history { margin-top: 1rem; }
 .indoor-history .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 1rem; }
@@ -473,6 +484,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .indoor-history-graph { min-width: 0; margin: 0; border: 1px solid var(--divider); background: var(--surface); padding: 0.55rem; }
 .indoor-history-graph figcaption { display: flex; justify-content: space-between; gap: 0.5rem; color: var(--muted); font-size: 0.62rem; }
 .indoor-history-graph figcaption strong { color: var(--title); font-size: 0.82rem; font-weight: 700; line-height: 1.15; }
+.indoor-history-graph figcaption > span { display: inline-flex; align-items: baseline; gap: 0.3rem; white-space: nowrap; }
+.history-graph-source { font-size: 0.5rem; letter-spacing: 0.04em; }
 .history-legend { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.35rem; color: var(--muted); font: 0.56rem/1 var(--mono); }
 .history-legend span { display: inline-flex; align-items: center; gap: 0.3rem; }
 .history-legend i { width: 1.25rem; border-top: 2px solid var(--focus); }

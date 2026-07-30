@@ -10,11 +10,19 @@ export function FreshnessLabel({ freshness, ageSeconds }: { freshness: Freshness
   return <span className={`freshness freshness-${freshness.toLowerCase()}`}>{freshness.replace('_', ' ')}{age}</span>;
 }
 
-export function Metric({ label, value, unit = '', detail }: { label: string; value: ReactNode; unit?: string; detail?: string | undefined }) {
+type MetricIndicatorTone = 'green' | 'blue' | 'light-blue' | 'dark-blue' | 'yellow' | 'red';
+
+export function Metric({ label, value, unit = '', detail, indicatorTone }: {
+  label: string;
+  value: ReactNode;
+  unit?: string;
+  detail?: string | undefined;
+  indicatorTone?: MetricIndicatorTone | undefined;
+}) {
   return (
     <div className="metric">
       <span className="metric-label">{label}</span>
-      <strong className="metric-value">{value}<small>{unit}</small></strong>
+      <strong className="metric-value">{indicatorTone ? <span className={`metric-indicator metric-indicator-${indicatorTone}`} role="img" aria-label={`${label} trend status: ${indicatorTone}`} /> : null}{value}<small>{unit}</small></strong>
       {detail ? <span className="metric-detail">{detail}</span> : null}
     </div>
   );
