@@ -13,6 +13,9 @@ describe('indoor dashboard', () => {
     expect(stylesheet).not.toContain('var(--ok)');
     expect(stylesheet).toMatch(/control-current-positive[^}]+color-mix\(in srgb, var\(--focus\) 18%, var\(--surface\)\)/);
     expect(stylesheet).toMatch(/ventilate-button-active[^}]+color-mix\(in srgb, var\(--focus\) 18%, var\(--surface\)\)/);
+    expect(stylesheet).toMatch(/nest-setpoint-track \{[^}]+height: 0\.5rem/);
+    expect(stylesheet).toMatch(/nest-setpoint-thumb \{[^}]+width: 1\.5rem; height: 1rem/);
+    expect(stylesheet).toMatch(/nest-setpoint-track-inactive \{ filter: grayscale\(1\) saturate\(0\); \}/);
   });
 
   it('formats the ventilation countdown as zero-padded minutes and seconds', () => {
@@ -22,28 +25,51 @@ describe('indoor dashboard', () => {
 
   it('renders normalized readings, both purifiers, history windows, and capability controls', () => {
     const markup = renderToStaticMarkup(<IndoorScreen bootstrap={healthyBootstrapFixture} />);
-    expect(markup).toContain('AirGradient + Nest');
+    expect(markup).toContain('aria-label="Indoor summary"');
+    expect(markup).not.toContain('>Summary<');
+    expect(markup).toContain('>TEMPERATURE<');
+    expect(markup).not.toContain('LIVING ROOM / LOCAL PRIMARY');
     expect(markup).toContain('>Ventilate<');
     expect(markup).not.toContain('ventilate-button-active');
     expect(markup).toContain('Living Room Aranet');
     expect(markup).toContain('Living Room Coway');
     expect(markup).toContain('Bedroom Coway');
-    expect(markup).toContain('Environmental trends');
+    expect(markup).toContain('Trend History');
+    expect(markup).not.toContain('PROMETHEUS HISTORY');
     expect(markup).toContain('Loading history');
     for (const window of ['1h', '3h', '6h', '24h', '7d', '30d', 'Custom']) expect(markup).toContain(`>${window}<`);
-    expect(markup).toContain('HVAC mode');
+    expect(markup).toContain('>Mode<');
     expect(markup).toContain('aria-label="Power"');
-    expect(markup).toContain('aria-label="HVAC mode"');
+    expect(markup).not.toContain('control-option-label">Power</span>');
+    expect(markup).toContain('>Fan Speed<');
+    expect(markup).toContain('aria-label="Mode"');
     expect(markup).toContain('Power: On. Show options');
     expect(markup).toContain('Preset: AUTO. Show options');
     expect(markup).toContain('Timer: Off. Show options');
     expect(markup).toContain('Light: ON. Show options');
     expect(markup).toContain('Sensitivity: NORMAL. Show options');
-    expect(markup).toContain('HVAC mode: HEAT_COOL. Show options');
-    expect(markup).toContain('Nest fan timer: Off. Show options');
-    expect(markup).toContain('Display temperature unit: fahrenheit. Show options');
-    expect(markup).toContain('PM standard: us aqi. Show options');
-    expect(markup).toContain('LED mode: co2. Show options');
+    expect(markup).toContain('Mode: HEAT_COOL. Show options');
+    expect(markup).toContain('Fan Timer: Off. Show options');
+    expect(markup).toContain('thermostat-option-row');
+    expect(markup).not.toContain('>AVAILABLE<');
+    expect(markup).not.toContain('>CURRENT<');
+    expect(markup).not.toContain('AVAILABLE CONTROLS');
+    expect(markup).toContain('SENSOR / LOCAL');
+    expect(markup).toContain('DISPLAY 80% · LED 60%');
+    expect(markup).toContain('68–74°F · HEAT_COOL');
+    expect(markup).toContain('ON · AUTO · SPEED 2');
+    expect(markup).not.toContain('class="panel-footer"');
+    expect(markup).toContain('Temperature unit: °F. Show options');
+    expect(markup).toContain('PM standard: US AQI. Show options');
+    expect(markup).toContain('LED Display: CO₂. Show options');
+    expect(markup).toContain('type="range"');
+    expect(markup).toContain('airgradient-brightness-row');
+    expect(markup).toContain('airgradient-display-row');
+    expect(markup).toContain('nest-setpoint-thumb nest-setpoint-thumb-heat');
+    expect(markup).toContain('nest-setpoint-thumb nest-setpoint-thumb-cool');
+    expect(markup).toContain('>68°</span>');
+    expect(markup).toContain('>74°</span>');
+    expect(markup.indexOf('nest-setpoint-range')).toBeLessThan(markup.indexOf('thermostat-option-row'));
     expect(markup).toContain('class="control-current-positive"');
     expect(markup).not.toContain('aria-label="Button lock"');
     expect(markup).not.toContain('Review');
@@ -55,12 +81,14 @@ describe('indoor dashboard', () => {
     for (let index = 1; index < graphOrder.length; index += 1) {
       expect(markup.indexOf(`NO DATA · ${graphOrder[index - 1]}`)).toBeLessThan(markup.indexOf(`NO DATA · ${graphOrder[index]}`));
     }
-    for (const setting of ['Display brightness', 'LED brightness', 'Display temperature unit', 'PM standard', 'LED mode']) expect(markup).toContain(setting);
+    for (const setting of ['Display brightness', 'LED brightness', 'Temperature unit', 'PM standard', 'LED Display']) expect(markup).toContain(setting);
     expect(markup.indexOf('AirGradient settings')).toBeLessThan(markup.indexOf('Living Room Nest'));
     expect(markup.indexOf('Living Room Nest')).toBeLessThan(markup.indexOf('Living Room Coway'));
     expect(markup).toContain('indoor-primary-readings');
-    expect(markup.indexOf('Environmental trends')).toBeLessThan(markup.indexOf('Living Room Aranet'));
-    expect(markup.indexOf('Living Room Aranet')).toBeLessThan(markup.indexOf('AirGradient settings'));
+    expect(markup.indexOf('Trend History')).toBeLessThan(markup.indexOf('AirGradient settings'));
+    expect(markup.indexOf('AirGradient settings')).toBeLessThan(markup.indexOf('Living Room Coway'));
+    expect(markup.indexOf('Living Room Coway')).toBeLessThan(markup.indexOf('Living Room Aranet'));
+    expect(markup).toContain('panel aranet-panel');
   });
 
   it('uses green active styling only for on power, light, timers, HVAC, and Ventilate states', () => {
@@ -123,14 +151,14 @@ describe('indoor dashboard', () => {
   it('renders only controls advertised by capabilities', () => {
     const bootstrap = { ...healthyBootstrapFixture, indoor: unsupportedIndoorFixture };
     const markup = renderToStaticMarkup(<IndoorScreen bootstrap={bootstrap} />);
-    expect(markup).not.toContain('HVAC mode');
+    expect(markup).not.toContain('aria-label="Mode"');
     expect(markup).not.toContain('aria-label="Power"');
     expect(markup).not.toContain('Sensitivity');
     expect(markup).not.toContain('Display brightness');
-    expect(markup).not.toContain('LED mode');
+    expect(markup).not.toContain('LED Display');
     expect(markup).toContain('Ventilate');
     expect(markup).toContain('ventilate-button" type="button" disabled');
-    expect(markup).toContain('UNAVAILABLE');
+    expect(markup).toContain('state state-crit');
   });
 
   it('keeps the Aranet comparison visible when the AirGradient source is partial', () => {
@@ -142,7 +170,7 @@ describe('indoor dashboard', () => {
       reading.metadata.sourceState = 'UNAVAILABLE';
     }
     const markup = renderToStaticMarkup(<IndoorScreen bootstrap={bootstrap} />);
-    expect(markup).toContain('AirGradient + Nest');
+    expect(markup).toContain('aria-label="Indoor summary"');
     expect(markup).toContain('Living Room Aranet');
     expect(markup).toContain('COMPARISON / FALLBACK');
     expect(markup).toContain('69.8');

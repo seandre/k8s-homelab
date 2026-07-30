@@ -259,6 +259,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .panel-header { display: flex; align-items: start; justify-content: space-between; gap: 0.5rem; padding: 0.45rem 0.55rem 0.3rem; border-bottom: 1px solid var(--divider); }
 .panel h2 { margin: 0.15rem 0 0; color: var(--title); font-size: 0.82rem; }
 .panel-state { align-items: end; flex-direction: column; gap: 0.2rem; flex: 0 0 auto; }
+.panel-state-detail { color: var(--muted); font-size: 0.57rem; text-align: right; text-transform: uppercase; white-space: nowrap; }
 .state { display: inline-block; padding: 0.15rem 0.3rem; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.06em; border: 1px solid currentColor; }
 .state-ok { color: var(--focus); }
 .state-info { color: var(--info); }
@@ -392,6 +393,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .indoor-comparison-grid, .indoor-settings-grid { display: grid; gap: 0.5rem; margin-top: 1rem; }
 .indoor-comparison-grid { grid-template-columns: 1fr; }
 .indoor-settings-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
+.aranet-panel .panel-body, .indoor-summary-panel .panel-body { min-height: 0; padding-block: 0.35rem; }
+.indoor-summary-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0.75rem; }
 .indoor-alerts { display: grid; gap: 0.35rem; margin-bottom: 0.65rem; }
 .indoor-alerts > div, .indoor-action-status-entry { display: flex; align-items: center; gap: 0.55rem; border: 1px solid var(--divider); border-left: 0.2rem solid var(--warn); padding: 0.45rem 0.55rem; font-size: 0.65rem; }
 .indoor-alerts strong { color: var(--title); }
@@ -403,9 +406,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .ventilate-button-active:disabled { opacity: 1; }
 .cancel-ventilation-button { min-height: 2rem; border: 1px solid var(--crit); background: color-mix(in srgb, var(--crit) 14%, var(--surface)); color: var(--title); padding: 0.35rem 0.7rem; font: 700 0.62rem/1 var(--mono); cursor: pointer; }
 .cancel-ventilation-button:disabled { cursor: not-allowed; opacity: 0.6; }
-.device-state-line { display: flex; justify-content: space-between; gap: 0.6rem; margin-top: 0.65rem; border-top: 1px dotted var(--divider); padding-top: 0.5rem; color: var(--muted); font-size: 0.62rem; }
-.device-state-line strong { color: var(--title); }
 .indoor-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 0.45rem; margin-top: 0.65rem; }
+.purifier-controls { gap: 0.7rem; }
 .indoor-controls form { display: flex; flex-wrap: wrap; align-items: end; gap: 0.4rem; width: 100%; }
 .indoor-controls label { display: grid; gap: 0.2rem; color: var(--muted); font-size: 0.57rem; letter-spacing: 0.04em; }
 .indoor-controls button, .indoor-controls select, .indoor-controls input, .history-window button, .confirm-action { min-height: 2rem; border: 1px solid var(--divider); background: var(--surface); color: var(--fg); padding: 0.35rem 0.5rem; font-size: 0.62rem; }
@@ -424,15 +426,33 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .indoor-settings-grid .indoor-controls-single-row { flex-wrap: nowrap; gap: 0.3rem; }
   .indoor-settings-grid .indoor-controls-single-row > form { flex: 0 1 auto; flex-wrap: nowrap; width: auto; min-width: 0; gap: 0.2rem; }
   .indoor-settings-grid .indoor-controls-single-row > .control-option-group { flex: 0 1 auto; min-width: 0; }
-  .airgradient-controls > form label { width: 3.25rem; min-width: 0; line-height: 1.1; }
-  .airgradient-controls > form input { width: 3.25rem; min-width: 0; }
-  .airgradient-controls > form button { padding-inline: 0.35rem; }
-  .airgradient-controls .control-option-popover > button { max-width: 8.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .thermostat-controls > form { flex: 1 1 auto; }
-  .thermostat-controls > form label { flex: 1 1 3.75rem; min-width: 0; }
-  .thermostat-controls > form input { width: 100%; min-width: 3.75rem; }
-  .thermostat-controls .control-option-popover > button { white-space: nowrap; }
 }
+.airgradient-controls { display: grid; gap: 0.65rem; }
+.airgradient-brightness-row, .airgradient-display-row { display: grid; gap: 0.45rem; }
+.airgradient-brightness-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.airgradient-display-row { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; }
+.airgradient-brightness-control { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 0.35rem; width: auto !important; }
+.airgradient-brightness-control label { min-width: 0; }
+.airgradient-brightness-control label span { display: block; margin-bottom: 0.25rem; }
+.airgradient-brightness-control input[type='range'] { width: 100%; min-width: 0; min-height: 2rem; padding: 0; accent-color: color-mix(in srgb, var(--focus) 55%, var(--surface)); cursor: pointer; }
+.airgradient-brightness-control output { min-width: 2.5rem; padding-bottom: 0.55rem; color: var(--title); font-size: 0.62rem; text-align: right; }
+.airgradient-display-row .control-option-group { min-width: 0; }
+.airgradient-display-row .control-option-popover > button { width: 100%; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.thermostat-controls { display: grid; align-items: stretch; gap: 0.65rem; }
+.thermostat-option-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; gap: 0.45rem; }
+.thermostat-option-row .control-option-group { min-width: 0; }
+.thermostat-option-row .control-option-popover > button { width: 100%; white-space: nowrap; }
+.nest-setpoint-range { display: grid; width: 100%; min-width: 10rem; gap: 0.25rem; padding-bottom: 0.45rem; }
+.nest-setpoint-track { position: relative; height: 0.5rem; margin: 0.75rem 0; translate: 0 0.325rem; border-radius: 999px; transition: filter 120ms ease; }
+.nest-setpoint-track-inactive { filter: grayscale(1) saturate(0); }
+.nest-setpoint-track input[type='range'] { position: absolute; top: 50%; right: 0; left: 0; z-index: 2; width: 100%; height: 2rem; margin: 0; appearance: none; border: 0; background: transparent; padding: 0; translate: 0 -50%; pointer-events: none; }
+.nest-setpoint-track input[type='range']::-webkit-slider-thumb { width: 1.5rem; height: 1rem; appearance: none; border: 0; border-radius: 999px; background: transparent; cursor: pointer; pointer-events: auto; }
+.nest-setpoint-track input[type='range']::-moz-range-thumb { width: 1.5rem; height: 1rem; border: 0; border-radius: 999px; background: transparent; cursor: pointer; pointer-events: auto; }
+.nest-setpoint-track input[type='range']::-webkit-slider-runnable-track { height: 100%; background: transparent; }
+.nest-setpoint-track input[type='range']::-moz-range-track { height: 100%; background: transparent; }
+.nest-setpoint-cool { z-index: 3 !important; }
+.nest-setpoint-thumb { position: absolute; z-index: 4; top: 50%; display: grid; box-sizing: border-box; width: 1.5rem; height: 1rem; translate: -50% -50%; place-items: center; border: 1px solid rgb(0 0 0 / 12%); border-radius: 999px; background: var(--surface); box-shadow: 0 0.08rem 0.18rem rgb(0 0 0 / 20%); color: var(--title); font: 700 0.4rem/1 var(--mono); letter-spacing: -0.04em; pointer-events: none; }
+.indoor-action-error { margin: 0 0 0.65rem; }
 .indoor-history { margin-top: 1rem; }
 .indoor-history .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 1rem; }
 .indoor-history .section-heading h2 { margin: 0.15rem 0 0; color: var(--title); font-size: 0.9rem; }
@@ -566,7 +586,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .indoor-history .section-heading { align-items: start; flex-direction: column; }
   .history-window { width: 100%; }
   .history-window button { flex: 1; }
-  .device-state-line { flex-direction: column; }
   .indoor-controls, .indoor-controls form { align-items: stretch; flex-direction: column; }
   .indoor-controls select, .indoor-controls input, .indoor-controls button { width: 100%; }
   .pve-cpu-region { grid-template-columns: 1fr; }

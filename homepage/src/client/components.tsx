@@ -10,7 +10,7 @@ export function FreshnessLabel({ freshness, ageSeconds }: { freshness: Freshness
   return <span className={`freshness freshness-${freshness.toLowerCase()}`}>{freshness.replace('_', ' ')}{age}</span>;
 }
 
-export function Metric({ label, value, unit = '', detail }: { label: string; value: ReactNode; unit?: string; detail?: string }) {
+export function Metric({ label, value, unit = '', detail }: { label: string; value: ReactNode; unit?: string; detail?: string | undefined }) {
   return (
     <div className="metric">
       <span className="metric-label">{label}</span>
@@ -46,6 +46,7 @@ export function Panel({
   eyebrow,
   severity = 'OK',
   freshness = 'CURRENT',
+  statusDetail,
   children,
   href,
   expanded = false,
@@ -57,6 +58,7 @@ export function Panel({
   eyebrow?: string;
   severity?: Severity;
   freshness?: Freshness;
+  statusDetail?: ReactNode;
   children: ReactNode;
   href?: string;
   expanded?: boolean;
@@ -86,13 +88,13 @@ export function Panel({
           {eyebrow ? <span className="panel-eyebrow">{eyebrow}</span> : null}
           <h2 id={titleId}>{title}</h2>
         </div>
-        <div className="panel-state"><StateBadge severity={severity} /><FreshnessLabel freshness={freshness} /></div>
+        <div className="panel-state"><StateBadge severity={severity} />{statusDetail === undefined ? <FreshnessLabel freshness={freshness} /> : <span className="panel-state-detail">{statusDetail}</span>}</div>
       </header>
       <div className="panel-body">{children}</div>
-      <footer className="panel-footer">
+      {href || interactive ? <footer className="panel-footer">
         {href ? <a className="open-link" href={href} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>Open ↗</a> : <span />}
         {interactive ? <button className="expand-button" type="button" onClick={(event) => { event.stopPropagation(); onExpand(); }}>{expanded ? 'Close details' : 'Expand details'}</button> : null}
-      </footer>
+      </footer> : null}
     </section>
   );
 }

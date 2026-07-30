@@ -22,9 +22,14 @@ type ThresholdTone = 'blue' | 'light-blue' | 'dark-blue' | 'yellow' | 'red';
 type TraceTone = 'green' | ThresholdTone | 'secondary';
 type HistoryThreshold = { value: number; tone: ThresholdTone };
 type HistoryMetric = { alias: string; label: string; thresholds: HistoryThreshold[]; scale: HistoryScale; secondaryAlias?: string; secondaryLabel?: string };
+type DirectCommand = (command: IndoorCommand, stateVersion: string) => Promise<void>;
 
 function display(reading: IndoorReading, digits = 0) {
   return reading.value === null ? '—' : reading.value.toFixed(digits);
+}
+
+function freshnessDetail(reading: IndoorReading) {
+  return reading.metadata.freshness === 'CURRENT' ? undefined : reading.metadata.freshness;
 }
 
 function sourceSeverity(state: 'AVAILABLE' | 'DEGRADED' | 'UNAVAILABLE') {
@@ -43,7 +48,7 @@ export function IndoorOverviewCard({ indoor }: { indoor: IndoorState }) {
   const room = indoor.rooms.find((item) => item.alias === 'living_room')!;
   const severity = room.activeAlertCount > 0 ? 'WARN' : room.freshness === 'CURRENT' ? 'OK' : 'INFO';
   return (
-    <Panel className="overview-summary-card" title="Indoor" eyebrow="LIVING ROOM" severity={severity} freshness={panelFreshness(room.freshness)}>
+    <Panel className="overview-summary-card" title="Indoor" eyebrow="LIVING ROOM" severity={severity} freshness={panelFreshness(room.freshness)} statusDetail={`${room.temperatureF === null ? '—' : room.temperatureF.toFixed(1)}°F · ${room.co2Ppm ?? '—'} ppm`}>
       <div className="indoor-overview-metrics">
         <Metric label="TEMP" value={room.temperatureF === null ? '—' : room.temperatureF.toFixed(1)} unit="°F" />
         <Metric label="HUMIDITY" value={room.humidityPercent ?? '—'} unit="%" />
@@ -324,7 +329,7 @@ function OptionButtonGroup<T extends string | number>({ label, options, value, d
   </div>;
 }
 
-function PopoverOptionButton<T extends string | number>({ label, options, value, disabled, format = String, positive = false, currentLabel, onSelect }: {
+function PopoverOptionButton<T extends string | number>({ label, options, value, disabled, format = String, positive = false, currentLabel, hideLabel = false, onSelect }: {
   label: string;
   options: T[];
   value: T | null;
@@ -332,6 +337,7 @@ function PopoverOptionButton<T extends string | number>({ label, options, value,
   format?: (option: T) => string;
   positive?: boolean;
   currentLabel?: string | undefined;
+  hideLabel?: boolean;
   onSelect: (option: T) => void;
 }) {
   const root = useRef<HTMLDivElement>(null);
@@ -353,7 +359,7 @@ function PopoverOptionButton<T extends string | number>({ label, options, value,
   }, [open]);
   if (!options.length) return null;
   return <div className="control-option-group control-option-popover" role="group" aria-label={label} ref={root}>
-    <span className="control-option-label">{label}</span>
+    {hideLabel ? null : <span className="control-option-label">{label}</span>}
     <button className={positive ? 'control-current-positive' : undefined} type="button" disabled={disabled} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((current) => !current)} aria-label={`${label}: ${currentLabel ?? (value === null ? 'unknown' : format(value))}. Show options`}>
       {currentLabel ?? (value === null ? 'Unknown' : format(value))}
     </button>
@@ -366,25 +372,59 @@ function PopoverOptionButton<T extends string | number>({ label, options, value,
   </div>;
 }
 
-function ThermostatControls({ thermostat, review }: { thermostat: ThermostatState; review: (item: Review) => void }) {
-  const disabled = thermostat.sourceState !== 'AVAILABLE';
+function sliderCommitKey(key: string) {
+  return ['ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'End', 'Home', 'PageDown', 'PageUp'].includes(key);
+}
+
+function NestSetpointRange({ thermostat, disabled, onCommit }: { thermostat: ThermostatState; disabled: boolean; onCommit: DirectCommand }) {
   const min = thermostat.capabilities.setpointMinF ?? 50;
   const max = thermostat.capabilities.setpointMaxF ?? 90;
   const step = thermostat.capabilities.setpointStepF ?? 1;
   const [heat, setHeat] = useState(thermostat.heatSetpointF ?? 68);
   const [cool, setCool] = useState(thermostat.coolSetpointF ?? 74);
+  const [windowFocused, setWindowFocused] = useState(true);
+  const lastCommitted = useRef<string | null>(null);
+  useEffect(() => {
+    const onFocus = () => setWindowFocused(true);
+    const onBlur = () => setWindowFocused(false);
+    const onVisibilityChange = () => setWindowFocused(document.visibilityState === 'visible' && document.hasFocus());
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('blur', onBlur);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    onVisibilityChange();
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('blur', onBlur);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, []);
+  const commit = (nextHeat: number, nextCool: number) => {
+    const key = `${nextHeat}:${nextCool}`;
+    if (key === lastCommitted.current) return;
+    lastCommitted.current = key;
+    void onCommit({ type: 'NEST_SET_SETPOINT', target: 'nest_living_room', setpoint: { shape: 'RANGE', heatTemperatureF: nextHeat, coolTemperatureF: nextCool } }, thermostat.stateVersion).catch(() => { lastCommitted.current = null; });
+  };
+  const heatPosition = (heat - min) / (max - min) * 100;
+  const coolPosition = (cool - min) / (max - min) * 100;
+  const thumbPosition = (position: number) => `calc(${position}% + ${(0.75 - 1.5 * position / 100).toFixed(4)}rem)`;
+  const updateHeat = (value: number) => setHeat(Math.min(value, cool - step));
+  const updateCool = (value: number) => setCool(Math.max(value, heat + step));
+  return <div className="nest-setpoint-range"><span className="control-option-label">Setpoint range</span><div className={`nest-setpoint-track${windowFocused ? '' : ' nest-setpoint-track-inactive'}`} style={{ background: `linear-gradient(to right, var(--threshold-red) 0 ${heatPosition}%, var(--divider) ${heatPosition}% ${coolPosition}%, var(--threshold-blue) ${coolPosition}% 100%)` }}><input className="nest-setpoint-heat" aria-label={`Nest heat setpoint: ${heat} degrees Fahrenheit`} type="range" min={min} max={max} step={step} value={heat} onChange={(event) => updateHeat(Number(event.target.value))} onPointerUp={(event) => commit(Math.min(Number(event.currentTarget.value), cool - step), cool)} onKeyUp={(event) => { if (sliderCommitKey(event.key)) commit(Math.min(Number(event.currentTarget.value), cool - step), cool); }} disabled={disabled} /><input className="nest-setpoint-cool" aria-label={`Nest cool setpoint: ${cool} degrees Fahrenheit`} type="range" min={min} max={max} step={step} value={cool} onChange={(event) => updateCool(Number(event.target.value))} onPointerUp={(event) => commit(heat, Math.max(Number(event.currentTarget.value), heat + step))} onKeyUp={(event) => { if (sliderCommitKey(event.key)) commit(heat, Math.max(Number(event.currentTarget.value), heat + step)); }} disabled={disabled} /><span className="nest-setpoint-thumb nest-setpoint-thumb-heat" style={{ left: thumbPosition(heatPosition) }} aria-hidden="true">{heat}°</span><span className="nest-setpoint-thumb nest-setpoint-thumb-cool" style={{ left: thumbPosition(coolPosition) }} aria-hidden="true">{cool}°</span></div></div>;
+}
+
+function ThermostatControls({ thermostat, review, onCommit }: { thermostat: ThermostatState; review: (item: Review) => void; onCommit: DirectCommand }) {
+  const disabled = thermostat.sourceState !== 'AVAILABLE';
   return (
-    <div className="indoor-controls indoor-controls-single-row thermostat-controls">
-      {thermostat.capabilities.hvacModes.supported ? <PopoverOptionButton label="HVAC mode" options={thermostat.capabilities.hvacModes.options} value={thermostat.hvacMode} disabled={disabled} positive={thermostat.hvacMode !== null && thermostat.hvacMode !== 'OFF'} onSelect={(mode) =>
-        review(requestReview({ type: 'NEST_SET_HVAC_MODE', target: 'nest_living_room', mode: mode as NonNullable<ThermostatState['hvacMode']> }, 'Living Room Nest', thermostat.hvacMode ?? 'Unknown', mode, 'NEST_CLOUD', thermostat.stateVersion))
-      } /> : null}
-      {thermostat.capabilities.setpointShapes.includes('RANGE') ? <form onSubmit={(event) => {
-        event.preventDefault();
-        review(requestReview({ type: 'NEST_SET_SETPOINT', target: 'nest_living_room', setpoint: { shape: 'RANGE', heatTemperatureF: heat, coolTemperatureF: cool } }, 'Living Room Nest', `${thermostat.heatSetpointF ?? '—'}–${thermostat.coolSetpointF ?? '—'}°F`, `${heat}–${cool}°F`, 'NEST_CLOUD', thermostat.stateVersion));
-      }}><label>Heat setpoint<input aria-label="Nest heat setpoint" type="number" min={min} max={max} step={step} value={heat} onChange={(event) => setHeat(Number(event.target.value))} disabled={disabled} /></label><label>Cool setpoint<input aria-label="Nest cool setpoint" type="number" min={min} max={max} step={step} value={cool} onChange={(event) => setCool(Number(event.target.value))} disabled={disabled} /></label><button type="submit" disabled={disabled || heat >= cool}>Save</button></form> : null}
-      {thermostat.capabilities.fanTimerMinutes.supported ? <PopoverOptionButton label="Nest fan timer" options={thermostat.capabilities.fanTimerMinutes.values} value={thermostat.fanTimerEndsAt ? null : 0} disabled={disabled} positive={Boolean(thermostat.fanTimerEndsAt)} currentLabel={thermostat.fanTimerEndsAt ? 'Running' : undefined} format={(minutes) => minutes === 0 ? 'Off' : `${minutes}m`} onSelect={(minutes) =>
-        review(requestReview({ type: 'NEST_SET_FAN_TIMER', target: 'nest_living_room', durationMinutes: minutes }, 'Living Room Nest', thermostat.fanTimerEndsAt ? 'Running' : 'Off', minutes === 0 ? 'Off' : `${minutes} minutes`, 'NEST_CLOUD', thermostat.stateVersion))
-      } /> : null}
+    <div className="indoor-controls thermostat-controls">
+      {thermostat.capabilities.setpointShapes.includes('RANGE') ? <NestSetpointRange thermostat={thermostat} disabled={disabled} onCommit={onCommit} /> : null}
+      <div className="thermostat-option-row">
+        {thermostat.capabilities.hvacModes.supported ? <PopoverOptionButton label="Mode" options={thermostat.capabilities.hvacModes.options} value={thermostat.hvacMode} disabled={disabled} positive={thermostat.hvacMode !== null && thermostat.hvacMode !== 'OFF'} onSelect={(mode) =>
+          review(requestReview({ type: 'NEST_SET_HVAC_MODE', target: 'nest_living_room', mode: mode as NonNullable<ThermostatState['hvacMode']> }, 'Living Room Nest', thermostat.hvacMode ?? 'Unknown', mode, 'NEST_CLOUD', thermostat.stateVersion))
+        } /> : null}
+        {thermostat.capabilities.fanTimerMinutes.supported ? <PopoverOptionButton label="Fan Timer" options={thermostat.capabilities.fanTimerMinutes.values} value={thermostat.fanTimerEndsAt ? null : 0} disabled={disabled} positive={Boolean(thermostat.fanTimerEndsAt)} currentLabel={thermostat.fanTimerEndsAt ? 'Running' : undefined} format={(minutes) => minutes === 0 ? 'Off' : `${minutes}m`} onSelect={(minutes) =>
+          review(requestReview({ type: 'NEST_SET_FAN_TIMER', target: 'nest_living_room', durationMinutes: minutes }, 'Living Room Nest', thermostat.fanTimerEndsAt ? 'Running' : 'Off', minutes === 0 ? 'Off' : `${minutes} minutes`, 'NEST_CLOUD', thermostat.stateVersion))
+        } /> : null}
+      </div>
     </div>
   );
 }
@@ -393,11 +433,11 @@ function PurifierControls({ purifier, review }: { purifier: PurifierState; revie
   const disabled = purifier.sourceState !== 'AVAILABLE';
   const make = (command: IndoorCommand, current: string, requested: string) => review(requestReview(command, purifier.room === 'living_room' ? 'Living Room Coway' : 'Bedroom Coway', current, requested, 'COWAY_CLOUD', purifier.stateVersion));
   return (
-    <div className="indoor-controls">
-      {purifier.capabilities.power.supported ? <PopoverOptionButton label="Power" options={['On', 'Off']} value={purifier.power ? 'On' : 'Off'} disabled={disabled} positive={purifier.power === true} onSelect={(value) =>
+    <div className="indoor-controls purifier-controls">
+      {purifier.capabilities.power.supported ? <PopoverOptionButton label="Power" hideLabel options={['On', 'Off']} value={purifier.power ? 'On' : 'Off'} disabled={disabled} positive={purifier.power === true} onSelect={(value) =>
         make({ type: 'COWAY_SET_POWER', target: purifier.alias, power: value === 'On' }, purifier.power ? 'On' : 'Off', value)
       } /> : null}
-      {purifier.capabilities.speeds.supported ? <OptionButtonGroup label="Speed" options={purifier.capabilities.speeds.values} value={purifier.speed} disabled={disabled} onSelect={(value) =>
+      {purifier.capabilities.speeds.supported ? <OptionButtonGroup label="Fan Speed" options={purifier.capabilities.speeds.values} value={purifier.speed} disabled={disabled} onSelect={(value) =>
         make({ type: 'COWAY_SET_SPEED', target: purifier.alias, speed: value as 1 | 2 | 3 }, String(purifier.speed ?? 'Unknown'), String(value))
       } /> : null}
       {purifier.capabilities.presets.supported ? <PopoverOptionButton label="Preset" options={purifier.capabilities.presets.options} value={purifier.preset} disabled={disabled} onSelect={(value) =>
@@ -416,37 +456,54 @@ function PurifierControls({ purifier, review }: { purifier: PurifierState; revie
   );
 }
 
-function AirGradientControls({ device, review }: { device: IndoorState['sensors'][1]; review: (item: Review) => void }) {
+function airGradientOptionLabel(option: string) {
+  return ({ fahrenheit: '°F', celsius: '°C', ugm3: 'µg/m³', us_aqi: 'US AQI', co2: 'CO₂', pm: 'PM', off: 'Off' } as Record<string, string>)[option] ?? option.replaceAll('_', ' ');
+}
+
+function AirGradientBrightnessControl({
+  label, value, capability, type, disabled, onCommit,
+}: {
+  label: string;
+  value: number | null;
+  capability: IndoorState['sensors'][1]['capabilities']['displayBrightness'];
+  type: 'AIRGRADIENT_SET_DISPLAY_BRIGHTNESS' | 'AIRGRADIENT_SET_LED_BRIGHTNESS';
+  disabled: boolean;
+  onCommit: (command: IndoorCommand) => Promise<void>;
+}) {
+  const [requested, setRequested] = useState(value ?? capability.min);
+  const lastCommitted = useRef<number | null>(null);
+  const commit = (next: number) => {
+    if (next === lastCommitted.current) return;
+    lastCommitted.current = next;
+    void onCommit({ type, target: 'airgradient_living_room', value: next }).catch(() => { lastCommitted.current = null; });
+  };
+  if (!capability.supported) return null;
+  return <div className="airgradient-brightness-control"><label><span>{label}</span><input aria-label={label} type="range" min={capability.min} max={capability.max} step={capability.step} value={requested} onChange={(event) => setRequested(Number(event.target.value))} onPointerUp={(event) => commit(Number(event.currentTarget.value))} onKeyUp={(event) => { if (sliderCommitKey(event.key)) commit(Number(event.currentTarget.value)); }} disabled={disabled} /></label><output>{requested}%</output></div>;
+}
+
+function AirGradientControls({ device, review, onCommit }: { device: IndoorState['sensors'][1]; review: (item: Review) => void; onCommit: DirectCommand }) {
   const disabled = device.sourceState !== 'AVAILABLE';
   const make = (command: IndoorCommand, current: string, requested: string) =>
     review(requestReview(command, 'Living Room AirGradient', current, requested, 'AIRGRADIENT_LOCAL', device.stateVersion));
-  const numberControl = (
-    label: string,
-    value: number | null,
-    capability: typeof device.capabilities.displayBrightness,
-    type: 'AIRGRADIENT_SET_DISPLAY_BRIGHTNESS' | 'AIRGRADIENT_SET_LED_BRIGHTNESS',
-  ) => capability.supported ? <form onSubmit={(event) => {
-    event.preventDefault();
-    const requested = Number(new FormData(event.currentTarget).get('value'));
-    make({ type, target: 'airgradient_living_room', value: requested }, value === null ? 'Unknown' : `${value}%`, `${requested}%`);
-  }}><label>{label}<input name="value" aria-label={label} type="number" min={capability.min} max={capability.max} step={capability.step} defaultValue={value ?? capability.min} disabled={disabled} /></label><button type="submit" disabled={disabled}>Save</button></form> : null;
   const optionControl = (
     label: string,
     value: string | null,
     options: string[],
     supported: boolean,
     type: 'AIRGRADIENT_SET_DISPLAY_TEMPERATURE_UNIT' | 'AIRGRADIENT_SET_PM_STANDARD' | 'AIRGRADIENT_SET_LED_MODE',
-  ) => supported ? <PopoverOptionButton label={label} options={options} value={value} disabled={disabled} format={(option) => option.replaceAll('_', ' ')} onSelect={(option) =>
-    make({ type, target: 'airgradient_living_room', option }, value ?? 'Unknown', option)
+  ) => supported ? <PopoverOptionButton label={label} options={options} value={value} disabled={disabled} format={airGradientOptionLabel} onSelect={(option) =>
+    make({ type, target: 'airgradient_living_room', option }, value === null ? 'Unknown' : airGradientOptionLabel(value), airGradientOptionLabel(option))
   } /> : null;
-  const controls = [
-    numberControl('Display brightness', device.settings.displayBrightness, device.capabilities.displayBrightness, 'AIRGRADIENT_SET_DISPLAY_BRIGHTNESS'),
-    numberControl('LED brightness', device.settings.ledBrightness, device.capabilities.ledBrightness, 'AIRGRADIENT_SET_LED_BRIGHTNESS'),
-    optionControl('Display temperature unit', device.settings.displayTemperatureUnit, device.capabilities.displayTemperatureUnits.options, device.capabilities.displayTemperatureUnits.supported, 'AIRGRADIENT_SET_DISPLAY_TEMPERATURE_UNIT'),
-    optionControl('PM standard', device.settings.pmStandard, device.capabilities.pmStandards.options, device.capabilities.pmStandards.supported, 'AIRGRADIENT_SET_PM_STANDARD'),
-    optionControl('LED mode', device.settings.ledMode, device.capabilities.ledModes.options, device.capabilities.ledModes.supported, 'AIRGRADIENT_SET_LED_MODE'),
-  ];
-  return controls.some(Boolean) ? <div className="indoor-controls indoor-controls-single-row airgradient-controls" aria-label="AirGradient settings">{controls.map((control, index) => <React.Fragment key={index}>{control}</React.Fragment>)}</div> : null;
+  const brightnessControls = [
+    device.capabilities.displayBrightness.supported ? <AirGradientBrightnessControl key="display" label="Display brightness" value={device.settings.displayBrightness} capability={device.capabilities.displayBrightness} type="AIRGRADIENT_SET_DISPLAY_BRIGHTNESS" disabled={disabled} onCommit={(command) => onCommit(command, device.stateVersion)} /> : null,
+    device.capabilities.ledBrightness.supported ? <AirGradientBrightnessControl key="led" label="LED brightness" value={device.settings.ledBrightness} capability={device.capabilities.ledBrightness} type="AIRGRADIENT_SET_LED_BRIGHTNESS" disabled={disabled} onCommit={(command) => onCommit(command, device.stateVersion)} /> : null,
+  ].filter((control): control is React.ReactElement => control !== null);
+  const displayControls = [
+    { key: 'temperature-unit', control: optionControl('Temperature unit', device.settings.displayTemperatureUnit, device.capabilities.displayTemperatureUnits.options, device.capabilities.displayTemperatureUnits.supported, 'AIRGRADIENT_SET_DISPLAY_TEMPERATURE_UNIT') },
+    { key: 'pm-standard', control: optionControl('PM standard', device.settings.pmStandard, device.capabilities.pmStandards.options, device.capabilities.pmStandards.supported, 'AIRGRADIENT_SET_PM_STANDARD') },
+    { key: 'led-mode', control: optionControl('LED Display', device.settings.ledMode, device.capabilities.ledModes.options, device.capabilities.ledModes.supported, 'AIRGRADIENT_SET_LED_MODE') },
+  ].filter((item): item is { key: string; control: React.ReactElement } => item.control !== null);
+  return brightnessControls.length || displayControls.length ? <div className="indoor-controls airgradient-controls" aria-label="AirGradient settings"><div className="airgradient-brightness-row">{brightnessControls}</div><div className="airgradient-display-row">{displayControls.map(({ key, control }) => <React.Fragment key={key}>{control}</React.Fragment>)}</div></div> : null;
 }
 
 function ReviewDialog({ review, onClose, onSubmit, submitting, error }: { review: Review; onClose: () => void; onSubmit: () => void; submitting: boolean; error: string | null }) {
@@ -480,6 +537,7 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
   const [review, setReview] = useState<Review | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [directActionError, setDirectActionError] = useState<string | null>(null);
   const [ventilationActionId, setVentilationActionId] = useState<string | null>(null);
   const [ventilationOptimisticEndsAt, setVentilationOptimisticEndsAt] = useState<string | null>(null);
   const [cancellingVentilation, setCancellingVentilation] = useState(false);
@@ -625,25 +683,38 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
       : { window: 'custom', mode: 'exact', start: start.toISOString(), end: end.toISOString() });
     setCustomOpen(false);
   };
+  const acceptCommand = async (command: IndoorCommand, stateVersion: string) => {
+    const response = await fetch('/api/v1/indoor/actions', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ idempotencyKey: crypto.randomUUID(), expectedStateVersion: stateVersion, confirmed: true, command }),
+      });
+    const body: unknown = await response.json();
+    const parsed = IndoorActionAcceptedSchema.safeParse((body as { data?: IndoorActionAccepted }).data);
+    if (!response.ok || !parsed.success) throw new Error((body as { error?: { message?: string } }).error?.message ?? 'The command was not accepted.');
+    if (command.type === 'VENTILATE') {
+      setVentilationActionId(parsed.data.actionId);
+      setVentilationOptimisticEndsAt(new Date(Date.parse(parsed.data.acceptedAt) + 30 * 60_000).toISOString());
+    }
+    if (command.type === 'CANCEL_VENTILATION') {
+      setVentilationActionId(parsed.data.actionId);
+      setCancellingVentilation(true);
+    }
+  };
+  const submitDirect: DirectCommand = async (command, stateVersion) => {
+    setDirectActionError(null);
+    try {
+      await acceptCommand(command, stateVersion);
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : 'The command failed.';
+      setDirectActionError(message);
+      throw cause;
+    }
+  };
   const submit = async () => {
     if (!review) return;
     setSubmitting(true); setError(null);
     try {
-      const response = await fetch('/api/v1/indoor/actions', {
-        method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ idempotencyKey: crypto.randomUUID(), expectedStateVersion: review.stateVersion, confirmed: true, command: review.command }),
-      });
-      const body: unknown = await response.json();
-      const parsed = IndoorActionAcceptedSchema.safeParse((body as { data?: IndoorActionAccepted }).data);
-      if (!response.ok || !parsed.success) throw new Error((body as { error?: { message?: string } }).error?.message ?? 'The command was not accepted.');
-      if (review.command.type === 'VENTILATE') {
-        setVentilationActionId(parsed.data.actionId);
-        setVentilationOptimisticEndsAt(new Date(Date.parse(parsed.data.acceptedAt) + 30 * 60_000).toISOString());
-      }
-      if (review.command.type === 'CANCEL_VENTILATION') {
-        setVentilationActionId(parsed.data.actionId);
-        setCancellingVentilation(true);
-      }
+      await acceptCommand(review.command, review.stateVersion);
       setReview(null);
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'The command failed.'); }
     finally { setSubmitting(false); }
@@ -666,14 +737,12 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
         indoorVentilationStateVersion(indoor),
       ))}>{cancellingVentilation ? 'Cancelling…' : 'Cancel ventilation'}</button> : null}</div><StateBadge severity={indoor.alerts.some((item) => item.severity === 'CRIT') ? 'CRIT' : indoor.alerts.length ? 'WARN' : 'OK'} label={`${indoor.alerts.length} active alert${indoor.alerts.length === 1 ? '' : 's'}`} /><span>Updated {bootstrap.generatedAt.slice(11, 19)} UTC</span></div></section>
       {indoor.alerts.length ? <section className="indoor-alerts" aria-label="Indoor alerts">{indoor.alerts.map((alert) => <div key={alert.id}><StateBadge severity={alert.severity} /><strong>{alert.kind.replaceAll('_', ' ')}</strong><span>{alert.summary}</span></div>)}</section> : null}
+      {directActionError ? <p className="action-error indoor-action-error" role="alert">{directActionError}</p> : null}
       <section className="indoor-current-grid" id="indoor-current" aria-label="Current indoor readings">
-        <Panel title="AirGradient + Nest" eyebrow="LIVING ROOM / LOCAL PRIMARY" severity={sourceSeverity(airgradient.sourceState)} freshness={panelFreshness(airgradient.readings.co2.metadata.freshness)}>
-          <div className="indoor-reading-grid indoor-primary-readings"><Metric label="NEST TEMPERATURE" value={display(thermostat.currentTemperature, 1)} unit="°F" detail={thermostat.currentTemperature.metadata.freshness} /><Metric label="HUMIDITY" value={display(airgradient.readings.humidity)} unit="%" detail={airgradient.readings.humidity.metadata.freshness} /><Metric label="CO₂" value={display(airgradient.readings.co2)} unit="ppm" detail={airgradient.readings.co2.metadata.freshness} /><Metric label="PM2.5" value={display(airgradient.readings.pm25)} unit="µg/m³" detail={airgradient.readings.pm25.metadata.freshness} /><Metric label="PM10" value={display(airgradient.readings.pm10)} unit="µg/m³" detail={airgradient.readings.pm10.metadata.freshness} /><Metric label="TVOC INDEX" value={display(airgradient.readings.tvocIndex)} detail={airgradient.readings.tvocIndex.metadata.freshness} /><Metric label="NOx INDEX" value={display(airgradient.readings.noxIndex)} detail={airgradient.readings.noxIndex.metadata.freshness} /></div>
-          <div className="device-state-line"><strong>{airgradient.sourceState}</strong><span>Local HTTP · {airgradient.readings.co2.metadata.freshness}</span></div>
-        </Panel>
+        <section className="panel indoor-summary-panel" aria-label="Indoor summary"><div className="panel-body indoor-summary-row"><div className="indoor-reading-grid indoor-primary-readings"><Metric label="TEMPERATURE" value={display(thermostat.currentTemperature, 1)} unit="°F" detail={freshnessDetail(thermostat.currentTemperature)} /><Metric label="HUMIDITY" value={display(airgradient.readings.humidity)} unit="%" detail={freshnessDetail(airgradient.readings.humidity)} /><Metric label="CO₂" value={display(airgradient.readings.co2)} unit="ppm" detail={freshnessDetail(airgradient.readings.co2)} /><Metric label="PM2.5" value={display(airgradient.readings.pm25)} unit="µg/m³" detail={freshnessDetail(airgradient.readings.pm25)} /><Metric label="PM10" value={display(airgradient.readings.pm10)} unit="µg/m³" detail={freshnessDetail(airgradient.readings.pm10)} /><Metric label="TVOC INDEX" value={display(airgradient.readings.tvocIndex)} detail={freshnessDetail(airgradient.readings.tvocIndex)} /><Metric label="NOx INDEX" value={display(airgradient.readings.noxIndex)} detail={freshnessDetail(airgradient.readings.noxIndex)} /></div><StateBadge severity={sourceSeverity(airgradient.sourceState)} /></div></section>
       </section>
       <section className="indoor-history" aria-labelledby="indoor-history-title">
-        <div className="section-heading"><div><span className="panel-eyebrow">PROMETHEUS HISTORY</span><h2 id="indoor-history-title">Environmental trends</h2><span className={`history-update-status history-update-${historyUpdate.status.toLowerCase()}`} role="status">{historyUpdate.status === 'LOADING' ? 'Loading history…' : historyUpdate.status === 'STALE' ? `Update failed · retaining data${historyUpdate.updatedAt ? ` from ${historyUpdatedTime(historyUpdate.updatedAt)} PT` : ''}` : `Updated ${historyUpdatedTime(historyUpdate.updatedAt!)} PT`}</span></div><div className="history-window" role="group" aria-label="History window">{WINDOWS.map((item) => <button type="button" aria-pressed={selection.window === item} onClick={() => { setSelection({ window: item }); setCustomOpen(false); }} key={item}>{item}</button>)}<button type="button" aria-pressed={selection.window === 'custom'} aria-expanded={customOpen} onClick={() => setCustomOpen((open) => !open)}>Custom</button></div></div>
+        <div className="section-heading"><div><h2 id="indoor-history-title">Trend History</h2><span className={`history-update-status history-update-${historyUpdate.status.toLowerCase()}`} role="status">{historyUpdate.status === 'LOADING' ? 'Loading history…' : historyUpdate.status === 'STALE' ? `Update failed · retaining data${historyUpdate.updatedAt ? ` from ${historyUpdatedTime(historyUpdate.updatedAt)} PT` : ''}` : `Updated ${historyUpdatedTime(historyUpdate.updatedAt!)} PT`}</span></div><div className="history-window" role="group" aria-label="History window">{WINDOWS.map((item) => <button type="button" aria-pressed={selection.window === item} onClick={() => { setSelection({ window: item }); setCustomOpen(false); }} key={item}>{item}</button>)}<button type="button" aria-pressed={selection.window === 'custom'} aria-expanded={customOpen} onClick={() => setCustomOpen((open) => !open)}>Custom</button></div></div>
         {customOpen ? <form className="history-custom-range" onSubmit={(event) => { event.preventDefault(); applyCustomRange(); }}>
           <div className="history-custom-mode" role="group" aria-label="Custom range type">
             <button type="button" aria-pressed={customMode === 'relative'} onClick={() => setCustomMode('relative')}>Duration</button>
@@ -699,24 +768,23 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
           {...(metric.secondaryLabel ? { secondaryLabel: metric.secondaryLabel } : {})}
         />)}</div>
       </section>
-      <section className="indoor-comparison-grid" aria-label="Indoor comparison and fallback">
-        <Panel title="Living Room Aranet" eyebrow="COMPARISON / FALLBACK" severity={sourceSeverity(aranet.sourceState)} freshness={panelFreshness(aranet.readings.co2.metadata.freshness)}>
-          <div className="indoor-reading-grid"><Metric label="TEMPERATURE" value={display(aranet.readings.temperature, 1)} unit="°F" /><Metric label="HUMIDITY" value={display(aranet.readings.humidity)} unit="%" /><Metric label="PRESSURE" value={display(aranet.readings.pressure)} unit="hPa" /><Metric label="CO₂" value={display(aranet.readings.co2)} unit="ppm" /><Metric label="BATTERY" value={display(aranet.readings.battery)} unit="%" /></div>
-          <div className="device-state-line"><strong>{aranet.sourceState}</strong><span>{aranet.readings.co2.metadata.freshness}</span></div>
-        </Panel>
-      </section>
       <section className="indoor-settings-grid" aria-label="Indoor device settings">
-        <Panel title="AirGradient settings" eyebrow="AVAILABLE CONTROLS" severity={sourceSeverity(airgradient.sourceState)} freshness={panelFreshness(airgradient.readings.co2.metadata.freshness)}>
-          <AirGradientControls device={airgradient} review={setReview} />
+        <Panel title="AirGradient settings" eyebrow="SENSOR / LOCAL" severity={sourceSeverity(airgradient.sourceState)} freshness={panelFreshness(airgradient.readings.co2.metadata.freshness)} statusDetail={`DISPLAY ${airgradient.settings.displayBrightness ?? '—'}% · LED ${airgradient.settings.ledBrightness ?? '—'}%`}>
+          <AirGradientControls device={airgradient} review={setReview} onCommit={submitDirect} />
         </Panel>
-        <Panel title="Living Room Nest" eyebrow="THERMOSTAT / CLOUD" severity={sourceSeverity(thermostat.sourceState)} freshness={panelFreshness(thermostat.currentTemperature.metadata.freshness)}>
-          <div className="device-state-line"><strong>{thermostat.sourceState}</strong><span>{thermostat.hvacMode ?? 'NO DATA'} · {thermostat.heatSetpointF ?? '—'}–{thermostat.coolSetpointF ?? '—'}°F</span></div><ThermostatControls thermostat={thermostat} review={setReview} />
+        <Panel title="Living Room Nest" eyebrow="THERMOSTAT / CLOUD" severity={sourceSeverity(thermostat.sourceState)} freshness={panelFreshness(thermostat.currentTemperature.metadata.freshness)} statusDetail={`${thermostat.heatSetpointF ?? '—'}–${thermostat.coolSetpointF ?? '—'}°F · ${thermostat.hvacMode ?? 'NO DATA'}`}>
+          <ThermostatControls thermostat={thermostat} review={setReview} onCommit={submitDirect} />
         </Panel>
       </section>
       <section className="purifier-grid" aria-label="Air purifiers">
-        {indoor.purifiers.map((purifier) => <Panel key={purifier.alias} title={`${purifier.room === 'living_room' ? 'Living Room' : 'Bedroom'} Coway`} eyebrow="AIRMEGA 250S / CLOUD" severity={sourceSeverity(purifier.sourceState)} freshness={panelFreshness(purifier.readings.pm25.metadata.freshness)}><div className="indoor-reading-grid"><Metric label="PM2.5" value={display(purifier.readings.pm25)} unit="µg/m³" /><Metric label="PM10" value={display(purifier.readings.pm10)} unit="µg/m³" /><Metric label="AQI" value={display(purifier.readings.aqi)} /><Metric label="FILTER" value={display(purifier.readings.filterLife)} unit="%" /></div><div className="device-state-line"><strong>{purifier.sourceState}</strong><span>{purifier.power === null ? 'NO DATA' : purifier.power ? 'ON' : 'OFF'} · {purifier.preset ?? '—'} · speed {purifier.speed ?? '—'}</span></div><PurifierControls purifier={purifier} review={setReview} /></Panel>)}
+        {indoor.purifiers.map((purifier) => <Panel key={purifier.alias} title={`${purifier.room === 'living_room' ? 'Living Room' : 'Bedroom'} Coway`} eyebrow="AIRMEGA 250S / CLOUD" severity={sourceSeverity(purifier.sourceState)} freshness={panelFreshness(purifier.readings.pm25.metadata.freshness)} statusDetail={`${purifier.power === null ? 'NO DATA' : purifier.power ? 'ON' : 'OFF'} · ${purifier.preset ?? '—'} · SPEED ${purifier.speed ?? '—'}`}><div className="indoor-reading-grid"><Metric label="PM2.5" value={display(purifier.readings.pm25)} unit="µg/m³" /><Metric label="PM10" value={display(purifier.readings.pm10)} unit="µg/m³" /><Metric label="AQI" value={display(purifier.readings.aqi)} /><Metric label="FILTER" value={display(purifier.readings.filterLife)} unit="%" /></div><PurifierControls purifier={purifier} review={setReview} /></Panel>)}
       </section>
-      {indoor.actions.length ? <Panel className="indoor-action-history" title="History" eyebrow="INDOOR CONTROLS" severity={actionHistorySeverity(indoor.actions)}><section className="indoor-action-status" aria-live="polite" aria-label="Recent indoor commands">{indoor.actions.slice(-5).reverse().map((action) => <div className={`indoor-action-status-entry indoor-action-status-${action.status.toLowerCase()}`} key={action.actionId}><StateBadge severity={action.status === 'SUCCEEDED' ? 'OK' : action.status === 'PENDING' ? 'INFO' : 'CRIT'} label={action.status} /><div><strong>{action.target.replaceAll('_', ' ')}</strong>{action.message ? <small>{action.message}</small> : null}<span className="indoor-action-times"><time dateTime={action.acceptedAt}>Accepted {actionTimestamp(action.acceptedAt)}</time>{action.resolvedAt ? <time dateTime={action.resolvedAt}>Resolved {actionTimestamp(action.resolvedAt)}</time> : null}</span></div></div>)}</section></Panel> : null}
+      <section className="indoor-comparison-grid" aria-label="Indoor comparison and fallback">
+        <Panel className="aranet-panel" title="Living Room Aranet" eyebrow="COMPARISON / FALLBACK" severity={sourceSeverity(aranet.sourceState)} freshness={panelFreshness(aranet.readings.co2.metadata.freshness)} statusDetail={`CO₂ ${display(aranet.readings.co2)} ppm · ${display(aranet.readings.temperature, 1)}°F`}>
+          <div className="indoor-reading-grid"><Metric label="TEMPERATURE" value={display(aranet.readings.temperature, 1)} unit="°F" /><Metric label="HUMIDITY" value={display(aranet.readings.humidity)} unit="%" /><Metric label="PRESSURE" value={display(aranet.readings.pressure)} unit="hPa" /><Metric label="CO₂" value={display(aranet.readings.co2)} unit="ppm" /><Metric label="BATTERY" value={display(aranet.readings.battery)} unit="%" /></div>
+        </Panel>
+      </section>
+      {indoor.actions.length ? <Panel className="indoor-action-history" title="History" eyebrow="INDOOR CONTROLS" severity={actionHistorySeverity(indoor.actions)} statusDetail={`${indoor.actions.length} ACTION${indoor.actions.length === 1 ? '' : 'S'}`}><section className="indoor-action-status" aria-live="polite" aria-label="Recent indoor commands">{indoor.actions.slice(-5).reverse().map((action) => <div className={`indoor-action-status-entry indoor-action-status-${action.status.toLowerCase()}`} key={action.actionId}><StateBadge severity={action.status === 'SUCCEEDED' ? 'OK' : action.status === 'PENDING' ? 'INFO' : 'CRIT'} label={action.status} /><div><strong>{action.target.replaceAll('_', ' ')}</strong>{action.message ? <small>{action.message}</small> : null}<span className="indoor-action-times"><time dateTime={action.acceptedAt}>Accepted {actionTimestamp(action.acceptedAt)}</time>{action.resolvedAt ? <time dateTime={action.resolvedAt}>Resolved {actionTimestamp(action.resolvedAt)}</time> : null}</span></div></div>)}</section></Panel> : null}
       {review ? <ReviewDialog review={review} onClose={() => { setReview(null); setError(null); }} onSubmit={() => void submit()} submitting={submitting} error={error} /> : null}
     </main>
   );

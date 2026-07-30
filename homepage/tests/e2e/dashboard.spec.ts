@@ -129,7 +129,17 @@ test('renders the responsive indoor dashboard and requires review before control
   });
   await page.goto('/indoor');
   await expect(page.getByRole('heading', { name: 'Indoor environment' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'AirGradient + Nest' })).toBeVisible();
+  const summaryPanel = page.getByRole('region', { name: 'Indoor summary' });
+  await expect(summaryPanel).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Summary' })).toHaveCount(0);
+  await expect.poll(async () => summaryPanel.locator('.panel-body').evaluate((element) => element.getBoundingClientRect().height)).toBeLessThan(70);
+  const summaryRowAlignment = await summaryPanel.evaluate((element) => {
+    const metrics = element.querySelector<HTMLElement>('.indoor-primary-readings')!.getBoundingClientRect();
+    const badge = element.querySelector<HTMLElement>('.state')!.getBoundingClientRect();
+    return { badgeRightGap: element.getBoundingClientRect().right - badge.right, badgeAfterMetrics: badge.left > metrics.right };
+  });
+  expect(summaryRowAlignment.badgeRightGap).toBeLessThan(12);
+  expect(summaryRowAlignment.badgeAfterMetrics).toBe(true);
   await expect(page.getByRole('heading', { name: 'Living Room Aranet' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Living Room Coway' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Bedroom Coway' })).toBeVisible();
@@ -137,22 +147,97 @@ test('renders the responsive indoor dashboard and requires review before control
   const nestSettings = page.getByRole('heading', { name: 'Living Room Nest' });
   await expect(airGradientSettings).toBeVisible();
   await expect(nestSettings).toBeVisible();
+  await expect(page.getByText('AVAILABLE', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('CURRENT', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'Living Room Nest' }).locator('.panel-state-detail')).toHaveText('68–74°F · HEAT_COOL');
+  await expect(page.getByRole('region', { name: 'Living Room Coway' }).locator('.panel-state-detail')).toHaveText('ON · AUTO · SPEED 2');
+  const aranetPanel = page.getByRole('region', { name: 'Living Room Aranet' });
+  const purifierPanels = [page.getByRole('region', { name: 'Living Room Coway' }), page.getByRole('region', { name: 'Bedroom Coway' })];
+  const aranetLayout = await aranetPanel.evaluate((element) => ({
+    top: element.getBoundingClientRect().top,
+    bodyHeight: element.querySelector<HTMLElement>('.panel-body')!.getBoundingClientRect().height,
+  }));
+  const purifierBottoms = await Promise.all(purifierPanels.map((panel) => panel.evaluate((element) => element.getBoundingClientRect().bottom)));
+  expect(aranetLayout.top).toBeGreaterThan(Math.max(...purifierBottoms));
+  expect(aranetLayout.bodyHeight).toBeLessThan(70);
   await expect.poll(async () => {
     const [airGradientBox, nestBox] = await Promise.all([airGradientSettings.boundingBox(), nestSettings.boundingBox()]);
     return Math.abs((airGradientBox?.y ?? 0) - (nestBox?.y ?? 1_000));
   }).toBeLessThan(2);
+  const thermostatControls = page.getByRole('region', { name: 'Living Room Nest' }).locator('.thermostat-controls');
+  const thermostatLayout = await thermostatControls.evaluate((element) => {
+    const optionRow = element.querySelector<HTMLElement>('.thermostat-option-row')!;
+    const setpointRange = element.querySelector<HTMLElement>('.nest-setpoint-range')!;
+    const optionTops = [...optionRow.children].map((child) => child.getBoundingClientRect().top);
+    return {
+      overflow: element.scrollWidth - element.clientWidth,
+      optionRowSpread: Math.max(...optionTops) - Math.min(...optionTops),
+      setpointWidthDifference: Math.abs(setpointRange.getBoundingClientRect().width - element.getBoundingClientRect().width),
+      setpointAboveOptions: setpointRange.getBoundingClientRect().bottom <= optionRow.getBoundingClientRect().top,
+    };
+  });
+  expect(thermostatLayout.overflow).toBeLessThanOrEqual(1);
+  expect(thermostatLayout.optionRowSpread).toBeLessThan(2);
+  expect(thermostatLayout.setpointWidthDifference).toBeLessThan(2);
+  expect(thermostatLayout.setpointAboveOptions).toBe(true);
+  const nestSetpointTrack = thermostatControls.locator('.nest-setpoint-track');
+  await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+  await expect(nestSetpointTrack).toHaveClass(/nest-setpoint-track-inactive/);
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await expect(nestSetpointTrack).not.toHaveClass(/nest-setpoint-track-inactive/);
+  const airGradientControls = page.getByRole('region', { name: 'AirGradient settings' }).locator('.airgradient-controls');
+  await expect(airGradientControls.getByRole('slider', { name: 'Display brightness' })).toBeVisible();
+  await expect(airGradientControls.getByRole('slider', { name: 'LED brightness' })).toBeVisible();
+  const airGradientLayout = await airGradientControls.evaluate((element) => {
+    const rows = [...element.children].map((row) => [...row.children].map((child) => child.getBoundingClientRect().top));
+    return { brightnessSpread: Math.max(...rows[0]!) - Math.min(...rows[0]!), displaySpread: Math.max(...rows[1]!) - Math.min(...rows[1]!) };
+  });
+  expect(airGradientLayout.brightnessSpread).toBeLessThan(2);
+  expect(airGradientLayout.displaySpread).toBeLessThan(2);
+  const pairedSettingsLayout = await Promise.all([
+    airGradientControls.evaluate((element) => ({
+      top: element.getBoundingClientRect().top,
+      secondRowTop: element.children[1]!.getBoundingClientRect().top,
+      bottom: element.getBoundingClientRect().bottom,
+    })),
+    thermostatControls.evaluate((element) => ({
+      top: element.getBoundingClientRect().top,
+      secondRowTop: element.children[1]!.getBoundingClientRect().top,
+      bottom: element.getBoundingClientRect().bottom,
+    })),
+  ]);
+  expect(Math.abs(pairedSettingsLayout[0].top - pairedSettingsLayout[1].top)).toBeLessThan(2);
+  expect(Math.abs(pairedSettingsLayout[0].secondRowTop - pairedSettingsLayout[1].secondRowTop)).toBeLessThan(2);
+  expect(Math.abs(pairedSettingsLayout[0].bottom - pairedSettingsLayout[1].bottom)).toBeLessThan(2);
+  const sliderCenters = await Promise.all([
+    airGradientControls.getByRole('slider', { name: 'Display brightness' }).evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return rect.top + rect.height / 2;
+    }),
+    nestSetpointTrack.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return rect.top + rect.height / 2;
+    }),
+  ]);
+  expect(Math.abs(sliderCenters[0] - sliderCenters[1])).toBeLessThan(2);
   for (const panelName of ['AirGradient settings', 'Living Room Nest']) {
-    const controls = page.getByRole('region', { name: panelName }).locator('.indoor-controls-single-row');
-    const layout = await controls.evaluate((element) => {
-      const bottoms = [...element.children].map((child) => child.getBoundingClientRect().bottom);
-      return {
-        overflow: element.scrollWidth - element.clientWidth,
-        rowSpread: Math.max(...bottoms) - Math.min(...bottoms),
-      };
-    });
-    expect(layout.overflow).toBeLessThanOrEqual(1);
-    expect(layout.rowSpread).toBeLessThan(2);
+    const panel = page.getByRole('region', { name: panelName });
+    await expect(panel.locator('.panel-footer')).toBeHidden();
   }
+  const displayBrightness = airGradientControls.getByRole('slider', { name: 'Display brightness' });
+  await displayBrightness.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(() => indoorCommands.some((command) => JSON.stringify(command) === JSON.stringify({ type: 'AIRGRADIENT_SET_DISPLAY_BRIGHTNESS', target: 'airgradient_living_room', value: 81 }))).toBe(true);
+  await expect(page.getByRole('dialog', { name: 'Confirm change' })).toHaveCount(0);
+  const nestSettingsPanel = page.getByRole('region', { name: 'Living Room Nest' });
+  const nestHeatSetpoint = nestSettingsPanel.getByRole('slider', { name: /Nest heat setpoint/ });
+  const nestCoolSetpoint = nestSettingsPanel.getByRole('slider', { name: /Nest cool setpoint/ });
+  await expect(nestHeatSetpoint).toBeVisible();
+  await expect(nestCoolSetpoint).toBeVisible();
+  await nestHeatSetpoint.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(() => indoorCommands.some((command) => JSON.stringify(command) === JSON.stringify({ type: 'NEST_SET_SETPOINT', target: 'nest_living_room', setpoint: { shape: 'RANGE', heatTemperatureF: 69, coolTemperatureF: 74 } }))).toBe(true);
+  await expect(page.getByRole('dialog', { name: 'Confirm change' })).toHaveCount(0);
   const ventilate = page.getByRole('button', { name: 'Ventilate', exact: true });
   await expect(ventilate).not.toHaveClass(/ventilate-button-active/);
   await ventilate.click();
@@ -243,8 +328,8 @@ test('renders the responsive indoor dashboard and requires review before control
     axis.remove();
     return { fontSize, metricFontSize };
   })).toEqual({ fontSize: '9.92px', metricFontSize: '9.92px' });
-  const hvacModes = page.getByRole('group', { name: 'HVAC mode' });
-  const hvacButton = hvacModes.getByRole('button', { name: 'HVAC mode: HEAT_COOL. Show options' });
+  const hvacModes = page.getByRole('group', { name: 'Mode' });
+  const hvacButton = hvacModes.getByRole('button', { name: 'Mode: HEAT_COOL. Show options' });
   await expect(hvacButton).toHaveClass(/control-current-positive/);
   await hvacButton.click();
   await expect(hvacModes.getByRole('menuitemradio')).toHaveCount(4);
@@ -273,7 +358,7 @@ test('renders the responsive indoor dashboard and requires review before control
   await page.keyboard.press('Escape');
 
   const pmStandard = page.getByRole('group', { name: 'PM standard' });
-  await pmStandard.getByRole('button', { name: 'PM standard: us aqi. Show options' }).click();
+  await pmStandard.getByRole('button', { name: 'PM standard: US AQI. Show options' }).click();
   await expect(pmStandard.getByRole('menuitemradio')).toHaveCount(2);
   await page.keyboard.press('Escape');
 
