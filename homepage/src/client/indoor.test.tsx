@@ -29,16 +29,26 @@ describe('indoor dashboard', () => {
     const markup = renderToStaticMarkup(<IndoorScreen bootstrap={healthyBootstrapFixture} />);
     expect(markup).toContain('aria-label="Indoor summary"');
     expect(markup).not.toContain('>Summary<');
+    expect(markup).not.toContain('INDOOR / HOME ASSISTANT');
     expect(markup).toContain('>TEMPERATURE<');
     expect(markup).not.toContain('LIVING ROOM / LOCAL PRIMARY');
     expect(markup).toContain('>Ventilate<');
     expect(markup).not.toContain('ventilate-button-active');
     expect(markup).toContain('Living Room Aranet');
-    expect(markup).toContain('Living Room Coway');
-    expect(markup).toContain('Bedroom Coway');
+    expect(markup).toContain('Living Room Air Purifier');
+    expect(markup).toContain('Bedroom Air Purifier');
+    expect(markup).toContain('Living Room Air Purifier Sensor Data');
+    expect(markup).toContain('Bedroom Air Purifier Sensor Data');
+    expect(markup.match(/>PM2\.5</g)).toHaveLength(3);
+    expect(markup.match(/>PM10</g)).toHaveLength(3);
+    expect(markup.match(/>AQI</g)).toHaveLength(2);
+    expect(markup.match(/>FILTER</g)).toHaveLength(2);
     expect(markup).toContain('Trend History');
     expect(markup).not.toContain('PROMETHEUS HISTORY');
     expect(markup).toContain('Loading history');
+    expect(markup).toContain('Data Source: AirGradient');
+    expect(markup).toContain('>Device Settings</h2>');
+    expect(markup).toContain('>Additional Sensor Data</h2>');
     for (const window of ['1h', '3h', '6h', '24h', '7d', '30d', 'Custom']) expect(markup).toContain(`>${window}<`);
     expect(markup).toContain('>Mode<');
     expect(markup).toContain('aria-label="Power"');
@@ -56,7 +66,10 @@ describe('indoor dashboard', () => {
     expect(markup).not.toContain('>AVAILABLE<');
     expect(markup).not.toContain('>CURRENT<');
     expect(markup).not.toContain('AVAILABLE CONTROLS');
-    expect(markup).toContain('SENSOR / LOCAL');
+    expect(markup).not.toContain('SENSOR / LOCAL');
+    expect(markup).not.toContain('THERMOSTAT / CLOUD');
+    expect(markup).not.toContain('AIRMEGA 250S / CLOUD');
+    expect(markup).not.toContain('COMPARISON / FALLBACK');
     expect(markup).toContain('DISPLAY 80% · LED 60%');
     expect(markup).toContain('68–74°F · HEAT_COOL');
     expect(markup).toContain('ON · AUTO · SPEED 2');
@@ -91,12 +104,14 @@ describe('indoor dashboard', () => {
       expect(markup.indexOf(`NO DATA · ${graphOrder[index - 1]}`)).toBeLessThan(markup.indexOf(`NO DATA · ${graphOrder[index]}`));
     }
     for (const setting of ['Display brightness', 'LED brightness', 'Temperature unit', 'PM standard', 'LED Display']) expect(markup).toContain(setting);
-    expect(markup.indexOf('AirGradient settings')).toBeLessThan(markup.indexOf('Living Room Nest'));
-    expect(markup.indexOf('Living Room Nest')).toBeLessThan(markup.indexOf('Living Room Coway'));
+    expect(markup.indexOf('AirGradient ONE')).toBeLessThan(markup.indexOf('Nest Thermostat'));
+    expect(markup.indexOf('Nest Thermostat')).toBeLessThan(markup.indexOf('Living Room Air Purifier'));
     expect(markup).toContain('indoor-primary-readings');
-    expect(markup.indexOf('Trend History')).toBeLessThan(markup.indexOf('AirGradient settings'));
-    expect(markup.indexOf('AirGradient settings')).toBeLessThan(markup.indexOf('Living Room Coway'));
-    expect(markup.indexOf('Living Room Coway')).toBeLessThan(markup.indexOf('Living Room Aranet'));
+    expect(markup.indexOf('Trend History')).toBeLessThan(markup.indexOf('AirGradient ONE'));
+    expect(markup.indexOf('Device Settings')).toBeLessThan(markup.indexOf('AirGradient ONE'));
+    expect(markup.indexOf('AirGradient ONE')).toBeLessThan(markup.indexOf('Living Room Air Purifier'));
+    expect(markup.indexOf('Living Room Air Purifier')).toBeLessThan(markup.indexOf('Living Room Aranet'));
+    expect(markup.indexOf('Additional Sensor Data')).toBeLessThan(markup.indexOf('Living Room Aranet'));
     expect(markup).toContain('panel aranet-panel');
   });
 
@@ -181,7 +196,7 @@ describe('indoor dashboard', () => {
     const markup = renderToStaticMarkup(<IndoorScreen bootstrap={bootstrap} />);
     expect(markup).toContain('aria-label="Indoor summary"');
     expect(markup).toContain('Living Room Aranet');
-    expect(markup).toContain('COMPARISON / FALLBACK');
+    expect(markup).not.toContain('COMPARISON / FALLBACK');
     expect(markup).toContain('69.8');
   });
 
@@ -242,7 +257,6 @@ describe('indoor dashboard', () => {
   it('colors the AirGradient temperature trace across blue, green, yellow, and red zones', () => {
     const markup = renderToStaticMarkup(<HistoryGraph
       label="Temperature"
-      source="AirGradient"
       thresholds={[{ value: 65, tone: 'dark-blue' }, { value: 68, tone: 'light-blue' }, { value: 72, tone: 'yellow' }, { value: 75, tone: 'red' }]}
       scale={{ fixedMin: 60, fixedMax: 80, ticks: [60, 65, 70, 75, 80] }}
       series={{
@@ -270,7 +284,6 @@ describe('indoor dashboard', () => {
   it('smooths the CO₂ trace and emphasizes visible threshold ticks', () => {
     const markup = renderToStaticMarkup(<HistoryGraph
       label="CO₂"
-      source="AirGradient"
       thresholds={[{ value: 600, tone: 'blue' }, { value: 900, tone: 'yellow' }, { value: 1000, tone: 'red' }]}
       scale={{ fixedMin: 400, fixedMax: 1400, ticks: [400, 600, 800, 1000, 1200, 1400] }}
       series={{
@@ -295,14 +308,12 @@ describe('indoor dashboard', () => {
     expect(markup).toContain('history-trace-stop-green');
     expect(markup).toContain('history-trace-stop-yellow');
     expect(markup).toContain('history-trace-stop-red');
-    expect(markup).toContain('<small class="history-graph-source">AirGradient</small>');
     expect(markup).not.toContain('<circle');
   });
 
   it('combines smoothed PM2.5 and dotted PM10 traces with a legend', () => {
     const markup = renderToStaticMarkup(<HistoryGraph
       label="Particulate matter"
-      source="AirGradient"
       secondaryLabel="PM10"
       thresholds={[{ value: 5, tone: 'yellow' }, { value: 15, tone: 'red' }]}
       scale={{ minSpan: 20, hardMin: 0 }}
@@ -344,7 +355,6 @@ describe('indoor dashboard', () => {
   it('colors humidity outside the 30–50% band blue', () => {
     const markup = renderToStaticMarkup(<HistoryGraph
       label="Humidity"
-      source="AirGradient"
       thresholds={[{ value: 30, tone: 'light-blue' }, { value: 50, tone: 'light-blue' }]}
       scale={{ fixedMin: 0, fixedMax: 100, ticks: [0, 20, 40, 60, 80, 100] }}
       series={{
@@ -414,7 +424,6 @@ describe('indoor dashboard', () => {
   it('renders the humidity lower and upper dotted thresholds', () => {
     const markup = renderToStaticMarkup(<HistoryGraph
       label="Humidity"
-      source="AirGradient"
       thresholds={[{ value: 30, tone: 'light-blue' }, { value: 50, tone: 'light-blue' }]}
       scale={{ fixedMin: 0, fixedMax: 100, ticks: [0, 20, 40, 60, 80, 100] }}
       series={{

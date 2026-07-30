@@ -21,7 +21,7 @@ type PurifierState = IndoorState['purifiers'][number];
 type ThresholdTone = 'blue' | 'light-blue' | 'dark-blue' | 'yellow' | 'red';
 type TraceTone = 'green' | ThresholdTone | 'secondary';
 type HistoryThreshold = { value: number; tone: ThresholdTone };
-type HistoryMetric = { alias: string; label: string; source: string; thresholds: HistoryThreshold[]; scale: HistoryScale; secondaryAlias?: string; secondaryLabel?: string };
+type HistoryMetric = { alias: string; label: string; thresholds: HistoryThreshold[]; scale: HistoryScale; secondaryAlias?: string; secondaryLabel?: string };
 type DirectCommand = (command: IndoorCommand, stateVersion: string) => Promise<void>;
 
 function display(reading: IndoorReading, digits = 0) {
@@ -129,11 +129,10 @@ function trendTone(metric: string, value: number, thresholds: HistoryThreshold[]
   return 'green';
 }
 
-export function HistoryGraph({ series, secondarySeries, label, source, secondaryLabel, thresholds, scale }: {
+export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, thresholds, scale }: {
   series: TimeSeries | undefined;
   secondarySeries?: TimeSeries;
   label: string;
-  source?: string;
   secondaryLabel?: string;
   thresholds: HistoryThreshold[];
   scale: HistoryScale;
@@ -248,12 +247,12 @@ export function HistoryGraph({ series, secondarySeries, label, source, secondary
     'airgradient_living_room.temperature',
     ].includes(series?.metric ?? '') && chartPoints.length > 2;
   const valueLabel = (value: number) => value.toFixed(scale.digits ?? 0);
-  const summary = `${label}${source ? `, ${source}` : ''}, ${interactionSeries.window}, ${interactionSeries.points.length} samples, latest ${interactionSeries.points.at(-1)!.value} ${interactionSeries.unit}.`
+  const summary = `${label}, ${interactionSeries.window}, ${interactionSeries.points.length} samples, latest ${interactionSeries.points.at(-1)!.value} ${interactionSeries.unit}.`
     + (secondarySeries?.points.length ? ` ${secondaryLabel}, ${secondarySeries.points.length} samples, latest ${secondarySeries.points.at(-1)!.value} ${secondarySeries.unit}.` : '')
     + ` Thresholds ${thresholds.map((threshold) => threshold.value).join(', ')} ${interactionSeries.unit}.`;
   return (
     <figure className="indoor-history-graph">
-      <figcaption><strong>{label}</strong><span>{valueLabel(interactionSeries.points.at(-1)!.value)} {interactionSeries.unit}{source ? <small className="history-graph-source">{source}</small> : null}</span></figcaption>
+      <figcaption><strong>{label}</strong><span>{valueLabel(interactionSeries.points.at(-1)!.value)} {interactionSeries.unit}</span></figcaption>
       {secondaryLabel ? <div className="history-legend" aria-label={`${label} graph legend`}>
         <span><i className="history-legend-primary" aria-hidden="true" />PM2.5</span>
         <span><i className="history-legend-secondary" aria-hidden="true" />{secondaryLabel}</span>
@@ -438,10 +437,10 @@ function ThermostatControls({ thermostat, review, onCommit }: { thermostat: Ther
       {thermostat.capabilities.setpointShapes.includes('RANGE') ? <NestSetpointRange thermostat={thermostat} disabled={disabled} onCommit={onCommit} /> : null}
       <div className="thermostat-option-row">
         {thermostat.capabilities.hvacModes.supported ? <PopoverOptionButton label="Mode" options={thermostat.capabilities.hvacModes.options} value={thermostat.hvacMode} disabled={disabled} positive={thermostat.hvacMode !== null && thermostat.hvacMode !== 'OFF'} onSelect={(mode) =>
-          review(requestReview({ type: 'NEST_SET_HVAC_MODE', target: 'nest_living_room', mode: mode as NonNullable<ThermostatState['hvacMode']> }, 'Living Room Nest', thermostat.hvacMode ?? 'Unknown', mode, 'NEST_CLOUD', thermostat.stateVersion))
+          review(requestReview({ type: 'NEST_SET_HVAC_MODE', target: 'nest_living_room', mode: mode as NonNullable<ThermostatState['hvacMode']> }, 'Nest Thermostat', thermostat.hvacMode ?? 'Unknown', mode, 'NEST_CLOUD', thermostat.stateVersion))
         } /> : null}
         {thermostat.capabilities.fanTimerMinutes.supported ? <PopoverOptionButton label="Fan Timer" options={thermostat.capabilities.fanTimerMinutes.values} value={thermostat.fanTimerEndsAt ? null : 0} disabled={disabled} positive={Boolean(thermostat.fanTimerEndsAt)} currentLabel={thermostat.fanTimerEndsAt ? 'Running' : undefined} format={(minutes) => minutes === 0 ? 'Off' : `${minutes}m`} onSelect={(minutes) =>
-          review(requestReview({ type: 'NEST_SET_FAN_TIMER', target: 'nest_living_room', durationMinutes: minutes }, 'Living Room Nest', thermostat.fanTimerEndsAt ? 'Running' : 'Off', minutes === 0 ? 'Off' : `${minutes} minutes`, 'NEST_CLOUD', thermostat.stateVersion))
+          review(requestReview({ type: 'NEST_SET_FAN_TIMER', target: 'nest_living_room', durationMinutes: minutes }, 'Nest Thermostat', thermostat.fanTimerEndsAt ? 'Running' : 'Off', minutes === 0 ? 'Off' : `${minutes} minutes`, 'NEST_CLOUD', thermostat.stateVersion))
         } /> : null}
       </div>
     </div>
@@ -450,7 +449,7 @@ function ThermostatControls({ thermostat, review, onCommit }: { thermostat: Ther
 
 function PurifierControls({ purifier, review }: { purifier: PurifierState; review: (item: Review) => void }) {
   const disabled = purifier.sourceState !== 'AVAILABLE';
-  const make = (command: IndoorCommand, current: string, requested: string) => review(requestReview(command, purifier.room === 'living_room' ? 'Living Room Coway' : 'Bedroom Coway', current, requested, 'COWAY_CLOUD', purifier.stateVersion));
+  const make = (command: IndoorCommand, current: string, requested: string) => review(requestReview(command, purifier.room === 'living_room' ? 'Living Room Air Purifier' : 'Bedroom Air Purifier', current, requested, 'COWAY_CLOUD', purifier.stateVersion));
   return (
     <div className="indoor-controls purifier-controls">
       {purifier.capabilities.power.supported ? <PopoverOptionButton label="Power" hideLabel options={['On', 'Off']} value={purifier.power ? 'On' : 'Off'} disabled={disabled} positive={purifier.power === true} onSelect={(value) =>
@@ -504,7 +503,7 @@ function AirGradientBrightnessControl({
 function AirGradientControls({ device, review, onCommit }: { device: IndoorState['sensors'][1]; review: (item: Review) => void; onCommit: DirectCommand }) {
   const disabled = device.sourceState !== 'AVAILABLE';
   const make = (command: IndoorCommand, current: string, requested: string) =>
-    review(requestReview(command, 'Living Room AirGradient', current, requested, 'AIRGRADIENT_LOCAL', device.stateVersion));
+    review(requestReview(command, 'AirGradient ONE', current, requested, 'AIRGRADIENT_LOCAL', device.stateVersion));
   const optionControl = (
     label: string,
     value: string | null,
@@ -523,7 +522,7 @@ function AirGradientControls({ device, review, onCommit }: { device: IndoorState
     { key: 'pm-standard', control: optionControl('PM standard', device.settings.pmStandard, device.capabilities.pmStandards.options, device.capabilities.pmStandards.supported, 'AIRGRADIENT_SET_PM_STANDARD') },
     { key: 'led-mode', control: optionControl('LED Display', device.settings.ledMode, device.capabilities.ledModes.options, device.capabilities.ledModes.supported, 'AIRGRADIENT_SET_LED_MODE') },
   ].filter((item): item is { key: string; control: React.ReactElement } => item.control !== null);
-  return brightnessControls.length || displayControls.length ? <div className="indoor-controls airgradient-controls" aria-label="AirGradient settings"><div className="airgradient-brightness-row">{brightnessControls}</div><div className="airgradient-display-row">{displayControls.map(({ key, control }) => <React.Fragment key={key}>{control}</React.Fragment>)}</div></div> : null;
+  return brightnessControls.length || displayControls.length ? <div className="indoor-controls airgradient-controls" aria-label="AirGradient ONE controls"><div className="airgradient-brightness-row">{brightnessControls}</div><div className="airgradient-display-row">{displayControls.map(({ key, control }) => <React.Fragment key={key}>{control}</React.Fragment>)}</div></div> : null;
 }
 
 function ReviewDialog({ review, onClose, onSubmit, submitting, error }: { review: Review; onClose: () => void; onSubmit: () => void; submitting: boolean; error: string | null }) {
@@ -620,12 +619,12 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
     return () => window.clearInterval(interval);
   }, [ventilationActive]);
   const metrics = useMemo<HistoryMetric[]>(() => [
-    { alias: 'airgradient_living_room.co2', label: 'CO₂', source: 'AirGradient', thresholds: [{ value: 600, tone: 'blue' }, { value: 800, tone: 'yellow' }, { value: 1000, tone: 'red' }], scale: { fixedMin: 400, fixedMax: 1400, ticks: [400, 600, 800, 1000, 1200, 1400], digits: 0 } },
-    { alias: 'airgradient_living_room.pm25', secondaryAlias: 'airgradient_living_room.pm10', secondaryLabel: 'PM10', label: 'Particulate matter', source: 'AirGradient', thresholds: [{ value: 5, tone: 'yellow' }, { value: 15, tone: 'red' }], scale: { minSpan: 20, hardMin: 0, digits: 0 } },
-    { alias: 'airgradient_living_room.tvoc_index', label: 'TVOC index', source: 'AirGradient', thresholds: [{ value: 100, tone: 'blue' }, { value: 150, tone: 'yellow' }, { value: 250, tone: 'red' }], scale: { fixedMin: 0, fixedMax: 500, ticks: [0, 100, 200, 300, 400, 500], digits: 0 } },
-    { alias: 'airgradient_living_room.nox_index', label: 'NOx index', source: 'AirGradient', thresholds: [{ value: 20, tone: 'yellow' }, { value: 150, tone: 'red' }], scale: { fixedMin: 0, fixedMax: 500, ticks: [0, 100, 200, 300, 400, 500], digits: 0 } },
-    { alias: 'airgradient_living_room.temperature', label: 'Temperature', source: 'AirGradient', thresholds: [{ value: 65, tone: 'dark-blue' }, { value: 68, tone: 'light-blue' }, { value: 72, tone: 'yellow' }, { value: 75, tone: 'red' }], scale: { fixedMin: 60, fixedMax: 80, ticks: [60, 65, 70, 75, 80], digits: 0 } },
-    { alias: 'airgradient_living_room.humidity', label: 'Humidity', source: 'AirGradient', thresholds: [{ value: 30, tone: 'light-blue' }, { value: 50, tone: 'light-blue' }], scale: { fixedMin: 0, fixedMax: 100, ticks: [0, 20, 40, 60, 80, 100], digits: 0 } },
+    { alias: 'airgradient_living_room.co2', label: 'CO₂', thresholds: [{ value: 600, tone: 'blue' }, { value: 800, tone: 'yellow' }, { value: 1000, tone: 'red' }], scale: { fixedMin: 400, fixedMax: 1400, ticks: [400, 600, 800, 1000, 1200, 1400], digits: 0 } },
+    { alias: 'airgradient_living_room.pm25', secondaryAlias: 'airgradient_living_room.pm10', secondaryLabel: 'PM10', label: 'Particulate matter', thresholds: [{ value: 5, tone: 'yellow' }, { value: 15, tone: 'red' }], scale: { minSpan: 20, hardMin: 0, digits: 0 } },
+    { alias: 'airgradient_living_room.tvoc_index', label: 'TVOC index', thresholds: [{ value: 100, tone: 'blue' }, { value: 150, tone: 'yellow' }, { value: 250, tone: 'red' }], scale: { fixedMin: 0, fixedMax: 500, ticks: [0, 100, 200, 300, 400, 500], digits: 0 } },
+    { alias: 'airgradient_living_room.nox_index', label: 'NOx index', thresholds: [{ value: 20, tone: 'yellow' }, { value: 150, tone: 'red' }], scale: { fixedMin: 0, fixedMax: 500, ticks: [0, 100, 200, 300, 400, 500], digits: 0 } },
+    { alias: 'airgradient_living_room.temperature', label: 'Temperature', thresholds: [{ value: 65, tone: 'dark-blue' }, { value: 68, tone: 'light-blue' }, { value: 72, tone: 'yellow' }, { value: 75, tone: 'red' }], scale: { fixedMin: 60, fixedMax: 80, ticks: [60, 65, 70, 75, 80], digits: 0 } },
+    { alias: 'airgradient_living_room.humidity', label: 'Humidity', thresholds: [{ value: 30, tone: 'light-blue' }, { value: 50, tone: 'light-blue' }], scale: { fixedMin: 0, fixedMax: 100, ticks: [0, 20, 40, 60, 80, 100], digits: 0 } },
   ], []);
   const summaryTrendTone = (reading: IndoorReading, metric: string, thresholdsMetric = metric) => {
     const configuration = metrics.find((item) => item.alias === thresholdsMetric);
@@ -743,30 +742,31 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'The command failed.'); }
     finally { setSubmitting(false); }
   };
+  const ventilationControls = <div className="ventilation-controls"><button className={`ventilate-button${ventilationActive ? ' ventilate-button-active' : ''}`} type="button" disabled={!ventilationAvailable || ventilationActive} onClick={() => setReview(requestReview(
+    { type: 'VENTILATE', target: 'indoor_environment', durationMinutes: 30 },
+    'Indoor environment',
+    `Nest fan ${thermostat.fanTimerEndsAt ? 'on' : 'off'}; Coways ${indoor.purifiers.map((purifier) => purifier.power ? `speed ${purifier.speed ?? 'unknown'}` : 'off').join(' / ')}`,
+    'Both Coways Rapid + Nest fan for 30 minutes',
+    'MULTI_CLOUD',
+    indoorVentilationStateVersion(indoor),
+  ))}>{ventilationActive ? 'Ventilating…' : 'Ventilate'}</button>{ventilationActive && ventilationEndsAt ? <span className="ventilation-remaining" role="timer">{ventilationTimeRemaining(ventilationEndsAt, countdownNow)} remaining</span> : null}{ventilationActive ? <button className="cancel-ventilation-button" type="button" disabled={cancellingVentilation} onClick={() => setReview(requestReview(
+    { type: 'CANCEL_VENTILATION', target: 'indoor_environment' },
+    'Indoor environment',
+    'Ventilating',
+    'Cancel and restore prior fan states',
+    'MULTI_CLOUD',
+    indoorVentilationStateVersion(indoor),
+  ))}>{cancellingVentilation ? 'Cancelling…' : 'Cancel ventilation'}</button> : null}</div>;
   return (
     <main className="dashboard indoor-dashboard" id="indoor">
-      <section className="hero-row"><div><span className="panel-eyebrow">INDOOR / HOME ASSISTANT</span><h1>Indoor environment</h1></div><div className="hero-state"><div className="ventilation-controls"><button className={`ventilate-button${ventilationActive ? ' ventilate-button-active' : ''}`} type="button" disabled={!ventilationAvailable || ventilationActive} onClick={() => setReview(requestReview(
-        { type: 'VENTILATE', target: 'indoor_environment', durationMinutes: 30 },
-        'Indoor environment',
-        `Nest fan ${thermostat.fanTimerEndsAt ? 'on' : 'off'}; Coways ${indoor.purifiers.map((purifier) => purifier.power ? `speed ${purifier.speed ?? 'unknown'}` : 'off').join(' / ')}`,
-        'Both Coways Rapid + Nest fan for 30 minutes',
-        'MULTI_CLOUD',
-        indoorVentilationStateVersion(indoor),
-      ))}>{ventilationActive ? 'Ventilating…' : 'Ventilate'}</button>{ventilationActive && ventilationEndsAt ? <span className="ventilation-remaining" role="timer">{ventilationTimeRemaining(ventilationEndsAt, countdownNow)} remaining</span> : null}{ventilationActive ? <button className="cancel-ventilation-button" type="button" disabled={cancellingVentilation} onClick={() => setReview(requestReview(
-        { type: 'CANCEL_VENTILATION', target: 'indoor_environment' },
-        'Indoor environment',
-        'Ventilating',
-        'Cancel and restore prior fan states',
-        'MULTI_CLOUD',
-        indoorVentilationStateVersion(indoor),
-      ))}>{cancellingVentilation ? 'Cancelling…' : 'Cancel ventilation'}</button> : null}</div><StateBadge severity={indoor.alerts.some((item) => item.severity === 'CRIT') ? 'CRIT' : indoor.alerts.length ? 'WARN' : 'OK'} label={`${indoor.alerts.length} active alert${indoor.alerts.length === 1 ? '' : 's'}`} /><span>Updated {bootstrap.generatedAt.slice(11, 19)} UTC</span></div></section>
+      <section className="hero-row"><div><h1>Indoor environment</h1></div><div className="hero-state"><StateBadge severity={indoor.alerts.some((item) => item.severity === 'CRIT') ? 'CRIT' : indoor.alerts.length ? 'WARN' : 'OK'} label={`${indoor.alerts.length} active alert${indoor.alerts.length === 1 ? '' : 's'}`} /><span>Updated {bootstrap.generatedAt.slice(11, 19)} UTC</span></div></section>
       {indoor.alerts.length ? <section className="indoor-alerts" aria-label="Indoor alerts">{indoor.alerts.map((alert) => <div key={alert.id}><StateBadge severity={alert.severity} /><strong>{alert.kind.replaceAll('_', ' ')}</strong><span>{alert.summary}</span></div>)}</section> : null}
       {directActionError ? <p className="action-error indoor-action-error" role="alert">{directActionError}</p> : null}
       <section className="indoor-current-grid" id="indoor-current" aria-label="Current indoor readings">
-        <section className="panel indoor-summary-panel" aria-label="Indoor summary"><div className="panel-body indoor-summary-row"><div className="indoor-reading-grid indoor-primary-readings"><Metric label="TEMPERATURE" value={display(thermostat.currentTemperature, 1)} unit="°F" detail={freshnessDetail(thermostat.currentTemperature)} indicatorTone={summaryTrendTone(thermostat.currentTemperature, 'airgradient_living_room.temperature')} /><Metric label="HUMIDITY" value={display(airgradient.readings.humidity)} unit="%" detail={freshnessDetail(airgradient.readings.humidity)} indicatorTone={summaryTrendTone(airgradient.readings.humidity, 'airgradient_living_room.humidity')} /><Metric label="CO₂" value={display(airgradient.readings.co2)} unit="ppm" detail={freshnessDetail(airgradient.readings.co2)} indicatorTone={summaryTrendTone(airgradient.readings.co2, 'airgradient_living_room.co2')} /><Metric label="PM2.5" value={display(airgradient.readings.pm25)} unit="µg/m³" detail={freshnessDetail(airgradient.readings.pm25)} indicatorTone={summaryTrendTone(airgradient.readings.pm25, 'airgradient_living_room.pm25')} /><Metric label="PM10" value={display(airgradient.readings.pm10)} unit="µg/m³" detail={freshnessDetail(airgradient.readings.pm10)} indicatorTone={summaryTrendTone(airgradient.readings.pm10, 'airgradient_living_room.pm10', 'airgradient_living_room.pm25')} /><Metric label="TVOC INDEX" value={display(airgradient.readings.tvocIndex)} detail={freshnessDetail(airgradient.readings.tvocIndex)} indicatorTone={summaryTrendTone(airgradient.readings.tvocIndex, 'airgradient_living_room.tvoc_index')} /><Metric label="NOx INDEX" value={display(airgradient.readings.noxIndex)} detail={freshnessDetail(airgradient.readings.noxIndex)} indicatorTone={summaryTrendTone(airgradient.readings.noxIndex, 'airgradient_living_room.nox_index')} /></div><StateBadge severity={sourceSeverity(airgradient.sourceState)} /></div></section>
+        <section className="panel indoor-summary-panel" aria-label="Indoor summary"><div className="panel-body indoor-summary-row"><div className="indoor-reading-grid indoor-primary-readings"><Metric label="TEMPERATURE" value={display(thermostat.currentTemperature, 1)} unit="°F" detail={freshnessDetail(thermostat.currentTemperature)} indicatorTone={summaryTrendTone(thermostat.currentTemperature, 'airgradient_living_room.temperature')} /><Metric label="HUMIDITY" value={display(airgradient.readings.humidity)} unit="%" detail={freshnessDetail(airgradient.readings.humidity)} indicatorTone={summaryTrendTone(airgradient.readings.humidity, 'airgradient_living_room.humidity')} /><Metric label="CO₂" value={display(airgradient.readings.co2)} unit="ppm" detail={freshnessDetail(airgradient.readings.co2)} indicatorTone={summaryTrendTone(airgradient.readings.co2, 'airgradient_living_room.co2')} /><Metric label="PM2.5" value={display(airgradient.readings.pm25)} unit="µg/m³" detail={freshnessDetail(airgradient.readings.pm25)} indicatorTone={summaryTrendTone(airgradient.readings.pm25, 'airgradient_living_room.pm25')} /><Metric label="PM10" value={display(airgradient.readings.pm10)} unit="µg/m³" detail={freshnessDetail(airgradient.readings.pm10)} indicatorTone={summaryTrendTone(airgradient.readings.pm10, 'airgradient_living_room.pm10', 'airgradient_living_room.pm25')} /><Metric label="TVOC INDEX" value={display(airgradient.readings.tvocIndex)} detail={freshnessDetail(airgradient.readings.tvocIndex)} indicatorTone={summaryTrendTone(airgradient.readings.tvocIndex, 'airgradient_living_room.tvoc_index')} /><Metric label="NOx INDEX" value={display(airgradient.readings.noxIndex)} detail={freshnessDetail(airgradient.readings.noxIndex)} indicatorTone={summaryTrendTone(airgradient.readings.noxIndex, 'airgradient_living_room.nox_index')} /></div><div className="indoor-summary-controls">{ventilationControls}</div></div></section>
       </section>
       <section className="indoor-history" aria-labelledby="indoor-history-title">
-        <div className="section-heading"><div><h2 id="indoor-history-title">Trend History</h2><span className={`history-update-status history-update-${historyUpdate.status.toLowerCase()}`} role="status">{historyUpdate.status === 'LOADING' ? 'Loading history…' : historyUpdate.status === 'STALE' ? `Update failed · retaining data${historyUpdate.updatedAt ? ` from ${historyUpdatedTime(historyUpdate.updatedAt)} PT` : ''}` : `Updated ${historyUpdatedTime(historyUpdate.updatedAt!)} PT`}</span></div><div className="history-window" role="group" aria-label="History window">{WINDOWS.map((item) => <button type="button" aria-pressed={selection.window === item} onClick={() => { setSelection({ window: item }); setCustomOpen(false); }} key={item}>{item}</button>)}<button type="button" aria-pressed={selection.window === 'custom'} aria-expanded={customOpen} onClick={() => setCustomOpen((open) => !open)}>Custom</button></div></div>
+        <div className="section-heading"><div><h2 id="indoor-history-title">Trend History</h2><span className={`history-update-status history-update-${historyUpdate.status.toLowerCase()}`} role="status">{historyUpdate.status === 'LOADING' ? 'Loading history…' : historyUpdate.status === 'STALE' ? `Update failed · retaining data${historyUpdate.updatedAt ? ` from ${historyUpdatedTime(historyUpdate.updatedAt)} PT` : ''}` : `Updated ${historyUpdatedTime(historyUpdate.updatedAt!)} PT`} · Data Source: AirGradient</span></div><div className="history-window" role="group" aria-label="History window">{WINDOWS.map((item) => <button type="button" aria-pressed={selection.window === item} onClick={() => { setSelection({ window: item }); setCustomOpen(false); }} key={item}>{item}</button>)}<button type="button" aria-pressed={selection.window === 'custom'} aria-expanded={customOpen} onClick={() => setCustomOpen((open) => !open)}>Custom</button></div></div>
         {customOpen ? <form className="history-custom-range" onSubmit={(event) => { event.preventDefault(); applyCustomRange(); }}>
           <div className="history-custom-mode" role="group" aria-label="Custom range type">
             <button type="button" aria-pressed={customMode === 'relative'} onClick={() => setCustomMode('relative')}>Duration</button>
@@ -786,28 +786,34 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
           key={metric.alias}
           series={history[metric.alias]}
           label={metric.label}
-          source={metric.source}
           thresholds={metric.thresholds}
           scale={metric.scale}
           {...(metric.secondaryAlias && history[metric.secondaryAlias] ? { secondarySeries: history[metric.secondaryAlias] } : {})}
           {...(metric.secondaryLabel ? { secondaryLabel: metric.secondaryLabel } : {})}
         />)}</div>
       </section>
-      <section className="indoor-settings-grid" aria-label="Indoor device settings">
-        <Panel title="AirGradient settings" eyebrow="SENSOR / LOCAL" severity={sourceSeverity(airgradient.sourceState)} freshness={panelFreshness(airgradient.readings.co2.metadata.freshness)} statusDetail={`DISPLAY ${airgradient.settings.displayBrightness ?? '—'}% · LED ${airgradient.settings.ledBrightness ?? '—'}%`}>
-          <AirGradientControls device={airgradient} review={setReview} onCommit={submitDirect} />
-        </Panel>
-        <Panel title="Living Room Nest" eyebrow="THERMOSTAT / CLOUD" severity={sourceSeverity(thermostat.sourceState)} freshness={panelFreshness(thermostat.currentTemperature.metadata.freshness)} statusDetail={`${thermostat.heatSetpointF ?? '—'}–${thermostat.coolSetpointF ?? '—'}°F · ${thermostat.hvacMode ?? 'NO DATA'}`}>
-          <ThermostatControls thermostat={thermostat} review={setReview} onCommit={submitDirect} />
-        </Panel>
+      <section className="indoor-device-settings" aria-labelledby="indoor-device-settings-title">
+        <div className="section-heading"><h2 id="indoor-device-settings-title">Device Settings</h2></div>
+        <section className="indoor-settings-grid" aria-label="Sensor and thermostat settings">
+          <Panel title="AirGradient ONE" severity={sourceSeverity(airgradient.sourceState)} freshness={panelFreshness(airgradient.readings.co2.metadata.freshness)} statusDetail={`DISPLAY ${airgradient.settings.displayBrightness ?? '—'}% · LED ${airgradient.settings.ledBrightness ?? '—'}%`}>
+            <AirGradientControls device={airgradient} review={setReview} onCommit={submitDirect} />
+          </Panel>
+          <Panel title="Nest Thermostat" severity={sourceSeverity(thermostat.sourceState)} freshness={panelFreshness(thermostat.currentTemperature.metadata.freshness)} statusDetail={`${thermostat.heatSetpointF ?? '—'}–${thermostat.coolSetpointF ?? '—'}°F · ${thermostat.hvacMode ?? 'NO DATA'}`}>
+            <ThermostatControls thermostat={thermostat} review={setReview} onCommit={submitDirect} />
+          </Panel>
+        </section>
+        <section className="purifier-grid" aria-label="Air purifier settings">
+          {indoor.purifiers.map((purifier) => <Panel key={purifier.alias} title={`${purifier.room === 'living_room' ? 'Living Room' : 'Bedroom'} Air Purifier`} severity={sourceSeverity(purifier.sourceState)} freshness={panelFreshness(purifier.readings.pm25.metadata.freshness)} statusDetail={`${purifier.power === null ? 'NO DATA' : purifier.power ? 'ON' : 'OFF'} · ${purifier.preset ?? '—'} · SPEED ${purifier.speed ?? '—'}`}><PurifierControls purifier={purifier} review={setReview} /></Panel>)}
+        </section>
       </section>
-      <section className="purifier-grid" aria-label="Air purifiers">
-        {indoor.purifiers.map((purifier) => <Panel key={purifier.alias} title={`${purifier.room === 'living_room' ? 'Living Room' : 'Bedroom'} Coway`} eyebrow="AIRMEGA 250S / CLOUD" severity={sourceSeverity(purifier.sourceState)} freshness={panelFreshness(purifier.readings.pm25.metadata.freshness)} statusDetail={`${purifier.power === null ? 'NO DATA' : purifier.power ? 'ON' : 'OFF'} · ${purifier.preset ?? '—'} · SPEED ${purifier.speed ?? '—'}`}><div className="indoor-reading-grid"><Metric label="PM2.5" value={display(purifier.readings.pm25)} unit="µg/m³" /><Metric label="PM10" value={display(purifier.readings.pm10)} unit="µg/m³" /><Metric label="AQI" value={display(purifier.readings.aqi)} /><Metric label="FILTER" value={display(purifier.readings.filterLife)} unit="%" /></div><PurifierControls purifier={purifier} review={setReview} /></Panel>)}
-      </section>
-      <section className="indoor-comparison-grid" aria-label="Indoor comparison and fallback">
-        <Panel className="aranet-panel" title="Living Room Aranet" eyebrow="COMPARISON / FALLBACK" severity={sourceSeverity(aranet.sourceState)} freshness={panelFreshness(aranet.readings.co2.metadata.freshness)} statusDetail={`CO₂ ${display(aranet.readings.co2)} ppm · ${display(aranet.readings.temperature, 1)}°F`}>
-          <div className="indoor-reading-grid"><Metric label="TEMPERATURE" value={display(aranet.readings.temperature, 1)} unit="°F" /><Metric label="HUMIDITY" value={display(aranet.readings.humidity)} unit="%" /><Metric label="PRESSURE" value={display(aranet.readings.pressure)} unit="hPa" /><Metric label="CO₂" value={display(aranet.readings.co2)} unit="ppm" /><Metric label="BATTERY" value={display(aranet.readings.battery)} unit="%" /></div>
-        </Panel>
+      <section className="indoor-additional-sensors" aria-labelledby="indoor-additional-sensors-title">
+        <div className="section-heading"><h2 id="indoor-additional-sensors-title">Additional Sensor Data</h2></div>
+        <section className="indoor-comparison-grid" aria-label="Additional indoor sensor data">
+          {indoor.purifiers.map((purifier) => <Panel className="additional-sensor-panel" key={purifier.alias} title={`${purifier.room === 'living_room' ? 'Living Room' : 'Bedroom'} Air Purifier Sensor Data`} severity={sourceSeverity(purifier.sourceState)} freshness={panelFreshness(purifier.readings.pm25.metadata.freshness)} statusDetail={`PM2.5 ${display(purifier.readings.pm25)} µg/m³ · AQI ${display(purifier.readings.aqi)}`}><div className="indoor-reading-grid"><Metric label="PM2.5" value={display(purifier.readings.pm25)} unit="µg/m³" /><Metric label="PM10" value={display(purifier.readings.pm10)} unit="µg/m³" /><Metric label="AQI" value={display(purifier.readings.aqi)} /><Metric label="FILTER" value={display(purifier.readings.filterLife)} unit="%" /></div></Panel>)}
+          <Panel className="aranet-panel" title="Living Room Aranet" severity={sourceSeverity(aranet.sourceState)} freshness={panelFreshness(aranet.readings.co2.metadata.freshness)} statusDetail={`CO₂ ${display(aranet.readings.co2)} ppm · ${display(aranet.readings.temperature, 1)}°F`}>
+            <div className="indoor-reading-grid"><Metric label="TEMPERATURE" value={display(aranet.readings.temperature, 1)} unit="°F" /><Metric label="HUMIDITY" value={display(aranet.readings.humidity)} unit="%" /><Metric label="PRESSURE" value={display(aranet.readings.pressure)} unit="hPa" /><Metric label="CO₂" value={display(aranet.readings.co2)} unit="ppm" /><Metric label="BATTERY" value={display(aranet.readings.battery)} unit="%" /></div>
+          </Panel>
+        </section>
       </section>
       {indoor.actions.length ? <Panel className="indoor-action-history" title="History" eyebrow="INDOOR CONTROLS" severity={actionHistorySeverity(indoor.actions)} statusDetail={`${indoor.actions.length} ACTION${indoor.actions.length === 1 ? '' : 'S'}`}><section className="indoor-action-status" aria-live="polite" aria-label="Recent indoor commands">{indoor.actions.slice(-5).reverse().map((action) => <div className={`indoor-action-status-entry indoor-action-status-${action.status.toLowerCase()}`} key={action.actionId}><StateBadge severity={action.status === 'SUCCEEDED' ? 'OK' : action.status === 'PENDING' ? 'INFO' : 'CRIT'} label={action.status} /><div><strong>{action.target.replaceAll('_', ' ')}</strong>{action.message ? <small>{action.message}</small> : null}<span className="indoor-action-times"><time dateTime={action.acceptedAt}>Accepted {actionTimestamp(action.acceptedAt)}</time>{action.resolvedAt ? <time dateTime={action.resolvedAt}>Resolved {actionTimestamp(action.resolvedAt)}</time> : null}</span></div></div>)}</section></Panel> : null}
       {review ? <ReviewDialog review={review} onClose={() => { setReview(null); setError(null); }} onSubmit={() => void submit()} submitting={submitting} error={error} /> : null}

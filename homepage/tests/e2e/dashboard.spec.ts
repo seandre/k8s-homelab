@@ -135,42 +135,55 @@ test('renders the responsive indoor dashboard and requires review before control
   const summaryRowLayout = await summaryPanel.evaluate((element) => {
     const body = element.querySelector<HTMLElement>('.panel-body')!;
     const metrics = element.querySelector<HTMLElement>('.indoor-primary-readings')!.getBoundingClientRect();
-    const badge = element.querySelector<HTMLElement>('.state')!.getBoundingClientRect();
+    const controls = element.querySelector<HTMLElement>('.indoor-summary-controls')!.getBoundingClientRect();
     return {
       bodyMinHeight: getComputedStyle(body).minHeight,
       columnCount: getComputedStyle(body).gridTemplateColumns.split(' ').length,
-      badgeAfterMetrics: badge.left > metrics.right,
+      controlsAfterMetrics: controls.left > metrics.right,
     };
   });
   expect(summaryRowLayout.bodyMinHeight).toBe('0px');
   expect(summaryRowLayout.columnCount).toBe(2);
-  expect(summaryRowLayout.badgeAfterMetrics).toBe(true);
+  expect(summaryRowLayout.controlsAfterMetrics).toBe(true);
+  await expect(summaryPanel.locator('.state')).toHaveCount(0);
+  await expect(summaryPanel.getByRole('button', { name: 'Ventilate', exact: true })).toBeVisible();
+  await expect(page.locator('.hero-row').getByRole('button', { name: 'Ventilate', exact: true })).toHaveCount(0);
   await expect(summaryPanel.locator('.metric-indicator')).toHaveCount(7);
   await expect(summaryPanel.getByRole('img', { name: 'PM2.5 trend status: yellow' })).toBeVisible();
   await expect(summaryPanel.getByRole('img', { name: 'TVOC INDEX trend status: blue' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Living Room Aranet' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Living Room Coway' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Bedroom Coway' })).toBeVisible();
-  const airGradientSettings = page.getByRole('heading', { name: 'AirGradient settings' });
-  const nestSettings = page.getByRole('heading', { name: 'Living Room Nest' });
+  await expect(page.getByRole('heading', { name: 'Living Room Air Purifier', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Bedroom Air Purifier', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Device Settings' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Additional Sensor Data' })).toBeVisible();
+  const airGradientSettings = page.getByRole('heading', { name: 'AirGradient ONE' });
+  const nestSettings = page.getByRole('heading', { name: 'Nest Thermostat' });
   await expect(airGradientSettings).toBeVisible();
   await expect(nestSettings).toBeVisible();
   await expect(page.getByText('AVAILABLE', { exact: true })).toHaveCount(0);
   await expect(page.getByText('CURRENT', { exact: true })).toHaveCount(0);
-  await expect(page.getByRole('region', { name: 'Living Room Nest' }).locator('.panel-state-detail')).toHaveText('68–74°F · HEAT_COOL');
-  await expect(page.getByRole('region', { name: 'Living Room Coway' }).locator('.panel-state-detail')).toHaveText('ON · AUTO · SPEED 2');
+  await expect(page.getByRole('region', { name: 'Nest Thermostat' }).locator('.panel-state-detail')).toHaveText('68–74°F · HEAT_COOL');
+  await expect(page.getByRole('region', { name: 'Living Room Air Purifier', exact: true }).locator('.panel-state-detail')).toHaveText('ON · AUTO · SPEED 2');
   const aranetPanel = page.getByRole('region', { name: 'Living Room Aranet' });
-  const purifierPanels = [page.getByRole('region', { name: 'Living Room Coway' }), page.getByRole('region', { name: 'Bedroom Coway' })];
+  const purifierPanels = [page.getByRole('region', { name: 'Living Room Air Purifier', exact: true }), page.getByRole('region', { name: 'Bedroom Air Purifier', exact: true })];
+  const purifierSensorPanels = [page.getByRole('region', { name: 'Living Room Air Purifier Sensor Data' }), page.getByRole('region', { name: 'Bedroom Air Purifier Sensor Data' })];
+  for (const panel of purifierPanels) await expect(panel.locator('.indoor-reading-grid')).toHaveCount(0);
+  for (const panel of purifierSensorPanels) {
+    await expect(panel).toBeVisible();
+    for (const label of ['PM2.5', 'PM10', 'AQI', 'FILTER']) await expect(panel.getByText(label, { exact: true })).toBeVisible();
+  }
   const aranetLayout = await aranetPanel.evaluate((element) => ({
     top: element.getBoundingClientRect().top,
     bodyMinHeight: getComputedStyle(element.querySelector<HTMLElement>('.panel-body')!).minHeight,
   }));
   const purifierBottoms = await Promise.all(purifierPanels.map((panel) => panel.evaluate((element) => element.getBoundingClientRect().bottom)));
+  const additionalSensorHeights = await Promise.all([...purifierSensorPanels, aranetPanel].map((panel) => panel.evaluate((element) => element.getBoundingClientRect().height)));
   expect(aranetLayout.top).toBeGreaterThan(Math.max(...purifierBottoms));
   expect(aranetLayout.bodyMinHeight).toBe('0px');
+  expect(Math.max(...additionalSensorHeights) - Math.min(...additionalSensorHeights)).toBeLessThan(2);
   expect(await airGradientSettings.evaluate((element) => element.closest('.panel')?.parentElement?.classList.contains('indoor-settings-grid'))).toBe(true);
   expect(await nestSettings.evaluate((element) => element.closest('.panel')?.parentElement?.classList.contains('indoor-settings-grid'))).toBe(true);
-  const thermostatControls = page.getByRole('region', { name: 'Living Room Nest' }).locator('.thermostat-controls');
+  const thermostatControls = page.getByRole('region', { name: 'Nest Thermostat' }).locator('.thermostat-controls');
   const thermostatLayout = await thermostatControls.evaluate((element) => {
     const optionRow = element.querySelector<HTMLElement>('.thermostat-option-row')!;
     const setpointRange = element.querySelector<HTMLElement>('.nest-setpoint-range')!;
@@ -194,7 +207,7 @@ test('renders the responsive indoor dashboard and requires review before control
   await expect(nestSetpointTrack).toHaveClass(/nest-setpoint-track-inactive/);
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await expect(nestSetpointTrack).not.toHaveClass(/nest-setpoint-track-inactive/);
-  const airGradientControls = page.getByRole('region', { name: 'AirGradient settings' }).locator('.airgradient-controls');
+  const airGradientControls = page.getByRole('region', { name: 'AirGradient ONE' }).locator('.airgradient-controls');
   await expect(airGradientControls.getByRole('slider', { name: 'Display brightness' })).toBeVisible();
   await expect(airGradientControls.getByRole('slider', { name: 'LED brightness' })).toBeVisible();
   const handleStyleProperties = ['width', 'height', 'boxSizing', 'borderTopWidth', 'borderTopStyle', 'borderTopColor', 'borderRadius', 'backgroundColor', 'boxShadow', 'translate'] as const;
@@ -220,7 +233,7 @@ test('renders the responsive indoor dashboard and requires review before control
   expect(airGradientLayout.controlDisplay).toBe('grid');
   expect(airGradientLayout.rowDisplays).toEqual(['grid', 'grid']);
   expect(airGradientLayout.rowControlCounts).toEqual([2, 3]);
-  for (const panelName of ['AirGradient settings', 'Living Room Nest']) {
+  for (const panelName of ['AirGradient ONE', 'Nest Thermostat']) {
     const panel = page.getByRole('region', { name: panelName });
     await expect(panel.locator('.panel-footer')).toBeHidden();
   }
@@ -229,7 +242,7 @@ test('renders the responsive indoor dashboard and requires review before control
   await page.keyboard.press('ArrowRight');
   await expect.poll(() => indoorCommands.some((command) => JSON.stringify(command) === JSON.stringify({ type: 'AIRGRADIENT_SET_DISPLAY_BRIGHTNESS', target: 'airgradient_living_room', value: 81 }))).toBe(true);
   await expect(page.getByRole('dialog', { name: 'Confirm change' })).toHaveCount(0);
-  const nestSettingsPanel = page.getByRole('region', { name: 'Living Room Nest' });
+  const nestSettingsPanel = page.getByRole('region', { name: 'Nest Thermostat' });
   const nestHeatSetpoint = nestSettingsPanel.getByRole('slider', { name: /Nest heat setpoint/ });
   const nestCoolSetpoint = nestSettingsPanel.getByRole('slider', { name: /Nest cool setpoint/ });
   await expect(nestHeatSetpoint).toBeVisible();
@@ -257,7 +270,7 @@ test('renders the responsive indoor dashboard and requires review before control
   await expect(page.getByRole('button', { name: 'Cancelling…' })).toBeDisabled();
   expect(indoorCommands).toContainEqual({ type: 'CANCEL_VENTILATION', target: 'indoor_environment' });
   await expect.poll(() => historyRequestCount).toBe(7);
-  const co2Graph = page.getByRole('img', { name: /CO₂, AirGradient, 1h/ });
+  const co2Graph = page.getByRole('img', { name: /CO₂, 1h/ });
   await expect(co2Graph).toBeVisible();
   await co2Graph.hover({ position: { x: 120, y: 60 } });
   await expect(co2Graph.locator('.history-tooltip')).toContainText('ppm');
@@ -270,7 +283,7 @@ test('renders the responsive indoor dashboard and requires review before control
   const co2IndicatorColor = await summaryPanel.getByRole('img', { name: 'CO₂ trend status: green' }).evaluate((indicator) => getComputedStyle(indicator).backgroundColor);
   const graphGreen = await co2Graph.locator('.history-trace-stop-green').first().evaluate((stop) => getComputedStyle(stop).stopColor);
   expect(co2IndicatorColor).toBe(graphGreen);
-  const particulateGraph = page.getByRole('img', { name: /Particulate matter, AirGradient, 1h/ });
+  const particulateGraph = page.getByRole('img', { name: /Particulate matter, 1h/ });
   await expect(particulateGraph).toBeVisible();
   await expect(page.locator('.indoor-history-graph figcaption strong')).toHaveText([
     'CO₂',
@@ -280,7 +293,7 @@ test('renders the responsive indoor dashboard and requires review before control
     'Temperature',
     'Humidity',
   ]);
-  await expect(page.locator('.history-graph-source')).toHaveText(Array(6).fill('AirGradient'));
+  await expect(page.getByText(/Updated .* PT · Data Source: AirGradient/)).toBeVisible();
   await expect(page.getByLabel('Particulate matter graph legend')).toContainText('PM2.5');
   await expect(page.getByLabel('Particulate matter graph legend')).toContainText('PM10');
   await expect(particulateGraph.locator('.history-line-secondary')).toHaveCount(1);
@@ -288,7 +301,7 @@ test('renders the responsive indoor dashboard and requires review before control
   const pmIndicatorColor = await summaryPanel.getByRole('img', { name: 'PM2.5 trend status: yellow' }).evaluate((indicator) => getComputedStyle(indicator).backgroundColor);
   const graphYellow = await particulateGraph.locator('.history-trace-stop-yellow').first().evaluate((stop) => getComputedStyle(stop).stopColor);
   expect(pmIndicatorColor).toBe(graphYellow);
-  const temperatureGraph = page.getByRole('img', { name: /Temperature, AirGradient, 1h/ });
+  const temperatureGraph = page.getByRole('img', { name: /Temperature, 1h/ });
   await temperatureGraph.focus();
   await page.keyboard.press('ArrowLeft');
   await expect(temperatureGraph.locator('.history-tooltip-marker-yellow')).toHaveCount(1);
@@ -297,7 +310,7 @@ test('renders the responsive indoor dashboard and requires review before control
     trace: getComputedStyle(graph.querySelector('.history-trace-stop-yellow')!).stopColor,
   }));
   expect(temperatureYellowColors.marker).toBe(temperatureYellowColors.trace);
-  const tvocGraph = page.getByRole('img', { name: /TVOC index, AirGradient, 1h/ });
+  const tvocGraph = page.getByRole('img', { name: /TVOC index, 1h/ });
   await tvocGraph.focus();
   await page.keyboard.press('ArrowLeft');
   const tvocBlueColors = await tvocGraph.evaluate((graph) => ({
@@ -344,7 +357,7 @@ test('renders the responsive indoor dashboard and requires review before control
   await hvacModes.getByRole('menuitemradio', { name: 'OFF' }).click();
   const review = page.getByRole('dialog', { name: 'Confirm change' });
   await expect(review).toBeVisible();
-  await expect(review.getByText('Living Room Nest')).toBeVisible();
+  await expect(review.getByText('Nest Thermostat')).toBeVisible();
   await expect(review.getByText('HEAT_COOL')).toBeVisible();
   await expect(review.getByText(/Nest cloud · updates after confirmation/)).toBeVisible();
   await review.getByRole('button', { name: 'Save' }).click();
@@ -358,7 +371,7 @@ test('renders the responsive indoor dashboard and requires review before control
   await expect(sensitivity.getByRole('menuitemradio', { name: 'NORMAL' })).toHaveAttribute('aria-checked', 'true');
   await page.keyboard.press('Escape');
 
-  const livingCowayPanel = page.getByRole('region', { name: 'Living Room Coway' });
+  const livingCowayPanel = page.getByRole('region', { name: 'Living Room Air Purifier', exact: true });
   const cowayTimer = livingCowayPanel.getByRole('group', { name: 'Timer' });
   await cowayTimer.getByRole('button', { name: 'Timer: Off. Show options' }).click();
   await expect(cowayTimer.getByRole('menuitemradio')).toHaveCount(5);
@@ -424,7 +437,7 @@ test('refreshes live history on visibility return and retains graphs after failu
   await page.goto('/indoor');
   await expect.poll(() => requestCount).toBe(7);
   await expect(page.getByText(/Updated .* PT/)).toBeVisible();
-  const co2Graph = page.getByRole('img', { name: /CO₂, AirGradient, 1h/ });
+  const co2Graph = page.getByRole('img', { name: /CO₂, 1h/ });
   await expect(co2Graph).toBeVisible();
   failRefresh = true;
   await page.evaluate(() => {

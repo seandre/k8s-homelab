@@ -397,11 +397,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .indoor-current-grid, .purifier-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
 .indoor-current-grid > .panel:first-child { grid-column: span 2; }
 .indoor-primary-readings { grid-template-columns: repeat(7, minmax(0, 1fr)); }
-.indoor-comparison-grid, .indoor-settings-grid { display: grid; gap: 0.5rem; margin-top: 1rem; }
-.indoor-comparison-grid { grid-template-columns: 1fr; }
+.indoor-comparison-grid, .indoor-settings-grid { display: grid; gap: 0.5rem; }
+.indoor-comparison-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .indoor-settings-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
-.aranet-panel .panel-body, .indoor-summary-panel .panel-body { min-height: 0; padding-block: 0.35rem; }
+.indoor-device-settings, .indoor-additional-sensors { margin-top: 1rem; }
+.indoor-device-settings > .section-heading, .indoor-additional-sensors > .section-heading { margin-bottom: 0.5rem; }
+.aranet-panel { grid-column: 1 / -1; }
+.additional-sensor-panel .panel-body, .aranet-panel .panel-body, .indoor-summary-panel .panel-body { min-height: 0; padding-block: 0.35rem; }
 .indoor-summary-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0.75rem; }
+.indoor-summary-controls { display: flex; align-items: center; justify-content: flex-end; min-width: 0; }
 .indoor-alerts { display: grid; gap: 0.35rem; margin-bottom: 0.65rem; }
 .indoor-alerts > div, .indoor-action-status-entry { display: flex; align-items: center; gap: 0.55rem; border: 1px solid var(--divider); border-left: 0.2rem solid var(--warn); padding: 0.45rem 0.55rem; font-size: 0.65rem; }
 .indoor-alerts strong { color: var(--title); }
@@ -485,7 +489,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .indoor-history-graph figcaption { display: flex; justify-content: space-between; gap: 0.5rem; color: var(--muted); font-size: 0.62rem; }
 .indoor-history-graph figcaption strong { color: var(--title); font-size: 0.82rem; font-weight: 700; line-height: 1.15; }
 .indoor-history-graph figcaption > span { display: inline-flex; align-items: baseline; gap: 0.3rem; white-space: nowrap; }
-.history-graph-source { font-size: 0.5rem; letter-spacing: 0.04em; }
 .history-legend { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.35rem; color: var(--muted); font: 0.56rem/1 var(--mono); }
 .history-legend span { display: inline-flex; align-items: center; gap: 0.3rem; }
 .history-legend i { width: 1.25rem; border-top: 2px solid var(--focus); }
@@ -566,8 +569,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .header-actions { margin-left: auto; }
   .overview-grid > .panel:nth-child(n) { grid-column: span 6; }
   .indoor-overview-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .indoor-current-grid, .indoor-settings-grid, .purifier-grid, .indoor-graph-grid { grid-template-columns: 1fr; }
+  .indoor-current-grid, .indoor-settings-grid, .purifier-grid, .indoor-comparison-grid, .indoor-graph-grid { grid-template-columns: 1fr; }
   .indoor-current-grid > .panel:first-child { grid-column: auto; }
+  .aranet-panel { grid-column: auto; }
   .process-box, .pve-workload-row { grid-column: span 12; grid-row: auto; }
   .pve-workload-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .compute-node-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -596,6 +600,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .alert-strip a { flex-basis: 100%; margin-left: 0; }
   .overview-grid > .panel:nth-child(n) { grid-column: 1 / -1; }
   .indoor-overview-metrics, .indoor-reading-grid, .indoor-primary-readings { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .indoor-summary-row { grid-template-columns: 1fr; }
+  .indoor-summary-controls { justify-content: stretch; }
+  .indoor-summary-controls .ventilation-controls, .indoor-summary-controls .ventilate-button { width: 100%; }
   .indoor-history .section-heading { align-items: start; flex-direction: column; }
   .history-window { width: 100%; }
   .history-window button { flex: 1; }
