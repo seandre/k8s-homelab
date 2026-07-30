@@ -393,7 +393,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .indoor-comparison-grid { grid-template-columns: 1fr; }
 .indoor-settings-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
 .indoor-alerts { display: grid; gap: 0.35rem; margin-bottom: 0.65rem; }
-.indoor-alerts > div, .indoor-action-status > div { display: flex; align-items: center; gap: 0.55rem; border: 1px solid var(--divider); border-left: 0.2rem solid var(--warn); padding: 0.45rem 0.55rem; font-size: 0.65rem; }
+.indoor-alerts > div, .indoor-action-status-entry { display: flex; align-items: center; gap: 0.55rem; border: 1px solid var(--divider); border-left: 0.2rem solid var(--warn); padding: 0.45rem 0.55rem; font-size: 0.65rem; }
 .indoor-alerts strong { color: var(--title); }
 .ventilate-button { min-height: 2rem; border: 1px solid var(--divider); background: var(--surface); color: var(--fg); padding: 0.35rem 0.7rem; font: 700 0.62rem/1 var(--mono); cursor: pointer; }
 .ventilation-controls { display: flex; align-items: center; gap: 0.4rem; }
@@ -506,8 +506,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .x-axis-labels span:last-child { translate: -100% 0; }
 .indoor-no-data { display: grid; place-items: center; min-height: 11.5rem; border: 1px solid var(--divider); color: var(--muted); font-size: 0.64rem; }
 .purifier-grid { margin-top: 1rem; }
-.indoor-action-status { display: grid; gap: 0.35rem; margin-top: 1rem; }
-.indoor-action-status small { color: var(--muted); }
+.indoor-action-history { margin-top: 1rem; }
+.indoor-action-status { display: grid; gap: 0.35rem; }
+.indoor-action-status-entry > div { display: grid; gap: 0.2rem; min-width: 0; }
+.indoor-action-status-entry strong { color: var(--title); text-transform: capitalize; }
+.indoor-action-status-entry small, .indoor-action-times { color: var(--muted); }
+.indoor-action-times { display: flex; flex-wrap: wrap; gap: 0.25rem 0.7rem; font-size: 0.58rem; }
+.indoor-action-status-succeeded { border-left-color: var(--focus); }
+.indoor-action-status-failed, .indoor-action-status-timed_out { border-left-color: var(--crit); }
 .control-change-summary { display: grid; gap: 0.4rem; margin: 0.8rem 0; }
 .control-change-summary strong { color: var(--title); }
 .control-change-summary span { color: var(--fg); font-size: 0.78rem; }

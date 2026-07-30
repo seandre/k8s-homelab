@@ -87,6 +87,24 @@ function historyUpdatedTime(timestamp: string) {
   }).format(new Date(timestamp));
 }
 
+function actionTimestamp(timestamp: string) {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZoneName: 'short',
+    timeZone: 'America/Los_Angeles',
+  }).format(new Date(timestamp));
+}
+
+function actionHistorySeverity(actions: IndoorState['actions']) {
+  if (actions.some((action) => action.status === 'FAILED' || action.status === 'TIMED_OUT')) return 'CRIT' as const;
+  if (actions.some((action) => action.status === 'PENDING')) return 'INFO' as const;
+  return 'OK' as const;
+}
+
 export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, thresholds, scale }: {
   series: TimeSeries | undefined;
   secondarySeries?: TimeSeries;
@@ -698,7 +716,7 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
       <section className="purifier-grid" aria-label="Air purifiers">
         {indoor.purifiers.map((purifier) => <Panel key={purifier.alias} title={`${purifier.room === 'living_room' ? 'Living Room' : 'Bedroom'} Coway`} eyebrow="AIRMEGA 250S / CLOUD" severity={sourceSeverity(purifier.sourceState)} freshness={panelFreshness(purifier.readings.pm25.metadata.freshness)}><div className="indoor-reading-grid"><Metric label="PM2.5" value={display(purifier.readings.pm25)} unit="µg/m³" /><Metric label="PM10" value={display(purifier.readings.pm10)} unit="µg/m³" /><Metric label="AQI" value={display(purifier.readings.aqi)} /><Metric label="FILTER" value={display(purifier.readings.filterLife)} unit="%" /></div><div className="device-state-line"><strong>{purifier.sourceState}</strong><span>{purifier.power === null ? 'NO DATA' : purifier.power ? 'ON' : 'OFF'} · {purifier.preset ?? '—'} · speed {purifier.speed ?? '—'}</span></div><PurifierControls purifier={purifier} review={setReview} /></Panel>)}
       </section>
-      {indoor.actions.length ? <section className="indoor-action-status" aria-live="polite" aria-label="Recent indoor commands">{indoor.actions.slice(-5).reverse().map((action) => <div key={action.actionId}><StateBadge severity={action.status === 'SUCCEEDED' ? 'OK' : action.status === 'PENDING' ? 'INFO' : 'CRIT'} label={action.status} /><span>{action.target.replaceAll('_', ' ')}</span>{action.message ? <small>{action.message}</small> : null}</div>)}</section> : null}
+      {indoor.actions.length ? <Panel className="indoor-action-history" title="History" eyebrow="INDOOR CONTROLS" severity={actionHistorySeverity(indoor.actions)}><section className="indoor-action-status" aria-live="polite" aria-label="Recent indoor commands">{indoor.actions.slice(-5).reverse().map((action) => <div className={`indoor-action-status-entry indoor-action-status-${action.status.toLowerCase()}`} key={action.actionId}><StateBadge severity={action.status === 'SUCCEEDED' ? 'OK' : action.status === 'PENDING' ? 'INFO' : 'CRIT'} label={action.status} /><div><strong>{action.target.replaceAll('_', ' ')}</strong>{action.message ? <small>{action.message}</small> : null}<span className="indoor-action-times"><time dateTime={action.acceptedAt}>Accepted {actionTimestamp(action.acceptedAt)}</time>{action.resolvedAt ? <time dateTime={action.resolvedAt}>Resolved {actionTimestamp(action.resolvedAt)}</time> : null}</span></div></div>)}</section></Panel> : null}
       {review ? <ReviewDialog review={review} onClose={() => { setReview(null); setError(null); }} onSubmit={() => void submit()} submitting={submitting} error={error} /> : null}
     </main>
   );

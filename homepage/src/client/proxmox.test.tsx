@@ -53,4 +53,15 @@ describe('Proxmox drill-down', () => {
     expect(markup).toContain('core-history-high');
     expect(markup).toContain('STALE');
   });
+
+  it('keeps sub-megabit network peaks visible', () => {
+    const host = healthyBootstrapFixture.hosts.find((candidate) => candidate.id === 'pve-01')!;
+    const baseSeries = healthyBootstrapFixture.timeSeries[0]!;
+    const networkHistory = [
+      { ...baseSeries, metric: 'pve-01 RX', unit: 'Mb/s', points: [{ timestamp: '2026-07-19T12:00:00.000Z', value: 0.12 }] },
+      { ...baseSeries, metric: 'pve-01 TX', unit: 'Mb/s', points: [{ timestamp: '2026-07-19T12:00:00.000Z', value: 0.04 }] },
+    ];
+    const markup = renderToStaticMarkup(<ProxmoxPanel host={host} timeSeries={networkHistory} expanded={false} onExpand={() => undefined} />);
+    expect(markup).toContain('MAX RX <b>0.12 Mb/s</b> · MAX TX <b>0.04 Mb/s</b>');
+  });
 });

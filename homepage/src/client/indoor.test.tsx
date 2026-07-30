@@ -94,6 +94,26 @@ describe('indoor dashboard', () => {
     expect(markup).not.toContain('ventilate-button-active');
   });
 
+  it('groups retained control actions into a timestamped history panel', () => {
+    const bootstrap = structuredClone(healthyBootstrapFixture);
+    bootstrap.indoor.actions.push({
+      actionId: 'fixture-control-history',
+      target: 'coway_living_room',
+      status: 'SUCCEEDED',
+      acceptedAt: '2026-07-30T18:00:00.000Z',
+      resolvedAt: '2026-07-30T18:00:05.000Z',
+      message: 'Command completed.',
+    });
+    const markup = renderToStaticMarkup(<IndoorScreen bootstrap={bootstrap} />);
+    expect(markup).toContain('>History</h2>');
+    expect(markup).toContain('INDOOR CONTROLS');
+    expect(markup).toContain('coway living room');
+    expect(markup).toContain('Accepted Jul 30, 2026, 11:00 AM PDT');
+    expect(markup).toContain('Resolved Jul 30, 2026, 11:00 AM PDT');
+    expect(markup).toContain('dateTime="2026-07-30T18:00:00.000Z"');
+    expect(markup).toContain('dateTime="2026-07-30T18:00:05.000Z"');
+  });
+
   it('aligns live history refreshes to the next 30-second scrape boundary', () => {
     expect(nextHistoryRefreshDelay(0)).toBe(30_500);
     expect(nextHistoryRefreshDelay(29_000)).toBe(1_500);

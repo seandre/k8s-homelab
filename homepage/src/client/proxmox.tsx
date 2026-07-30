@@ -16,6 +16,14 @@ function byteCountLabel(bytes: number | null) {
   return `${(bytes / (1024 ** unitIndex)).toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
 }
 
+function throughputLabel(megabitsPerSecond: number | null) {
+  if (megabitsPerSecond === null) return 'N/S';
+  // Whole-number rounding made valid low-traffic peaks indistinguishable from
+  // no traffic (for example, 0.12 Mb/s rendered as 0 Mb/s).
+  const precision = megabitsPerSecond >= 10 ? 1 : 2;
+  return `${Number(megabitsPerSecond.toFixed(precision))} Mb/s`;
+}
+
 function coreHistoryTone(value: number) {
   if (value >= 80) return 'high';
   if (value >= 50) return 'medium';
@@ -62,12 +70,12 @@ function seriesValues(series: TimeSeries[], metric: string, current: number | nu
 export function ProxmoxPanel({ host, expanded, onExpand, timeSeries = [] }: { host: Host; expanded: boolean; onExpand: () => void; timeSeries?: TimeSeries[] }) {
   const cpu = host.cpuPercent;
   const memory = host.memoryPercent;
-  const download = host.networkIngressBitsPerSecond === null ? null : Math.round(host.networkIngressBitsPerSecond / 1_000_000);
-  const upload = host.networkEgressBitsPerSecond === null ? null : Math.round(host.networkEgressBitsPerSecond / 1_000_000);
+  const download = host.networkIngressBitsPerSecond === null ? null : host.networkIngressBitsPerSecond / 1_000_000;
+  const upload = host.networkEgressBitsPerSecond === null ? null : host.networkEgressBitsPerSecond / 1_000_000;
   const downloadHistory = seriesValues(timeSeries, `${host.name} RX`, download);
   const uploadHistory = seriesValues(timeSeries, `${host.name} TX`, upload);
-  const maxDownload = downloadHistory.length === 0 ? null : Math.round(Math.max(...downloadHistory));
-  const maxUpload = uploadHistory.length === 0 ? null : Math.round(Math.max(...uploadHistory));
+  const maxDownload = downloadHistory.length === 0 ? null : Math.max(...downloadHistory);
+  const maxUpload = uploadHistory.length === 0 ? null : Math.max(...uploadHistory);
   const disk = host.diskTotalBytes === null || host.diskUsedBytes === null ? null : Math.round(host.diskUsedBytes / host.diskTotalBytes * 100);
   return (
     <Panel className="cpu-box pve-card" title={host.name} eyebrow="CPU / PROXMOX" severity={host.metadata.severity} freshness={host.metadata.freshness} href={`https://${host.name}.lab.seandre.dev:8006`} expanded={expanded} onExpand={onExpand}>
@@ -78,7 +86,7 @@ export function ProxmoxPanel({ host, expanded, onExpand, timeSeries = [] }: { ho
       <div className="pve-resource-grid">
         <section className="pve-resource memory-resource"><h3>MEMORY</h3><DotGraph label="USED" values={seriesValues(timeSeries, `${host.name} MEMORY`, memory)} unit="%" tone="memory" height={4} /><p><b>{bytesToGiB(host.memoryUsedBytes)} GiB</b> used / {bytesToGiB(host.memoryTotalBytes)} GiB</p><p>{host.memoryTotalBytes === null || host.memoryUsedBytes === null ? '—' : bytesToGiB(host.memoryTotalBytes - host.memoryUsedBytes)} GiB available</p></section>
         <section className="pve-resource disk-resource"><h3>DISKS</h3><DotGraph label="VM DATA" values={seriesValues(timeSeries, `${host.name} DISK`, disk)} unit="%" tone="disk" height={4} /><p><b>{bytesToTiB(host.diskUsedBytes)} TiB</b> used / {bytesToTiB(host.diskTotalBytes)} TiB</p><p>I/O WAIT <b>{host.diskIoPercent ?? '—'}%</b></p></section>
-        <section className="pve-resource network-resource"><h3>NETWORK</h3><MirroredTrafficGraph upload={uploadHistory} download={downloadHistory} unit="Mb/s" height={4} /><p>MAX RX <b>{maxDownload ?? 'N/S'}{maxDownload === null ? '' : ' Mb/s'}</b> · MAX TX <b>{maxUpload ?? 'N/S'}{maxUpload === null ? '' : ' Mb/s'}</b></p><p>TOTAL TRANSFER <b>{byteCountLabel(host.networkTotalBytes)}</b></p></section>
+        <section className="pve-resource network-resource"><h3>NETWORK</h3><MirroredTrafficGraph upload={uploadHistory} download={downloadHistory} unit="Mb/s" height={4} /><p>MAX RX <b>{throughputLabel(maxDownload)}</b> · MAX TX <b>{throughputLabel(maxUpload)}</b></p><p>TOTAL TRANSFER <b>{byteCountLabel(host.networkTotalBytes)}</b></p></section>
       </div>
       {expanded ? <ProxmoxDetail host={host} timeSeries={timeSeries} /> : null}
     </Panel>
