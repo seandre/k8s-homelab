@@ -210,6 +210,7 @@ test('renders the responsive indoor dashboard and requires review before control
   const airGradientControls = page.getByRole('region', { name: 'AirGradient ONE' }).locator('.airgradient-controls');
   await expect(airGradientControls.getByRole('slider', { name: 'Display brightness' })).toBeVisible();
   await expect(airGradientControls.getByRole('slider', { name: 'LED brightness' })).toBeVisible();
+  await expect(airGradientControls.locator('.airgradient-slider-thumb')).toHaveCount(2);
   await expect(airGradientControls.locator('.airgradient-slider-thumb')).toHaveText(['80%', '60%']);
   await expect(airGradientControls.locator('output')).toHaveCount(0);
   const handleStyleProperties = ['width', 'height', 'boxSizing', 'borderTopWidth', 'borderTopStyle', 'borderTopColor', 'borderRadius', 'backgroundColor', 'boxShadow', 'fontWeight', 'translate'] as const;
