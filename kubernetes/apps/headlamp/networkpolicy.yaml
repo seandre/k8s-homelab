@@ -43,6 +43,14 @@ spec:
       ports:
         - protocol: TCP
           port: 443
+    # k3s routes the Kubernetes Service to the control-plane endpoint before
+    # applying pod egress policy. Allow the current API server endpoint too.
+    - to:
+        - ipBlock:
+            cidr: 192.168.40.21/32
+      ports:
+        - protocol: TCP
+          port: 6443
     - to:
         - namespaceSelector:
             matchLabels:
