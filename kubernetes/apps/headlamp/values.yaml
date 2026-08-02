@@ -13,6 +13,9 @@ config:
   inClusterContextName: production
   sessionTTL: 86400
   unsafeUseServiceAccountToken: false
+  oidc:
+    secret:
+      create: false
   staticPlugins:
     enabled: true
 
