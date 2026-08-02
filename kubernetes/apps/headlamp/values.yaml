@@ -1,0 +1,77 @@
+replicaCount: 1
+
+fullnameOverride: headlamp
+
+image:
+  registry: ghcr.io
+  repository: headlamp-k8s/headlamp
+  tag: v0.44.0@sha256:b491653c1a0d380b70b67a4024f1204591f9c84a68ee567778d53d28b1856168
+  pullPolicy: IfNotPresent
+
+config:
+  inCluster: true
+  inClusterContextName: production
+  sessionTTL: 86400
+  unsafeUseServiceAccountToken: false
+  staticPlugins:
+    enabled: true
+
+serviceAccount:
+  create: true
+  name: headlamp-readonly
+
+clusterRoleBinding:
+  create: false
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsGroup: 101
+  runAsNonRoot: true
+  runAsUser: 100
+  seccompProfile:
+    type: RuntimeDefault
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  ingressClassName: traefik
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-production
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+  hosts:
+    - host: headlamp.lab.seandre.dev
+      paths:
+        - path: /
+          type: Prefix
+  tls:
+    - secretName: headlamp-public-tls
+      hosts:
+        - headlamp.lab.seandre.dev
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
+
+probes:
+  livenessProbe:
+    initialDelaySeconds: 15
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 6
+  readinessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 6

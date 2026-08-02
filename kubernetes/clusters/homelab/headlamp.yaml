@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: homelab-headlamp
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: headlamp
+    app.kubernetes.io/part-of: homelab
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+  sources:
+    - repoURL: https://kubernetes-sigs.github.io/headlamp/
+      chart: headlamp
+      targetRevision: 0.44.0
+      helm:
+        releaseName: headlamp
+        valueFiles:
+          - $values/kubernetes/apps/headlamp/values.yaml
+    - repoURL: https://github.com/seandre/k8s-homelab.git
+      targetRevision: main
+      ref: values
+      path: kubernetes/apps/headlamp
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: headlamp
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+  info:
+    - name: URL
+      value: https://headlamp.lab.seandre.dev
+    - name: Access
+      value: Read-only RBAC; create a short-lived token with kubectl create token headlamp-readonly -n headlamp
