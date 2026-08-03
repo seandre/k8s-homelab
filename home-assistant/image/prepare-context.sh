@@ -18,6 +18,7 @@ if [ -e "$OUTPUT_DIRECTORY" ]; then
 fi
 
 "$COMPAT_DIRECTORY/verify-source.sh" "$ARCHIVE" "$OUTPUT_DIRECTORY"
+patch -d "$OUTPUT_DIRECTORY" -p1 < "$SCRIPT_DIR/coway-token-refresh.patch"
 cp "$SCRIPT_DIR/Dockerfile" "$OUTPUT_DIRECTORY/Dockerfile"
 cp "$SCRIPT_DIR/install-coway.sh" "$OUTPUT_DIRECTORY/install-coway.sh"
 cp "$SCRIPT_DIR/verify-image.sh" "$OUTPUT_DIRECTORY/verify-image.sh"

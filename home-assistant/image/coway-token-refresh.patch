@@ -1,0 +1,12 @@
+--- a/custom_components/coway/coordinator.py
++++ b/custom_components/coway/coordinator.py
+@@ -64,0 +65,4 @@
++        # CowayAIO temporarily disables token checks while fetching a batch.
++        # A timeout in that batch can bypass its normal reset and leave the
++        # client using an expired access token on every later poll.
++        self.client.check_token = True
+@@ -167,0 +172,4 @@
++        finally:
++            # Keep refresh enabled even when CowayAIO exits a batch through an
++            # exception before restoring this flag itself.
++            self.client.check_token = True

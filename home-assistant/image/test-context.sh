@@ -30,9 +30,12 @@ fi
 "$SCRIPT_DIR/prepare-context.sh" "$ARCHIVE" "$WORK_DIRECTORY/context"
 "$SCRIPT_DIR/../coway-compat/verify-source.sh" \
   "$ARCHIVE" "$WORK_DIRECTORY/expected"
+patch -d "$WORK_DIRECTORY/expected" -p1 < "$SCRIPT_DIR/coway-token-refresh.patch"
 diff -r \
   "$WORK_DIRECTORY/expected/custom_components/coway" \
   "$WORK_DIRECTORY/context/custom_components/coway"
+test "$(grep -c 'self.client.check_token = True' \
+  "$WORK_DIRECTORY/context/custom_components/coway/coordinator.py")" -eq 2
 
 mkdir -p "$WORK_DIRECTORY/runtime-source"
 cp -R "$WORK_DIRECTORY/context/custom_components/coway" \
@@ -49,4 +52,4 @@ diff -r \
   "$WORK_DIRECTORY/runtime-source/coway" \
   "$WORK_DIRECTORY/runtime-config/custom_components/coway"
 
-echo "IE-003 pin, pristine-source, generated-context, and startup-copy tests passed"
+echo "IE-003 pin, verified token-refresh patch, generated-context, and startup-copy tests passed"

@@ -41,6 +41,14 @@ class FakeConfigEntries:
 
 
 class CowayCompatibilityTests(unittest.IsolatedAsyncioTestCase):
+    def test_polling_always_reenables_token_refresh(self) -> None:
+        coordinator_source = Path(
+            "/config/custom_components/coway/coordinator.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertEqual(2, coordinator_source.count("self.client.check_token = True"))
+        self.assertIn("finally:\n            # Keep refresh enabled", coordinator_source)
+
     def test_imports_against_pinned_home_assistant(self) -> None:
         manifest = json.loads(
             (Path("/config/custom_components/coway/manifest.json")).read_text(
