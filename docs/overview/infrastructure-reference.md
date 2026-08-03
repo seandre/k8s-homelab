@@ -80,6 +80,7 @@ Infrastructure names resolve to their host addresses. Kubernetes application nam
 | `nexus.lab.seandre.dev` | CNAME to `bastion-01.lab.seandre.dev` (`192.168.40.33`) |
 | `pbs-01.lab.seandre.dev` | `192.168.40.34` |
 | `ingress.lab.seandre.dev` | `192.168.40.30` |
+| `auth.lab.seandre.dev` | CNAME to `ingress.lab.seandre.dev` |
 | `argocd.lab.seandre.dev` | CNAME to `ingress.lab.seandre.dev` |
 | `grafana.lab.seandre.dev` | CNAME to `ingress.lab.seandre.dev` |
 | `home.lab.seandre.dev` | CNAME to `ingress.lab.seandre.dev` |

@@ -11,6 +11,13 @@ This site is the readable view of the Markdown documentation stored in the homel
 
 Read the [complete documentation order](overview/documentation-order.md) for optional projects and operations references. The [infrastructure reference](overview/infrastructure-reference.md) is the canonical source for hardware, addresses, storage, and DNS; the [network topology](overview/network-topology.md) records the live UniFi VLANs, zones, uplinks, and policy boundaries.
 
+The [cluster-wide Keycloak OIDC/SSO build and operator guide](build/keycloak-oidc-sso.md)
+documents the implemented private identity provider, runtime Secret contracts,
+normal login paths for Headlamp, kubectl, Grafana, and Argo CD, failover tests,
+and independent R2/PBS recovery gates. Live cutover remains gated on the
+external credentials, private DNS, MFA enrollment, and acceptance tests listed
+there.
+
 The approved [Homelab Homepage Architecture](overview/homepage-architecture.md) defines the btop-inspired private Homepage, including its views, telemetry sources, security boundary, k3s rollout, deferred OKD migration, and rollback gates. The custom app now serves production; the [Homepage Rework Build Plan](build/homepage-rework.md), [operations runbook](operations/homepage-rework.md), and [v1 evidence index](overview/homepage-v1-evidence.md) record implementation, operation, and closeout status.
 
 The [Homepage GitHub Actions Workflow Optimization](build/github-actions-workflow-optimization.md)

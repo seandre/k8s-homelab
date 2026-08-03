@@ -276,6 +276,7 @@ Create these local DNS records in UniFi, all pointing to the existing MetalLB in
 
 | Name | Address |
 |---|---|
+| `auth.lab.seandre.dev` | `192.168.40.30` |
 | `argocd.lab.seandre.dev` | `192.168.40.30` |
 | `grafana.lab.seandre.dev` | `192.168.40.30` |
 | `home.lab.seandre.dev` | `192.168.40.30` |
