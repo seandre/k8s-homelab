@@ -170,7 +170,7 @@ test('renders the responsive indoor dashboard and requires review before control
   for (const panel of purifierPanels) await expect(panel.locator('.indoor-reading-grid')).toHaveCount(0);
   for (const panel of purifierSensorPanels) {
     await expect(panel).toBeVisible();
-    for (const label of ['PM2.5', 'PM10', 'AQI', 'FILTER']) await expect(panel.getByText(label, { exact: true })).toBeVisible();
+    for (const label of ['PM2.5', 'PM10', 'AQI', 'PRE-FILTER', 'LOWEST FILTER']) await expect(panel.getByText(label, { exact: true })).toBeVisible();
   }
   const aranetLayout = await aranetPanel.evaluate((element) => ({
     top: element.getBoundingClientRect().top,
