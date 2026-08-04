@@ -35,7 +35,10 @@
   --threshold-light-blue: #8edcff;
   --threshold-dark-blue: #4776b8;
   --threshold-yellow: #e3bd72;
+  --threshold-orange: #e9995b;
   --threshold-red: #ef7777;
+  --threshold-purple: #b58be0;
+  --threshold-maroon: #a95870;
   --surface: #090b09;
   --shadow: rgba(0, 0, 0, 0.55);
   --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -83,7 +86,10 @@
   --threshold-light-blue: #087ea4;
   --threshold-dark-blue: #0b4f8a;
   --threshold-yellow: #d48208;
+  --threshold-orange: #c85a00;
   --threshold-red: #c92a2a;
+  --threshold-purple: #7b2cbf;
+  --threshold-maroon: #7f1734;
   --surface: #ffffff;
   --shadow: rgba(24, 35, 26, 0.12);
 }
@@ -283,7 +289,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .metric-indicator-light-blue { background: var(--threshold-light-blue); color: var(--threshold-light-blue); }
 .metric-indicator-dark-blue { background: var(--threshold-dark-blue); color: var(--threshold-dark-blue); }
 .metric-indicator-yellow { background: var(--threshold-yellow); color: var(--threshold-yellow); }
+.metric-indicator-orange { background: var(--threshold-orange); color: var(--threshold-orange); }
 .metric-indicator-red { background: var(--threshold-red); color: var(--threshold-red); }
+.metric-indicator-purple { background: var(--threshold-purple); color: var(--threshold-purple); }
+.metric-indicator-maroon { background: var(--threshold-maroon); color: var(--threshold-maroon); }
 .metric-detail { letter-spacing: 0; text-transform: none; }
 .resource-graphs { display: grid; gap: 0.05rem; margin-top: 0.45rem; }
 .dot-graph { --graph-label-width: 12ch; display: grid; grid-template-columns: minmax(0, 1fr) var(--graph-label-width); align-items: end; gap: 0.2rem; margin-top: 0; overflow: hidden; color: var(--graph-color, var(--focus)); }

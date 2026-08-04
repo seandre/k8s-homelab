@@ -10,7 +10,7 @@ export function FreshnessLabel({ freshness, ageSeconds }: { freshness: Freshness
   return <span className={`freshness freshness-${freshness.toLowerCase()}`}>{freshness.replace('_', ' ')}{age}</span>;
 }
 
-type MetricIndicatorTone = 'green' | 'blue' | 'light-blue' | 'dark-blue' | 'yellow' | 'red';
+type MetricIndicatorTone = 'green' | 'blue' | 'light-blue' | 'dark-blue' | 'yellow' | 'orange' | 'red' | 'purple' | 'maroon';
 
 export function Metric({ label, value, unit = '', detail, indicatorTone }: {
   label: string;
