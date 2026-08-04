@@ -10,6 +10,7 @@ test.beforeEach(async ({ page }) => {
 
 test('supports keyboard-first search, navigation, and help', async ({ page }) => {
   const search = page.getByRole('textbox', { name: 'Search local dashboard' });
+  await page.getByRole('link', { name: 'Overview' }).focus();
   await page.keyboard.press('/');
   await expect(search).toBeFocused();
   await search.fill('keyboard help');
@@ -163,7 +164,7 @@ test('renders the responsive indoor dashboard and requires review before control
   await expect(page.getByText('AVAILABLE', { exact: true })).toHaveCount(0);
   await expect(page.getByText('CURRENT', { exact: true })).toHaveCount(0);
   await expect(page.getByRole('region', { name: 'Nest Thermostat' }).locator('.panel-state-detail')).toHaveText('68–74°F · HEAT_COOL');
-  await expect(page.getByRole('region', { name: 'Living Room Air Purifier', exact: true }).locator('.panel-state-detail')).toHaveText('ON · AUTO · SPEED 2');
+  await expect(page.getByRole('region', { name: 'Living Room Air Purifier', exact: true }).locator('.panel-state-detail')).toHaveText('ON · AUTO · SPEED 2 · PRE-FILTER 91%');
   const aranetPanel = page.getByRole('region', { name: 'Living Room Aranet' });
   const purifierPanels = [page.getByRole('region', { name: 'Living Room Air Purifier', exact: true }), page.getByRole('region', { name: 'Bedroom Air Purifier', exact: true })];
   const purifierSensorPanels = [page.getByRole('region', { name: 'Living Room Air Purifier Sensor Data' }), page.getByRole('region', { name: 'Bedroom Air Purifier Sensor Data' })];
