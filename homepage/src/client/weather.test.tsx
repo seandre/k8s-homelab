@@ -17,9 +17,18 @@ describe('Weather fixture view', () => {
     expect(html).toContain('µg/m³');
     expect(html).not.toContain('U.S. AQI');
     expect(html).not.toContain('U.S. Air Quality Index');
-    expect(html).not.toContain('Source:');
     expect(html).not.toContain(fixtureWeather.airQualityMetadata.source);
     expect(html.match(/metric-indicator-green/g)).toHaveLength(3);
+    expect(html).toContain('Outdoor Trend History');
+    expect(html).toContain('Air quality index');
+    expect(html).toContain('Particulate matter');
+    expect(html).toContain('Temperature');
+    expect(html).toContain('Humidity');
+    expect(html).toContain('Precipitation');
+    expect(html).toContain('Wind speed');
+    expect(html).toContain('Outdoor history window');
+    expect(html).toContain('Data Source: Open-Meteo');
+    expect(html.match(/NO DATA ·/g)).toHaveLength(6);
   });
 
   it('colors outdoor AQI and particulate readings using EPA category breakpoints', () => {

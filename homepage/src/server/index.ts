@@ -9,6 +9,7 @@ import { readFile } from 'node:fs/promises';
 import { IndoorActionGateway } from './indoor-actions.js';
 import { HomeAssistantActionExecutor, HomeAssistantControlMapSchema } from './home-assistant-actions.js';
 import { FileActionPersistence } from './action-persistence.js';
+import { WeatherHistoryAdapter } from './weather-history.js';
 
 const config = loadConfig();
 const logger = createLogger();
@@ -17,6 +18,10 @@ const telemetry = new LiveTelemetry(gitOwnedRuntimeConfig, (bootstrap) => eventB
 const liveTelemetryEnabled = config.environment === 'production' && process.env.LIVE_TELEMETRY === 'true';
 const prometheus = gitOwnedRuntimeConfig.sources.find((source) => source.id === 'prometheus-source')!;
 const indoorHistory = new IndoorHistoryAdapter(prometheus.endpoint, async (url) => {
+  const response = await fetch(url);
+  return { ok: response.ok, json: () => response.json() };
+});
+const weatherHistory = new WeatherHistoryAdapter(gitOwnedRuntimeConfig.weatherLocation.latitude, gitOwnedRuntimeConfig.weatherLocation.longitude, async (url) => {
   const response = await fetch(url);
   return { ok: response.ok, json: () => response.json() };
 });
@@ -48,6 +53,7 @@ const app = buildApp({
   serveClient: config.environment === 'production',
   eventBroker,
   indoorHistory,
+  weatherHistory,
   ...(indoorActions ? { indoorActions } : {}),
   ...(liveTelemetryEnabled ? { bootstrapProvider: telemetry.bootstrap } : {}),
 });

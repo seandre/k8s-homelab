@@ -104,6 +104,8 @@ export const gitOwnedRuntimeConfig: RuntimeConfig = loadRuntimeConfig({
       'airgradient_living_room.temperature': 1, 'airgradient_living_room.humidity': 1, 'airgradient_living_room.co2': 1,
       'airgradient_living_room.pm25': 1, 'airgradient_living_room.pm10': 1, 'airgradient_living_room.tvoc_index': 1,
       'airgradient_living_room.nox_index': 1,
+      'outdoor.us_aqi': 1, 'outdoor.pm25': 1, 'outdoor.pm10': 1,
+      'outdoor.temperature': 1, 'outdoor.humidity': 1, 'outdoor.precipitation': 1, 'outdoor.wind_speed': 1,
     }).map((metric) => ({ metric, windows: ['1h', '3h', '6h', '24h', '7d', '30d', 'custom'] as const })),
   ],
   thresholds: { cpuWarnPercent: 70, cpuCritPercent: 90, backupWarnAgeSeconds: 86_400 },

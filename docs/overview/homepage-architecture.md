@@ -34,7 +34,7 @@ The interface must remain modern, simple, readable, and resistant to information
 - Existing UniFi speed-test results without triggering new tests.
 - Measured USP-PDU-PRO total power and exact `pve-01`/`pve-02` outlet power
   through the verified local, read-only UnPoller path.
-- Portland `97209` weather, sunrise/sunset, U.S. AQI, PM2.5, and PM10.
+- Portland `97209` weather, sunrise/sunset, U.S. AQI, PM2.5, and PM10, plus selectable outdoor AQI, particulate, temperature, humidity, precipitation, and wind history.
 - Infrastructure and web search.
 - Responsive desktop, tablet, and mobile experiences.
 - Keyboard navigation and command-oriented search.
@@ -183,7 +183,7 @@ The application remains stateless, so replicas and cluster copies require no dat
 | PBS | Read-only PBS API | Reachability, datastore, backup freshness, and failures |
 | UniFi | Supported read-only API | Controller health, network metrics, and speed-test history |
 | USP-PDU-PRO | Local UniFi API through hardened UnPoller, strict TLS, API-key Secret, and fixed Prometheus queries | Total measured wattage and exact `pve-01`/`pve-02` outlet wattage; other labeled outlets, including OKD nodes, contribute only to total |
-| Weather/AQI | Open-Meteo | Current Portland utility data |
+| Weather/AQI | WeatherAPI, NWS, AirNow, and Open-Meteo | Current Portland utility data plus server-normalized Open-Meteo outdoor history |
 | Service state | Backend allowlisted probes | Server-side reachability |
 
 The browser never receives upstream credentials or contacts privileged infrastructure APIs directly. Glances is a migration bridge, not the target telemetry platform. No exporter is installed on a hypervisor or infrastructure host without an explicit least-privilege review.

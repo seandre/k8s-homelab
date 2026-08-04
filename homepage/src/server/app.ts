@@ -9,6 +9,7 @@ import { BootstrapEventBroker, type SseConnection } from './sse.js';
 import { gitOwnedRuntimeConfig, type RuntimeConfig } from './runtime-config.js';
 import { INDOOR_HISTORY_WINDOWS, isIndoorHistoryAlias, type IndoorHistoryAdapter, type IndoorHistoryWindow } from './indoor-history.js';
 import { type IndoorActionGateway } from './indoor-actions.js';
+import { isWeatherHistoryAlias, type WeatherHistoryAdapter } from './weather-history.js';
 
 export type BootstrapProvider = () => Bootstrap | Promise<Bootstrap>;
 
@@ -21,6 +22,7 @@ export interface AppOptions {
   keepAliveMs?: number;
   runtimeConfig?: RuntimeConfig;
   indoorHistory?: Pick<IndoorHistoryAdapter, 'read'>;
+  weatherHistory?: Pick<WeatherHistoryAdapter, 'read'>;
   indoorActions?: IndoorActionGateway;
 }
 
@@ -112,6 +114,11 @@ export function buildApp(options: AppOptions): FastifyInstance {
           customRange ? { start: start!, end: end! } : undefined,
         );
         if (indoorSeries) return { data: indoorSeries, requestId: request.id };
+        return reply.code(404).send({ error: { code: 'HISTORY_NOT_FOUND', message: 'History is not available for this metric/window.' }, requestId: request.id });
+      }
+      if (isWeatherHistoryAlias(query.metric) && (INDOOR_HISTORY_WINDOWS.includes(query.window as IndoorHistoryWindow) || customRange) && options.weatherHistory) {
+        const outdoorSeries = await options.weatherHistory.read(query.metric, query.window as IndoorHistoryWindow | 'custom', customRange ? { start: start!, end: end! } : undefined);
+        if (outdoorSeries) return { data: outdoorSeries, requestId: request.id };
         return reply.code(404).send({ error: { code: 'HISTORY_NOT_FOUND', message: 'History is not available for this metric/window.' }, requestId: request.id });
       }
       const series = bootstrap.timeSeries.find((candidate) => candidate.metric === query.metric && candidate.window === query.window);

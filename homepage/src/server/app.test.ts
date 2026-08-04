@@ -72,6 +72,28 @@ describe('backend shell', () => {
     await app.close();
   });
 
+  it('serves outdoor history through the fixed server-side adapter', async () => {
+    const calls: unknown[][] = [];
+    const app = buildApp({
+      config,
+      weatherHistory: {
+        read: async (metric, window, range) => {
+          calls.push([metric, window, range]);
+          return {
+            metric, window, unit: 'AQI', points: [{ timestamp: '2026-08-04T12:00:00.000Z', value: 63 }],
+            metadata: { source: 'open-meteo-outdoor-history', observedAt: '2026-08-04T12:00:00.000Z', freshness: 'CURRENT', severity: 'OK' },
+          };
+        },
+      },
+    });
+    const response = await app.inject({ method: 'GET', url: '/api/v1/history?metric=outdoor.us_aqi&window=24h' });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ data: { metric: 'outdoor.us_aqi', window: '24h', unit: 'AQI' } });
+    expect(calls).toEqual([['outdoor.us_aqi', '24h', undefined]]);
+    await expect(app.inject({ method: 'GET', url: '/api/v1/history?metric=outdoor.temperature_2m&window=24h' })).resolves.toMatchObject({ statusCode: 404 });
+    await app.close();
+  });
+
   it('returns a safe internal error when bootstrap initialization fails', async () => {
     const app = buildApp({ config, bootstrapProvider: () => { throw new Error('token=do-not-return'); } });
     const response = await app.inject({ method: 'GET', url: '/api/v1/bootstrap' });
