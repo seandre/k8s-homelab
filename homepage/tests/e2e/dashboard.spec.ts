@@ -505,8 +505,8 @@ test('uses fixed-pitch dot matrices for resource graphs on every telemetry page'
   for (const route of ['/', '/compute', '/kubernetes', '/network']) {
     await page.goto(route);
     const resourceGraphs = page.locator('.dot-graph');
+    await expect.poll(() => resourceGraphs.count(), { message: `resource graphs on ${route}` }).toBeGreaterThan(0);
     const graphCount = await resourceGraphs.count();
-    expect(graphCount, route).toBeGreaterThan(0);
     await expect(page.locator('.dot-graph .dot-matrix-fixed')).toHaveCount(graphCount);
     await expect(page.locator('.dot-graph .braille-cell')).toHaveCount(0);
   }
