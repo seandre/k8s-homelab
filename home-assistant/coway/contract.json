@@ -12,7 +12,7 @@
       "room": "bedroom"
     }
   },
-  "read_alias_suffixes": ["aqi", "pm25", "pm10", "filter_life", "pre_filter_life"],
+  "read_alias_suffixes": ["aqi", "pm25", "pm10", "filter_life", "pre_filter_life", "hepa_filter_life"],
   "control_alias_suffixes": [
     "power",
     "speed",
@@ -32,7 +32,7 @@
   "live_capabilities": {
     "coway_living_room": {
       "observed": true,
-      "readings": ["aqi", "pm25", "pm10", "filter_life", "pre_filter_life"],
+      "readings": ["aqi", "pm25", "pm10", "filter_life", "pre_filter_life", "hepa_filter_life"],
       "filter_life": { "strategy": "MINIMUM", "sources": ["pre_filter", "max2_filter"] },
       "controls": {
         "power": [false, true],
@@ -47,7 +47,7 @@
     },
     "coway_bedroom": {
       "observed": true,
-      "readings": ["aqi", "pm25", "pm10", "filter_life", "pre_filter_life"],
+      "readings": ["aqi", "pm25", "pm10", "filter_life", "pre_filter_life", "hepa_filter_life"],
       "filter_life": { "strategy": "MINIMUM", "sources": ["pre_filter", "max2_filter"] },
       "controls": {
         "power": [false, true],

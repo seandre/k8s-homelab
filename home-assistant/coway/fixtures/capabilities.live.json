@@ -5,7 +5,7 @@
     "coway_living_room": {
       "source_state": "AVAILABLE",
       "observed": true,
-      "readings": ["aqi", "pm25", "pm10", "filter_life", "pre_filter_life"],
+      "readings": ["aqi", "pm25", "pm10", "filter_life", "pre_filter_life", "hepa_filter_life"],
       "filter_life_strategy": "MINIMUM",
       "controls": {
         "power": [false, true],
@@ -21,7 +21,7 @@
     "coway_bedroom": {
       "source_state": "AVAILABLE",
       "observed": true,
-      "readings": ["aqi", "pm25", "pm10", "filter_life", "pre_filter_life"],
+      "readings": ["aqi", "pm25", "pm10", "filter_life", "pre_filter_life", "hepa_filter_life"],
       "filter_life_strategy": "MINIMUM",
       "controls": {
         "power": [false, true],

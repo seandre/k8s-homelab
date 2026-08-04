@@ -164,14 +164,14 @@ test('renders the responsive indoor dashboard and requires review before control
   await expect(page.getByText('AVAILABLE', { exact: true })).toHaveCount(0);
   await expect(page.getByText('CURRENT', { exact: true })).toHaveCount(0);
   await expect(page.getByRole('region', { name: 'Nest Thermostat' }).locator('.panel-state-detail')).toHaveText('68–74°F · HEAT_COOL');
-  await expect(page.getByRole('region', { name: 'Living Room Air Purifier', exact: true }).locator('.panel-state-detail')).toHaveText('ON · AUTO · SPEED 2 · PRE-FILTER 91%');
+  await expect(page.getByRole('region', { name: 'Living Room Air Purifier', exact: true }).locator('.panel-state-detail')).toHaveText('ON · AUTO · SPEED 2 · PRE-FILTER 91% · HEPA 83%');
   const aranetPanel = page.getByRole('region', { name: 'Living Room Aranet' });
   const purifierPanels = [page.getByRole('region', { name: 'Living Room Air Purifier', exact: true }), page.getByRole('region', { name: 'Bedroom Air Purifier', exact: true })];
   const purifierSensorPanels = [page.getByRole('region', { name: 'Living Room Air Purifier Sensor Data' }), page.getByRole('region', { name: 'Bedroom Air Purifier Sensor Data' })];
   for (const panel of purifierPanels) await expect(panel.locator('.indoor-reading-grid')).toHaveCount(0);
   for (const panel of purifierSensorPanels) {
     await expect(panel).toBeVisible();
-    for (const label of ['PM2.5', 'PM10', 'AQI', 'PRE-FILTER', 'LOWEST FILTER']) await expect(panel.getByText(label, { exact: true })).toBeVisible();
+    for (const label of ['PM2.5', 'PM10', 'AQI', 'PRE-FILTER', 'HEPA FILTER']) await expect(panel.getByText(label, { exact: true })).toBeVisible();
   }
   const aranetLayout = await aranetPanel.evaluate((element) => ({
     top: element.getBoundingClientRect().top,

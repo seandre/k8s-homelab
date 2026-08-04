@@ -299,6 +299,18 @@ template:
             {% set obj = (expand(states('input_text.indoor_map_coway_living_room_filter_a')) | first | default(none)) %}
             {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
             {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
+      - name: Indoor Coway Living Room HEPA filter life
+        unique_id: indoor_coway_living_room_hepa_filter_life
+        unit_of_measurement: "%"
+        state: >-
+          {% set obj = (expand(states('input_text.indoor_map_coway_living_room_filter_b')) | first | default(none)) %}
+          {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
+          {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
+        attributes:
+          freshness: >-
+            {% set obj = (expand(states('input_text.indoor_map_coway_living_room_filter_b')) | first | default(none)) %}
+            {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
+            {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
       - name: Indoor Coway Bedroom filter life
         unique_id: indoor_coway_bedroom_filter_life
         state: >-
@@ -324,6 +336,18 @@ template:
         attributes:
           freshness: >-
             {% set obj = (expand(states('input_text.indoor_map_coway_bedroom_filter_a')) | first | default(none)) %}
+            {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
+            {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
+      - name: Indoor Coway Bedroom HEPA filter life
+        unique_id: indoor_coway_bedroom_hepa_filter_life
+        unit_of_measurement: "%"
+        state: >-
+          {% set obj = (expand(states('input_text.indoor_map_coway_bedroom_filter_b')) | first | default(none)) %}
+          {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
+          {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
+        attributes:
+          freshness: >-
+            {% set obj = (expand(states('input_text.indoor_map_coway_bedroom_filter_b')) | first | default(none)) %}
             {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
             {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
       - name: Indoor Living Room CO2 alert
