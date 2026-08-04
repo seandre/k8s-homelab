@@ -245,6 +245,31 @@ describe('indoor dashboard', () => {
     })).toEqual({
       min: 400, max: 1400, step: 200, ticks: [400, 600, 800, 1000, 1200, 1400],
     });
+    expect(computeHistoryDomain([12, 67.1], { fixedMin: 0, minSpan: 40 })).toEqual({
+      min: 0, max: 100, step: 20, ticks: [0, 20, 40, 60, 80, 100],
+    });
+  });
+
+  it('colors explicitly configured outdoor traces by threshold', () => {
+    const markup = renderToStaticMarkup(<HistoryGraph
+      label="Outdoor AQI"
+      colorByThreshold
+      thresholds={[{ value: 51, tone: 'yellow' }, { value: 101, tone: 'red' }]}
+      scale={{ fixedMin: 0, fixedMax: 200, ticks: [0, 50, 100, 150, 200] }}
+      series={{
+        metric: 'outdoor.us_aqi', unit: 'AQI', window: '24h',
+        points: [
+          { timestamp: '2026-08-04T00:00:00.000Z', value: 40 },
+          { timestamp: '2026-08-04T01:00:00.000Z', value: 75 },
+          { timestamp: '2026-08-04T02:00:00.000Z', value: 135 },
+        ],
+        metadata: { source: 'fixture', observedAt: '2026-08-04T02:00:00.000Z', freshness: 'CURRENT', severity: 'OK' },
+      }}
+    />);
+    expect(markup).toContain('style="stroke:url(#history-trace-');
+    expect(markup).toContain('history-trace-stop-green');
+    expect(markup).toContain('history-trace-stop-yellow');
+    expect(markup).toContain('history-trace-stop-red');
   });
 
   it('renders proportional y-axis labels and real history-window endpoints', () => {

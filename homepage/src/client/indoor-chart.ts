@@ -63,6 +63,13 @@ export function computeHistoryDomain(values: number[], scale: HistoryScale) {
   }
   const observedMin = Math.min(...values);
   const observedMax = Math.max(...values);
+  if (scale.fixedMin !== undefined) {
+    const desiredSpan = Math.max(observedMax - scale.fixedMin, scale.minSpan ?? 1);
+    const step = niceStep(desiredSpan / 5);
+    const max = Math.max(scale.fixedMin + step * 5, Math.ceil(observedMax / step) * step);
+    const ticks = Array.from({ length: Math.round((max - scale.fixedMin) / step) + 1 }, (_, index) => Number((scale.fixedMin! + index * step).toFixed(8)));
+    return { min: scale.fixedMin, max, step, ticks };
+  }
   const desiredSpan = Math.max(observedMax - observedMin, scale.minSpan ?? 1);
   const step = niceStep(desiredSpan / 5);
   const span = step * 5;

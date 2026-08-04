@@ -140,13 +140,14 @@ function trendTone(metric: string, value: number, thresholds: HistoryThreshold[]
   return 'green';
 }
 
-export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, thresholds, scale }: {
+export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, thresholds, scale, colorByThreshold = false }: {
   series: TimeSeries | undefined;
   secondarySeries?: TimeSeries;
   label: string;
   secondaryLabel?: string;
   thresholds: HistoryThreshold[];
   scale: HistoryScale;
+  colorByThreshold?: boolean;
 }) {
   const plot = useRef<HTMLDivElement>(null);
   const gradientId = `history-trace-${useId().replaceAll(':', '')}`;
@@ -196,7 +197,7 @@ export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, t
   const humidityHigh = humidityTrace ? thresholds.at(-1)?.value : undefined;
   const temperatureDarkBlue = thresholds.find(({ tone }) => tone === 'dark-blue')?.value;
   const temperatureLightBlue = thresholds.find(({ tone }) => tone === 'light-blue')?.value;
-  const thresholdTrace = series && (humidityTrace || temperatureTrace || (yellowThreshold !== undefined && redThreshold !== undefined
+  const thresholdTrace = series && (colorByThreshold || humidityTrace || temperatureTrace || (yellowThreshold !== undefined && redThreshold !== undefined
     && [
       'airgradient_living_room.co2',
       'airgradient_living_room.pm25',

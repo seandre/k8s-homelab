@@ -8,10 +8,10 @@ import { aqiTone, pm10Tone, pm25Tone } from './weather-status.js';
 
 const WINDOWS = ['1h', '3h', '6h', '24h', '7d', '30d'] as const;
 type Window = typeof WINDOWS[number];
-type WeatherHistoryMetric = { alias: string; label: string; thresholds: { value: number; tone: 'blue' | 'light-blue' | 'dark-blue' | 'yellow' | 'red' }[]; scale: HistoryScale; secondaryAlias?: string; secondaryLabel?: string };
+type WeatherHistoryMetric = { alias: string; label: string; thresholds: { value: number; tone: 'blue' | 'light-blue' | 'dark-blue' | 'yellow' | 'red' }[]; scale: HistoryScale; secondaryAlias?: string; secondaryLabel?: string; colorByThreshold?: boolean };
 const HISTORY_METRICS: WeatherHistoryMetric[] = [
-  { alias: 'outdoor.us_aqi', label: 'Air quality index', thresholds: [{ value: 51, tone: 'yellow' }, { value: 101, tone: 'red' }], scale: { fixedMin: 0, fixedMax: 350, ticks: [0, 50, 100, 150, 200, 250, 300, 350], digits: 0 } },
-  { alias: 'outdoor.pm25', secondaryAlias: 'outdoor.pm10', secondaryLabel: 'PM10', label: 'Particulate matter', thresholds: [{ value: 9.1, tone: 'yellow' }, { value: 35.5, tone: 'red' }], scale: { minSpan: 40, hardMin: 0, digits: 1 } },
+  { alias: 'outdoor.us_aqi', label: 'Air quality index', colorByThreshold: true, thresholds: [{ value: 51, tone: 'yellow' }, { value: 101, tone: 'red' }], scale: { fixedMin: 0, fixedMax: 350, ticks: [0, 50, 100, 150, 200, 250, 300, 350], digits: 0 } },
+  { alias: 'outdoor.pm25', secondaryAlias: 'outdoor.pm10', secondaryLabel: 'PM10', label: 'Particulate matter', colorByThreshold: true, thresholds: [{ value: 9.1, tone: 'yellow' }, { value: 35.5, tone: 'red' }], scale: { fixedMin: 0, minSpan: 40, digits: 1 } },
   { alias: 'outdoor.temperature', label: 'Temperature', thresholds: [{ value: 32, tone: 'blue' }, { value: 80, tone: 'yellow' }, { value: 95, tone: 'red' }], scale: { minSpan: 30, digits: 0 } },
   { alias: 'outdoor.humidity', label: 'Humidity', thresholds: [{ value: 30, tone: 'light-blue' }, { value: 70, tone: 'yellow' }], scale: { fixedMin: 0, fixedMax: 100, ticks: [0, 20, 40, 60, 80, 100], digits: 0 } },
   { alias: 'outdoor.precipitation', label: 'Precipitation', thresholds: [], scale: { minSpan: 0.1, hardMin: 0, digits: 2 } },
@@ -89,6 +89,7 @@ export function WeatherScreen({ weather = fixtureWeather }: { weather?: Weather 
         label={metric.label}
         thresholds={[...metric.thresholds]}
         scale={metric.scale}
+        {...(metric.colorByThreshold ? { colorByThreshold: true } : {})}
         {...('secondaryAlias' in metric && history[metric.secondaryAlias] ? { secondarySeries: history[metric.secondaryAlias] } : {})}
         {...('secondaryLabel' in metric ? { secondaryLabel: metric.secondaryLabel } : {})}
       />)}</div>
