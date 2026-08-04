@@ -17,13 +17,13 @@ jq -e '
   (.devices | keys == ["coway_bedroom", "coway_living_room"]) and
   .devices.coway_living_room == {"display_name":"Living Room Coway","room":"living_room"} and
   .devices.coway_bedroom == {"display_name":"Bedroom Coway","room":"bedroom"} and
-  .read_alias_suffixes == ["aqi","pm25","pm10","filter_life"] and
+  .read_alias_suffixes == ["aqi","pm25","pm10","filter_life","pre_filter_life"] and
   .control_alias_suffixes == ["power","speed","preset","timer","light","button_lock","sensitivity"] and
   .upstream_candidate_values.speed_percent == [33,66,100] and
   (.upstream_candidate_values.preset | index("AUTO_ECO") | not) and
   ([.live_capabilities[]] | all(
     .observed == true and
-    .readings == ["aqi","pm25","pm10","filter_life"] and
+    .readings == ["aqi","pm25","pm10","filter_life","pre_filter_life"] and
     .filter_life == {"strategy":"MINIMUM","sources":["pre_filter","max2_filter"]} and
     .controls.power == [false,true] and
     .controls.speed == [1,2,3] and
@@ -51,7 +51,7 @@ jq -e '
   (.devices | keys == ["coway_bedroom", "coway_living_room"]) and
   ([.devices[]] | all(
     .source_state == "AVAILABLE" and .observed == true and
-    .readings == ["aqi","pm25","pm10","filter_life"] and
+    .readings == ["aqi","pm25","pm10","filter_life","pre_filter_life"] and
     .filter_life_strategy == "MINIMUM" and
     .controls.power == [false,true] and
     .controls.speed == [1,2,3] and

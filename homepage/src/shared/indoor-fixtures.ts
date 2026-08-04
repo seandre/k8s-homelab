@@ -37,6 +37,7 @@ export function indoorFixture(state: FixtureState = 'healthy'): IndoorState {
       pm25: reading(`${alias}.pm25`, pm25, 'µg/m³', cowayState),
       pm10: reading(`${alias}.pm10`, pm25 + 4, 'µg/m³', cowayState),
       filterLife: reading(`${alias}.filter_life`, 86, '%', cowayState),
+      preFilterLife: reading(`${alias}.pre_filter_life`, 91, '%', cowayState),
     },
     capabilities: {
       power: { supported: state !== 'unsupported', dependency: 'COWAY_CLOUD' as const },

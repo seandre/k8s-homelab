@@ -223,8 +223,8 @@ export const IndoorEntityAliasSchema = z.enum([
   'aranet_living_room.temperature', 'aranet_living_room.humidity', 'aranet_living_room.pressure', 'aranet_living_room.co2', 'aranet_living_room.battery',
   'airgradient_living_room.temperature', 'airgradient_living_room.humidity', 'airgradient_living_room.co2', 'airgradient_living_room.pm25', 'airgradient_living_room.pm10', 'airgradient_living_room.tvoc_index', 'airgradient_living_room.nox_index',
   'nest_living_room.current_temperature', 'nest_living_room.humidity', 'nest_living_room.hvac_mode', 'nest_living_room.heat_setpoint', 'nest_living_room.cool_setpoint', 'nest_living_room.fan_timer',
-  'coway_living_room.aqi', 'coway_living_room.pm25', 'coway_living_room.pm10', 'coway_living_room.filter_life', 'coway_living_room.power', 'coway_living_room.speed', 'coway_living_room.preset', 'coway_living_room.timer', 'coway_living_room.light', 'coway_living_room.button_lock', 'coway_living_room.sensitivity',
-  'coway_bedroom.aqi', 'coway_bedroom.pm25', 'coway_bedroom.pm10', 'coway_bedroom.filter_life', 'coway_bedroom.power', 'coway_bedroom.speed', 'coway_bedroom.preset', 'coway_bedroom.timer', 'coway_bedroom.light', 'coway_bedroom.button_lock', 'coway_bedroom.sensitivity',
+  'coway_living_room.aqi', 'coway_living_room.pm25', 'coway_living_room.pm10', 'coway_living_room.filter_life', 'coway_living_room.pre_filter_life', 'coway_living_room.power', 'coway_living_room.speed', 'coway_living_room.preset', 'coway_living_room.timer', 'coway_living_room.light', 'coway_living_room.button_lock', 'coway_living_room.sensitivity',
+  'coway_bedroom.aqi', 'coway_bedroom.pm25', 'coway_bedroom.pm10', 'coway_bedroom.filter_life', 'coway_bedroom.pre_filter_life', 'coway_bedroom.power', 'coway_bedroom.speed', 'coway_bedroom.preset', 'coway_bedroom.timer', 'coway_bedroom.light', 'coway_bedroom.button_lock', 'coway_bedroom.sensitivity',
 ]);
 export type IndoorEntityAlias = z.infer<typeof IndoorEntityAliasSchema>;
 export const IndoorFreshnessSchema = z.enum(['CURRENT', 'STALE', 'NO_DATA', 'NOT_SUPPORTED', 'UNAVAILABLE']);
@@ -302,7 +302,7 @@ export const PurifierStateSchema = z.object({
   power: z.boolean().nullable(), speed: z.union([z.literal(1), z.literal(2), z.literal(3)]).nullable(),
   preset: z.string().min(1).nullable(), timerEndsAt: z.string().datetime({ offset: true }).nullable(),
   light: z.string().min(1).nullable(), buttonLock: z.boolean().nullable(), sensitivity: z.string().min(1).nullable(),
-  readings: z.object({ aqi: IndoorReadingSchema, pm25: IndoorReadingSchema, pm10: IndoorReadingSchema, filterLife: IndoorReadingSchema }).strict(),
+  readings: z.object({ aqi: IndoorReadingSchema, pm25: IndoorReadingSchema, pm10: IndoorReadingSchema, filterLife: IndoorReadingSchema, preFilterLife: IndoorReadingSchema }).strict(),
   capabilities: z.object({
     power: BooleanCapabilitySchema, speeds: NumberCapabilitySchema, presets: OptionCapabilitySchema,
     timerMinutes: NumberCapabilitySchema, lightOptions: OptionCapabilitySchema,

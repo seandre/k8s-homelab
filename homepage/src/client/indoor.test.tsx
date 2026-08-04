@@ -41,7 +41,9 @@ describe('indoor dashboard', () => {
     expect(markup.match(/>PM2\.5</g)).toHaveLength(3);
     expect(markup.match(/>PM10</g)).toHaveLength(3);
     expect(markup.match(/>AQI</g)).toHaveLength(2);
-    expect(markup.match(/>FILTER</g)).toHaveLength(2);
+    expect(markup.match(/>PRE-FILTER</g)).toHaveLength(2);
+    expect(markup.match(/>LOWEST FILTER</g)).toHaveLength(2);
+    expect(markup.match(/PRE-FILTER 91%/g)).toHaveLength(2);
     expect(markup).toContain('Trend History');
     expect(markup).not.toContain('PROMETHEUS HISTORY');
     expect(markup).toContain('Loading history');

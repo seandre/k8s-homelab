@@ -86,8 +86,8 @@ mark an alias unsupported, but may not substitute a raw entity ID.
 |---|---|---|
 | `aranet_living_room` | `aranet_living_room.temperature`, `.humidity`, `.pressure`, `.co2`, `.battery` | none |
 | `nest_living_room` | `nest_living_room.current_temperature`, `.humidity` | `.hvac_mode`, `.heat_setpoint`, `.cool_setpoint`, `.fan_timer` |
-| `coway_living_room` | `.aqi`, `.pm25`, `.pm10`, `.filter_life` | `.power`, `.speed`, `.preset`, `.timer`, `.light`, `.button_lock`, `.sensitivity` |
-| `coway_bedroom` | `.aqi`, `.pm25`, `.pm10`, `.filter_life` | `.power`, `.speed`, `.preset`, `.timer`, `.light`, `.button_lock`, `.sensitivity` |
+| `coway_living_room` | `.aqi`, `.pm25`, `.pm10`, `.filter_life`, `.pre_filter_life` | `.power`, `.speed`, `.preset`, `.timer`, `.light`, `.button_lock`, `.sensitivity` |
+| `coway_bedroom` | `.aqi`, `.pm25`, `.pm10`, `.filter_life`, `.pre_filter_life` | `.power`, `.speed`, `.preset`, `.timer`, `.light`, `.button_lock`, `.sensitivity` |
 | `airgradient_living_room` | `.temperature`, `.humidity`, `.co2`, `.pm25`, `.pm10`, `.tvoc_index`, `.nox_index` | `.display_brightness`, `.led_brightness`, `.display_temperature_unit`, `.pm_standard`, `.led_mode` |
 
 In the last two rows, every suffix is prefixed by that row's full device alias.
@@ -220,6 +220,7 @@ type IndoorEntityAlias =
   | "coway_living_room.pm25"
   | "coway_living_room.pm10"
   | "coway_living_room.filter_life"
+  | "coway_living_room.pre_filter_life"
   | "coway_living_room.power"
   | "coway_living_room.speed"
   | "coway_living_room.preset"
@@ -231,6 +232,7 @@ type IndoorEntityAlias =
   | "coway_bedroom.pm25"
   | "coway_bedroom.pm10"
   | "coway_bedroom.filter_life"
+  | "coway_bedroom.pre_filter_life"
   | "coway_bedroom.power"
   | "coway_bedroom.speed"
   | "coway_bedroom.preset"
@@ -393,6 +395,7 @@ interface PurifierState {
     pm25: IndoorReading;
     pm10: IndoorReading;
     filterLife: IndoorReading;
+    preFilterLife: IndoorReading;
   };
   capabilities: PurifierCapabilities;
 }

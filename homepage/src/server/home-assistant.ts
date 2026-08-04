@@ -35,10 +35,12 @@ const readingCatalog = {
   'coway_living_room.pm25': ['coway_living_room_pm25', 'µg/m³', 300],
   'coway_living_room.pm10': ['coway_living_room_pm10', 'µg/m³', 300],
   'coway_living_room.filter_life': ['coway_living_room_filter_life', '%', 300],
+  'coway_living_room.pre_filter_life': ['coway_living_room_pre_filter_life', '%', 300],
   'coway_bedroom.aqi': ['coway_bedroom_aqi', '%', 300],
   'coway_bedroom.pm25': ['coway_bedroom_pm25', 'µg/m³', 300],
   'coway_bedroom.pm10': ['coway_bedroom_pm10', 'µg/m³', 300],
   'coway_bedroom.filter_life': ['coway_bedroom_filter_life', '%', 300],
+  'coway_bedroom.pre_filter_life': ['coway_bedroom_pre_filter_life', '%', 300],
 } as const satisfies Partial<Record<IndoorEntityAlias, readonly [string, '°F' | '%' | 'hPa' | 'ppm' | 'µg/m³' | 'index', number]>>;
 
 function source(alias: IndoorEntityAlias) {
@@ -171,7 +173,7 @@ export class HomeAssistantIndoorAdapter {
       const alias = purifier.alias;
       purifier.readings = {
         aqi: getReading(`${alias}.aqi`), pm25: getReading(`${alias}.pm25`),
-        pm10: getReading(`${alias}.pm10`), filterLife: getReading(`${alias}.filter_life`),
+        pm10: getReading(`${alias}.pm10`), filterLife: getReading(`${alias}.filter_life`), preFilterLife: getReading(`${alias}.pre_filter_life`),
       };
       purifier.sourceState = purifier.readings.pm25.metadata.sourceState;
       const controls = this.controls?.[alias];
