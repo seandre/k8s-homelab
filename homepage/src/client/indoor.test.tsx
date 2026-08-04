@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { healthyBootstrapFixture } from '../shared/fixtures.js';
 import { unsupportedIndoorFixture } from '../shared/indoor-fixtures.js';
 import { computeHistoryDomain, nextHistoryRefreshDelay, ventilationTimeRemaining } from './indoor-chart.js';
-import { HistoryGraph, IndoorOverviewCard, IndoorScreen } from './indoor.js';
+import { HistoryGraph, IndoorOverviewCard, IndoorScreen, purifierSeverity } from './indoor.js';
 
 describe('indoor dashboard', () => {
   it('uses the defined green theme token for active controls', () => {
@@ -22,6 +22,18 @@ describe('indoor dashboard', () => {
   it('formats the ventilation countdown as zero-padded minutes and seconds', () => {
     expect(ventilationTimeRemaining('2026-07-28T12:30:00.000Z', Date.parse('2026-07-28T12:00:01.000Z'))).toBe('29:59');
     expect(ventilationTimeRemaining('2026-07-28T12:00:00.000Z', Date.parse('2026-07-28T12:00:01.000Z'))).toBe('00:00');
+  });
+
+  it('raises Coway card status when either filter nears maintenance', () => {
+    const purifier = structuredClone(healthyBootstrapFixture.indoor.purifiers[0]);
+    expect(purifierSeverity(purifier)).toBe('OK');
+    purifier.readings.preFilterLife.value = 10;
+    expect(purifierSeverity(purifier)).toBe('WARN');
+    purifier.readings.preFilterLife.value = 50;
+    purifier.readings.hepaFilterLife.value = 2;
+    expect(purifierSeverity(purifier)).toBe('CRIT');
+    purifier.readings.hepaFilterLife.metadata.freshness = 'STALE';
+    expect(purifierSeverity(purifier)).toBe('OK');
   });
 
   it('renders normalized readings, both purifiers, history windows, and capability controls', () => {

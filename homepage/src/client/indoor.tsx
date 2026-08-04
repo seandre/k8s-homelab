@@ -36,6 +36,17 @@ function sourceSeverity(state: 'AVAILABLE' | 'DEGRADED' | 'UNAVAILABLE') {
   return state === 'AVAILABLE' ? 'OK' as const : state === 'DEGRADED' ? 'WARN' as const : 'CRIT' as const;
 }
 
+export function purifierSeverity(purifier: PurifierState) {
+  const dependencySeverity = sourceSeverity(purifier.sourceState);
+  if (dependencySeverity !== 'OK') return dependencySeverity;
+  const currentFilterValues = [purifier.readings.preFilterLife, purifier.readings.hepaFilterLife]
+    .filter((reading) => reading.metadata.freshness === 'CURRENT' && reading.value !== null)
+    .map((reading) => reading.value as number);
+  if (!currentFilterValues.length) return 'OK' as const;
+  const lowest = Math.min(...currentFilterValues);
+  return lowest <= 2 ? 'CRIT' as const : lowest <= 10 ? 'WARN' as const : 'OK' as const;
+}
+
 function panelFreshness(value: IndoorState['rooms'][number]['freshness']) {
   return value === 'UNAVAILABLE' ? 'NO_DATA' as const : value;
 }
@@ -803,13 +814,13 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
           </Panel>
         </section>
         <section className="purifier-grid" aria-label="Air purifier settings">
-          {indoor.purifiers.map((purifier) => <Panel key={purifier.alias} title={`${purifier.room === 'living_room' ? 'Living Room' : 'Bedroom'} Air Purifier`} severity={sourceSeverity(purifier.sourceState)} freshness={panelFreshness(purifier.readings.pm25.metadata.freshness)} statusDetail={`${purifier.power === null ? 'NO DATA' : purifier.power ? 'ON' : 'OFF'} · ${purifier.preset ?? '—'} · SPEED ${purifier.speed ?? '—'} · PRE-FILTER ${display(purifier.readings.preFilterLife)}% · HEPA ${display(purifier.readings.hepaFilterLife)}%`}><PurifierControls purifier={purifier} review={setReview} /></Panel>)}
+          {indoor.purifiers.map((purifier) => <Panel key={purifier.alias} title={`${purifier.room === 'living_room' ? 'Living Room' : 'Bedroom'} Air Purifier`} severity={purifierSeverity(purifier)} freshness={panelFreshness(purifier.readings.pm25.metadata.freshness)} statusDetail={`${purifier.power === null ? 'NO DATA' : purifier.power ? 'ON' : 'OFF'} · ${purifier.preset ?? '—'} · SPEED ${purifier.speed ?? '—'} · PRE-FILTER ${display(purifier.readings.preFilterLife)}% · HEPA ${display(purifier.readings.hepaFilterLife)}%`}><PurifierControls purifier={purifier} review={setReview} /></Panel>)}
         </section>
       </section>
       <section className="indoor-additional-sensors" aria-labelledby="indoor-additional-sensors-title">
         <div className="section-heading"><h2 id="indoor-additional-sensors-title">Additional Sensor Data</h2></div>
         <section className="indoor-comparison-grid" aria-label="Additional indoor sensor data">
-          {indoor.purifiers.map((purifier) => <Panel className="additional-sensor-panel" key={purifier.alias} title={`${purifier.room === 'living_room' ? 'Living Room' : 'Bedroom'} Air Purifier Sensor Data`} severity={sourceSeverity(purifier.sourceState)} freshness={panelFreshness(purifier.readings.pm25.metadata.freshness)} statusDetail={`PM2.5 ${display(purifier.readings.pm25)} µg/m³ · AQI ${display(purifier.readings.aqi)}`}><div className="indoor-reading-grid"><Metric label="PM2.5" value={display(purifier.readings.pm25)} unit="µg/m³" /><Metric label="PM10" value={display(purifier.readings.pm10)} unit="µg/m³" /><Metric label="AQI" value={display(purifier.readings.aqi)} /><Metric label="PRE-FILTER" value={display(purifier.readings.preFilterLife)} unit="%" /><Metric label="HEPA FILTER" value={display(purifier.readings.hepaFilterLife)} unit="%" /></div></Panel>)}
+          {indoor.purifiers.map((purifier) => <Panel className="additional-sensor-panel" key={purifier.alias} title={`${purifier.room === 'living_room' ? 'Living Room' : 'Bedroom'} Air Purifier Sensor Data`} severity={purifierSeverity(purifier)} freshness={panelFreshness(purifier.readings.pm25.metadata.freshness)} statusDetail={`PM2.5 ${display(purifier.readings.pm25)} µg/m³ · AQI ${display(purifier.readings.aqi)}`}><div className="indoor-reading-grid"><Metric label="PM2.5" value={display(purifier.readings.pm25)} unit="µg/m³" /><Metric label="PM10" value={display(purifier.readings.pm10)} unit="µg/m³" /><Metric label="AQI" value={display(purifier.readings.aqi)} /><Metric label="PRE-FILTER" value={display(purifier.readings.preFilterLife)} unit="%" /><Metric label="HEPA FILTER" value={display(purifier.readings.hepaFilterLife)} unit="%" /></div></Panel>)}
           <Panel className="aranet-panel" title="Living Room Aranet" severity={sourceSeverity(aranet.sourceState)} freshness={panelFreshness(aranet.readings.co2.metadata.freshness)} statusDetail={`CO₂ ${display(aranet.readings.co2)} ppm · ${display(aranet.readings.temperature, 1)}°F`}>
             <div className="indoor-reading-grid"><Metric label="TEMPERATURE" value={display(aranet.readings.temperature, 1)} unit="°F" /><Metric label="HUMIDITY" value={display(aranet.readings.humidity)} unit="%" /><Metric label="PRESSURE" value={display(aranet.readings.pressure)} unit="hPa" /><Metric label="CO₂" value={display(aranet.readings.co2)} unit="ppm" /><Metric label="BATTERY" value={display(aranet.readings.battery)} unit="%" /></div>
           </Panel>

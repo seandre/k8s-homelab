@@ -175,6 +175,11 @@ separate incident.
 Notifications use the Home Assistant Companion App. Their only mobile action
 opens `/indoor`; notification actions cannot call a service or operate a device.
 
+Coway control and sensor cards immediately use warning status when either the
+current pre-filter or HEPA/MAX2 reading is at or below 10%, and critical status
+at or below 2%. Notification incidents retain the one-hour dwell and 15%
+recovery thresholds above to avoid noisy maintenance alerts.
+
 ## Bootstrap Schema v4 Draft
 
 Schema v4 is a deliberate breaking boundary for the indoor contract. A schema-v3
