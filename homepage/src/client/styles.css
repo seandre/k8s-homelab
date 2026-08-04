@@ -606,6 +606,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .history-window button { flex: 1; }
   .indoor-controls, .indoor-controls form { align-items: stretch; flex-direction: column; }
   .indoor-controls select, .indoor-controls input, .indoor-controls button { width: 100%; }
+  .purifier-grid .panel-state { min-width: 0; max-width: 62%; }
+  .purifier-grid .panel-state-detail { white-space: normal; overflow-wrap: anywhere; }
   .pve-cpu-region { grid-template-columns: 1fr; }
   .proxmox-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .pve-cpu-summary { grid-template-columns: repeat(4, minmax(0, 1fr)); border-left: 0; border-top: 1px dotted var(--divider); padding: 0.35rem 0 0; }
