@@ -140,12 +140,13 @@ function trendTone(metric: string, value: number, thresholds: HistoryThreshold[]
   return 'green';
 }
 
-export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, thresholds, scale, colorByThreshold = false }: {
+export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, thresholds, secondaryThresholds = [], scale, colorByThreshold = false }: {
   series: TimeSeries | undefined;
   secondarySeries?: TimeSeries;
   label: string;
   secondaryLabel?: string;
   thresholds: HistoryThreshold[];
+  secondaryThresholds?: HistoryThreshold[];
   scale: HistoryScale;
   colorByThreshold?: boolean;
 }) {
@@ -204,12 +205,16 @@ export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, t
       'airgradient_living_room.tvoc_index',
       'airgradient_living_room.nox_index',
     ].includes(series.metric)));
-  const traceTone = (value: number): TraceTone => trendTone(series?.metric ?? '', value, thresholds);
+  const traceTone = (value: number): TraceTone => colorByThreshold
+    ? thresholds.filter((threshold) => value >= threshold.value).at(-1)?.tone ?? 'green'
+    : trendTone(series?.metric ?? '', value, thresholds);
   const traceBoundaries = humidityTrace
     ? [humidityLow!, humidityHigh!]
     : temperatureTrace
       ? [temperatureDarkBlue!, temperatureLightBlue!, yellowThreshold!, redThreshold!]
-      : [...(blueThreshold === undefined ? [] : [blueThreshold]), yellowThreshold!, redThreshold!];
+      : colorByThreshold
+        ? thresholds.map(({ value }) => value)
+        : [...(blueThreshold === undefined ? [] : [blueThreshold]), yellowThreshold!, redThreshold!];
   const traceStops = thresholdTrace ? chartPoints.flatMap((point, index) => {
     if (index === chartPoints.length - 1) return [{ offset: point.x, tone: traceTone(primaryValues[index]!) }];
     const nextPoint = chartPoints[index + 1]!;
@@ -228,6 +233,26 @@ export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, t
       stops.push(
         { offset: crossing.offset, tone: traceTone(crossing.threshold - direction) },
         { offset: crossing.offset, tone: traceTone(crossing.threshold + direction) },
+      );
+    }
+    return stops;
+  }) : [];
+  const secondaryTone = (value: number): TraceTone => secondaryThresholds.filter((threshold) => value >= threshold.value).at(-1)?.tone ?? 'green';
+  const secondaryTraceStops = secondaryThresholds.length ? secondaryChartPoints.flatMap((point, index) => {
+    if (index === secondaryChartPoints.length - 1) return [{ offset: point.x, tone: secondaryTone(secondaryValues[index]!) }];
+    const nextPoint = secondaryChartPoints[index + 1]!;
+    const value = secondaryValues[index]!;
+    const nextValue = secondaryValues[index + 1]!;
+    const crossings = secondaryThresholds.map(({ value: threshold }) => threshold)
+      .filter((threshold) => (value < threshold && nextValue >= threshold) || (value >= threshold && nextValue < threshold))
+      .map((threshold) => ({ offset: point.x + ((threshold - value) / (nextValue - value)) * (nextPoint.x - point.x), threshold }))
+      .sort((a, b) => a.offset - b.offset);
+    const stops = [{ offset: point.x, tone: secondaryTone(value) }];
+    for (const crossing of crossings) {
+      const direction = nextValue > value ? 0.001 : -0.001;
+      stops.push(
+        { offset: crossing.offset, tone: secondaryTone(crossing.threshold - direction) },
+        { offset: crossing.offset, tone: secondaryTone(crossing.threshold + direction) },
       );
     }
     return stops;
@@ -295,9 +320,11 @@ export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, t
           }}
         >
           <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-            {thresholdTrace ? <defs><linearGradient id={gradientId} gradientUnits="userSpaceOnUse" x1={plotLeft} x2={plotRight}>
+            {thresholdTrace || secondaryTraceStops.length ? <defs>{thresholdTrace ? <linearGradient id={gradientId} gradientUnits="userSpaceOnUse" x1={plotLeft} x2={plotRight}>
               {traceStops.map((stop, index) => <stop key={`${stop.offset}-${index}`} offset={`${stop.offset}%`} className={`history-trace-stop history-trace-stop-${stop.tone}`} />)}
-            </linearGradient></defs> : null}
+            </linearGradient> : null}{secondaryTraceStops.length ? <linearGradient id={`${gradientId}-secondary`} gradientUnits="userSpaceOnUse" x1={plotLeft} x2={plotRight}>
+              {secondaryTraceStops.map((stop, index) => <stop key={`${stop.offset}-${index}`} offset={`${stop.offset}%`} className={`history-trace-stop history-trace-stop-${stop.tone}`} />)}
+            </linearGradient> : null}</defs> : null}
             {ticks.map((value) => <line key={value} x1={plotLeft} x2={plotRight} y1={y(value)} y2={y(value)} className="y-axis-grid" />)}
             {xTicks.map(({ x }) => <line key={x} x1={x} x2={x} y1={plotTop} y2={plotBottom} className="x-axis-grid" />)}
             <line x1={plotLeft} x2={plotLeft} y1={plotTop} y2={plotBottom} className="y-axis-line" />
@@ -308,8 +335,8 @@ export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, t
               ? <path d={smoothSvgPath(chartPoints)} className="history-line history-line-smoothed" style={thresholdTrace ? { stroke: `url(#${gradientId})` } : undefined} vectorEffect="non-scaling-stroke" />
               : chartPoints.length ? <polyline points={points} className="history-line" style={thresholdTrace ? { stroke: `url(#${gradientId})` } : undefined} vectorEffect="non-scaling-stroke" /> : null}
             {secondaryChartPoints.length > 2
-              ? <path d={smoothSvgPath(secondaryChartPoints)} className="history-line history-line-secondary" vectorEffect="non-scaling-stroke" />
-              : secondaryChartPoints.length ? <polyline points={secondaryPoints} className="history-line history-line-secondary" vectorEffect="non-scaling-stroke" /> : null}
+              ? <path d={smoothSvgPath(secondaryChartPoints)} className="history-line history-line-secondary" style={secondaryTraceStops.length ? { stroke: `url(#${gradientId}-secondary)` } : undefined} vectorEffect="non-scaling-stroke" />
+              : secondaryChartPoints.length ? <polyline points={secondaryPoints} className="history-line history-line-secondary" style={secondaryTraceStops.length ? { stroke: `url(#${gradientId}-secondary)` } : undefined} vectorEffect="non-scaling-stroke" /> : null}
             {hoveredChartPoint ? <>
               <line x1={hoveredChartPoint.x} x2={hoveredChartPoint.x} y1={plotTop} y2={plotBottom} className="history-crosshair" />
             </> : null}

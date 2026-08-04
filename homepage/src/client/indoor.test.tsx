@@ -358,6 +358,7 @@ describe('indoor dashboard', () => {
       label="Particulate matter"
       secondaryLabel="PM10"
       thresholds={[{ value: 5, tone: 'yellow' }, { value: 15, tone: 'red' }]}
+      secondaryThresholds={[{ value: 10, tone: 'yellow' }, { value: 20, tone: 'red' }]}
       scale={{ minSpan: 20, hardMin: 0 }}
       series={{
         metric: 'airgradient_living_room.pm25',
@@ -385,6 +386,7 @@ describe('indoor dashboard', () => {
     expect(markup).toContain('<path');
     expect(markup).toContain('history-line-smoothed');
     expect(markup).toContain('history-line-secondary');
+    expect(markup).toMatch(/history-line history-line-secondary" style="stroke:url\(#history-trace-[^"]+-secondary\)/);
     expect(markup).toContain('graph legend');
     expect(markup).toContain('PM2.5');
     expect(markup).toContain('PM10');
