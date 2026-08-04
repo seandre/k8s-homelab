@@ -140,7 +140,7 @@ function trendTone(metric: string, value: number, thresholds: HistoryThreshold[]
   return 'green';
 }
 
-export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, thresholds, secondaryThresholds = [], scale, colorByThreshold = false }: {
+export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, thresholds, secondaryThresholds = [], scale, colorByThreshold = false, renderAs = 'line' }: {
   series: TimeSeries | undefined;
   secondarySeries?: TimeSeries;
   label: string;
@@ -149,6 +149,7 @@ export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, t
   secondaryThresholds?: HistoryThreshold[];
   scale: HistoryScale;
   colorByThreshold?: boolean;
+  renderAs?: 'line' | 'bar';
 }) {
   const plot = useRef<HTMLDivElement>(null);
   const gradientId = `history-trace-${useId().replaceAll(':', '')}`;
@@ -258,7 +259,7 @@ export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, t
     return stops;
   }) : [];
   const hoveredTraceTone: TraceTone = series?.points.length
-    ? thresholdTrace && hoveredPoint ? traceTone(hoveredPoint.value) : 'green'
+    ? renderAs === 'bar' ? 'blue' : thresholdTrace && hoveredPoint ? traceTone(hoveredPoint.value) : 'green'
     : 'secondary';
   const selectNearestPoint = (clientX: number) => {
     const bounds = plot.current?.getBoundingClientRect();
@@ -271,6 +272,7 @@ export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, t
   };
   const points = chartPoints.map((point) => `${point.x},${point.y}`).join(' ');
   const secondaryPoints = secondaryChartPoints.map((point) => `${point.x},${point.y}`).join(' ');
+  const barWidth = Math.max(0.5, Math.min(6, 72 / Math.max(chartPoints.length, 1)));
   const smoothMetric = [
     'aranet_living_room.temperature',
     'aranet_living_room.humidity',
@@ -331,7 +333,14 @@ export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, t
             {thresholds.filter(({ value }) => value >= min && value <= max).map(({ value, tone }) =>
               <line key={value} x1={plotLeft} x2={plotRight} y1={y(value)} y2={y(value)} className={`threshold-line threshold-tone-${tone}`} />,
             )}
-            {chartPoints.length && smoothMetric
+            {renderAs === 'bar' ? chartPoints.map((point, index) => <rect
+              key={`${series!.points[index]!.timestamp}-${index}`}
+              className="history-bar history-bar-blue"
+              x={Math.max(plotLeft, point.x - barWidth / 2)}
+              y={point.y}
+              width={Math.min(barWidth, plotRight - Math.max(plotLeft, point.x - barWidth / 2))}
+              height={Math.max(0, plotBottom - point.y)}
+            />) : chartPoints.length && smoothMetric
               ? <path d={smoothSvgPath(chartPoints)} className="history-line history-line-smoothed" style={thresholdTrace ? { stroke: `url(#${gradientId})` } : undefined} vectorEffect="non-scaling-stroke" />
               : chartPoints.length ? <polyline points={points} className="history-line" style={thresholdTrace ? { stroke: `url(#${gradientId})` } : undefined} vectorEffect="non-scaling-stroke" /> : null}
             {secondaryChartPoints.length > 2

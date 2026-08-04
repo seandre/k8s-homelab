@@ -272,6 +272,26 @@ describe('indoor dashboard', () => {
     expect(markup).toContain('history-trace-stop-red');
   });
 
+  it('renders outdoor wind as blue bars from a zero baseline', () => {
+    const markup = renderToStaticMarkup(<HistoryGraph
+      label="Wind speed"
+      renderAs="bar"
+      thresholds={[]}
+      scale={{ fixedMin: 0, minSpan: 20, digits: 0 }}
+      series={{
+        metric: 'outdoor.wind_speed', unit: 'mph', window: '24h',
+        points: [
+          { timestamp: '2026-08-04T00:00:00.000Z', value: 4 },
+          { timestamp: '2026-08-04T01:00:00.000Z', value: 12 },
+        ],
+        metadata: { source: 'fixture', observedAt: '2026-08-04T01:00:00.000Z', freshness: 'CURRENT', severity: 'OK' },
+      }}
+    />);
+    expect(markup.match(/class="history-bar history-bar-blue"/g)).toHaveLength(2);
+    expect(markup).not.toContain('class="history-line"');
+    expect(markup).toContain('>0</span>');
+  });
+
   it('renders proportional y-axis labels and real history-window endpoints', () => {
     const markup = renderToStaticMarkup(<HistoryGraph
       label="Temperature"
