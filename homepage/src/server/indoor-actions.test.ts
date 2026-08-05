@@ -339,6 +339,33 @@ describe('indoor action gateway', () => {
     expect(calls.filter((command) => command.type === 'NEST_SET_FAN_TIMER')).toHaveLength(1);
   });
 
+  it('uses Coways already in Rapid when Nest is the only failed start command', async () => {
+    let clock = Date.parse('2026-08-05T15:00:00Z');
+    const state = structuredClone(healthyBootstrapFixture);
+    for (const purifier of state.indoor.purifiers) {
+      purifier.power = true;
+      purifier.preset = 'RAPID';
+      purifier.speed = 3;
+    }
+    const executor = { execute: vi.fn(async () => { throw new Error('Nest OAuth unavailable'); }) };
+    const gateway = new IndoorActionGateway(
+      () => state, executor, () => {}, () => new Date(clock),
+      async (ms) => { clock += ms; }, 10_000, 10, undefined, 30_000,
+    );
+    await expect(gateway.accept({
+      idempotencyKey: '61755b3c-43e3-434a-99f7-a2a5ff42fc15',
+      expectedStateVersion: indoorVentilationStateVersion(state.indoor), confirmed: true,
+      command: { type: 'VENTILATE', target: 'indoor_environment', durationMinutes: 30 },
+    }, context)).resolves.toMatchObject({ ok: true });
+    await vi.waitFor(() => expect(gateway.statuses()[0]).toMatchObject({
+      status: 'SUCCEEDED', message: 'Completed available-device ventilation; unavailable: nest living room.',
+    }));
+    expect(executor.execute).toHaveBeenCalledTimes(1);
+    expect(state.indoor.purifiers).toEqual(expect.arrayContaining([
+      expect.objectContaining({ preset: 'RAPID', power: true }),
+    ]));
+  });
+
   it('fails Ventilate closed unless all three controls are available and rejects a second run', async () => {
     const unavailable = fixture();
     unavailable.indoor.thermostats[0].sourceState = 'UNAVAILABLE';

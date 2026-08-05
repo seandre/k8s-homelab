@@ -458,7 +458,12 @@ export class IndoorActionGateway {
         progress.unavailableTargets = attemptedTargets.filter((_, index) => starts[index]!.status === 'rejected');
         progress.changedTargets = attemptedTargets.filter((_, index) => starts[index]!.status === 'fulfilled');
         for (const target of progress.unavailableTargets) this.running.delete(target);
-        if (!progress.changedTargets.length) throw new Error('No ventilation target accepted its start command.');
+        const alreadyVentilating = VENTILATION_TARGETS.filter((target) => !attemptedTargets.includes(target)).filter((target) => {
+          if (target === 'nest_living_room') return this.ventilationState(snapshot, target) === 'on';
+          const purifier = snapshot.purifiers.find((item) => item.alias === target)!;
+          return purifier.power === true && purifier.preset === 'RAPID';
+        });
+        if (!progress.changedTargets.length && !alreadyVentilating.length) throw new Error('No ventilation target accepted its start command.');
         const commandCompletedAt = this.now().getTime();
         progress.activeStates = Object.fromEntries(progress.changedTargets.map((target) => [
           target,
