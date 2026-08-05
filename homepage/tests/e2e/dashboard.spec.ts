@@ -259,7 +259,7 @@ test('renders the responsive indoor dashboard and requires review before control
   await expect(ventilate).not.toHaveClass(/ventilate-button-active/);
   await ventilate.click();
   const ventilationReview = page.getByRole('dialog', { name: 'Confirm change' });
-  await expect(ventilationReview).toContainText('Both Coways Rapid + Nest fan for 30 minutes');
+  await expect(ventilationReview).toContainText('Coways Rapid + Nest fan when available for 30 minutes');
   await expect(ventilationReview).toContainText('Nest + Coway clouds');
   await ventilationReview.getByRole('button', { name: 'Save' }).click();
   await expect(ventilationReview).toBeHidden();

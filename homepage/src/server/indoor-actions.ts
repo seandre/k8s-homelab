@@ -46,6 +46,7 @@ const VentilationProgressSchema = z.object({
     coway_bedroom: z.string().optional(),
   }).strict(),
   overriddenTargets: z.array(VentilationTargetSchema),
+  unavailableTargets: z.array(VentilationTargetSchema).optional(),
   cancelRequested: z.boolean().optional(),
   lastRapidAt: z.object({
     coway_living_room: z.number().int().nonnegative().optional(),
@@ -451,8 +452,13 @@ export class IndoorActionGateway {
       if (progress.phase === 'STARTING') {
         for (const alias of progress.changedTargets) this.running.add(alias);
         const snapshot = (await this.bootstrap()).indoor;
-        await Promise.all(progress.changedTargets.map((target) =>
+        const attemptedTargets = [...progress.changedTargets];
+        const starts = await Promise.allSettled(attemptedTargets.map((target) =>
           this.executor.execute(this.ventilationStartCommand(target, snapshot))));
+        progress.unavailableTargets = attemptedTargets.filter((_, index) => starts[index]!.status === 'rejected');
+        progress.changedTargets = attemptedTargets.filter((_, index) => starts[index]!.status === 'fulfilled');
+        for (const target of progress.unavailableTargets) this.running.delete(target);
+        if (!progress.changedTargets.length) throw new Error('No ventilation target accepted its start command.');
         const commandCompletedAt = this.now().getTime();
         progress.activeStates = Object.fromEntries(progress.changedTargets.map((target) => [
           target,
@@ -467,7 +473,9 @@ export class IndoorActionGateway {
           ...action.accepted,
           resolvedAt: null,
           endsAt: new Date(progress.runUntil).toISOString(),
-          message: 'Ventilating for 30 minutes; Coway Rapid is maintained until cancelled or overridden.',
+          message: progress.unavailableTargets.length
+            ? `Ventilating available devices for 30 minutes; unavailable: ${progress.unavailableTargets.map((target) => target.replaceAll('_', ' ')).join(', ')}.`
+            : 'Ventilating for 30 minutes; Coway Rapid is maintained until cancelled or overridden.',
         };
         for (const alias of progress.changedTargets) this.running.delete(alias);
         await this.persist();
@@ -526,6 +534,8 @@ export class IndoorActionGateway {
           : 'Cancelled; prior fan states were restored.';
       } else if (progress.overriddenTargets.length) {
         message = `Completed; preserved manual overrides for ${progress.overriddenTargets.map((target) => target.replaceAll('_', ' ')).join(', ')}.`;
+      } else if (progress.unavailableTargets?.length) {
+        message = `Completed available-device ventilation; unavailable: ${progress.unavailableTargets.map((target) => target.replaceAll('_', ' ')).join(', ')}.`;
       }
     } catch {
       if (progress.phase === 'STARTING') {

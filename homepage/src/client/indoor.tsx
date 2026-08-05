@@ -795,7 +795,7 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
     { type: 'VENTILATE', target: 'indoor_environment', durationMinutes: 30 },
     'Indoor environment',
     `Nest fan ${thermostat.fanTimerEndsAt ? 'on' : 'off'}; Coways ${indoor.purifiers.map((purifier) => purifier.power ? `speed ${purifier.speed ?? 'unknown'}` : 'off').join(' / ')}`,
-    'Both Coways Rapid + Nest fan for 30 minutes',
+    'Coways Rapid + Nest fan when available for 30 minutes',
     'MULTI_CLOUD',
     indoorVentilationStateVersion(indoor),
   ))}>{ventilationActive ? 'Ventilating…' : 'Ventilate'}</button>{ventilationActive && ventilationEndsAt ? <span className="ventilation-remaining" role="timer">{ventilationTimeRemaining(ventilationEndsAt, countdownNow)} remaining</span> : null}{ventilationActive ? <button className="cancel-ventilation-button" type="button" disabled={cancellingVentilation} onClick={() => setReview(requestReview(
