@@ -254,14 +254,17 @@ describe('indoor dashboard', () => {
     const markup = renderToStaticMarkup(<HistoryGraph
       label="Outdoor AQI"
       colorByThreshold
-      thresholds={[{ value: 51, tone: 'yellow' }, { value: 101, tone: 'red' }]}
-      scale={{ fixedMin: 0, fixedMax: 200, ticks: [0, 50, 100, 150, 200] }}
+      thresholds={[{ value: 51, tone: 'yellow' }, { value: 101, tone: 'orange' }, { value: 151, tone: 'red' }, { value: 201, tone: 'purple' }, { value: 301, tone: 'maroon' }]}
+      scale={{ fixedMin: 0, fixedMax: 350, ticks: [0, 50, 100, 150, 200, 250, 300, 350] }}
       series={{
         metric: 'outdoor.us_aqi', unit: 'AQI', window: '24h',
         points: [
           { timestamp: '2026-08-04T00:00:00.000Z', value: 40 },
           { timestamp: '2026-08-04T01:00:00.000Z', value: 75 },
           { timestamp: '2026-08-04T02:00:00.000Z', value: 135 },
+          { timestamp: '2026-08-04T03:00:00.000Z', value: 175 },
+          { timestamp: '2026-08-04T04:00:00.000Z', value: 250 },
+          { timestamp: '2026-08-04T05:00:00.000Z', value: 325 },
         ],
         metadata: { source: 'fixture', observedAt: '2026-08-04T02:00:00.000Z', freshness: 'CURRENT', severity: 'OK' },
       }}
@@ -269,7 +272,10 @@ describe('indoor dashboard', () => {
     expect(markup).toContain('style="stroke:url(#history-trace-');
     expect(markup).toContain('history-trace-stop-green');
     expect(markup).toContain('history-trace-stop-yellow');
+    expect(markup).toContain('history-trace-stop-orange');
     expect(markup).toContain('history-trace-stop-red');
+    expect(markup).toContain('history-trace-stop-purple');
+    expect(markup).toContain('history-trace-stop-maroon');
   });
 
   it('renders outdoor wind as blue bars from a zero baseline', () => {

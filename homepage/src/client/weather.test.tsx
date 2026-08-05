@@ -28,6 +28,10 @@ describe('Weather fixture view', () => {
     expect(html).toContain('Wind speed');
     expect(html).toContain('Outdoor history window');
     expect(html).toContain('Data Source: Open-Meteo');
+    expect(html).toContain('Visual scale · warm ≥80°F · hot ≥95°F');
+    expect(html).toContain('Visual scale · humid ≥70% · very humid ≥85%');
+    expect(html).toContain('Visual scale · measurable ≥0.01 in · heavier ≥0.10 in');
+    expect(html).toContain('Visual scale · blue bars · height indicates speed');
     expect(html.match(/NO DATA ·/g)).toHaveLength(6);
   });
 

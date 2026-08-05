@@ -495,6 +495,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .indoor-history-graph { min-width: 0; margin: 0; border: 1px solid var(--divider); background: var(--surface); padding: 0.55rem; }
 .indoor-history-graph figcaption { display: flex; justify-content: space-between; gap: 0.5rem; color: var(--muted); font-size: 0.62rem; }
 .indoor-history-graph figcaption strong { color: var(--title); font-size: 0.82rem; font-weight: 700; line-height: 1.15; }
+.indoor-history-graph figcaption > div { display: grid; gap: 0.2rem; }
+.history-scale-note { color: var(--muted); font: 0.5rem/1.2 var(--mono); letter-spacing: 0.03em; }
 .indoor-history-graph figcaption > span { display: inline-flex; align-items: baseline; gap: 0.3rem; white-space: nowrap; }
 .history-legend { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.35rem; color: var(--muted); font: 0.56rem/1 var(--mono); }
 .history-legend span { display: inline-flex; align-items: center; gap: 0.3rem; }
@@ -515,7 +517,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .y-axis-label.threshold-tone-light-blue { color: var(--threshold-light-blue); }
 .y-axis-label.threshold-tone-dark-blue { color: var(--threshold-dark-blue); }
 .y-axis-label.threshold-tone-yellow { color: var(--threshold-yellow); }
+.y-axis-label.threshold-tone-orange { color: var(--threshold-orange); }
 .y-axis-label.threshold-tone-red { color: var(--threshold-red); }
+.y-axis-label.threshold-tone-purple { color: var(--threshold-purple); }
+.y-axis-label.threshold-tone-maroon { color: var(--threshold-maroon); }
 .y-axis-unit { position: absolute; top: 0; left: 0; color: var(--muted); font-size: 6px; white-space: nowrap; }
 .y-axis-line { stroke: var(--muted); stroke-width: 0.55; vector-effect: non-scaling-stroke; }
 .y-axis-grid { stroke: var(--divider); stroke-width: 0.45; vector-effect: non-scaling-stroke; }
@@ -525,13 +530,19 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .threshold-line.threshold-tone-light-blue { stroke: var(--threshold-light-blue); }
 .threshold-line.threshold-tone-dark-blue { stroke: var(--threshold-dark-blue); }
 .threshold-line.threshold-tone-yellow { stroke: var(--threshold-yellow); }
+.threshold-line.threshold-tone-orange { stroke: var(--threshold-orange); }
 .threshold-line.threshold-tone-red { stroke: var(--threshold-red); }
+.threshold-line.threshold-tone-purple { stroke: var(--threshold-purple); }
+.threshold-line.threshold-tone-maroon { stroke: var(--threshold-maroon); }
 .history-trace-stop-green { stop-color: var(--focus); }
 .history-trace-stop-blue { stop-color: var(--threshold-blue); }
 .history-trace-stop-light-blue { stop-color: var(--threshold-light-blue); }
 .history-trace-stop-dark-blue { stop-color: var(--threshold-dark-blue); }
 .history-trace-stop-yellow { stop-color: var(--threshold-yellow); }
+.history-trace-stop-orange { stop-color: var(--threshold-orange); }
 .history-trace-stop-red { stop-color: var(--threshold-red); }
+.history-trace-stop-purple { stop-color: var(--threshold-purple); }
+.history-trace-stop-maroon { stop-color: var(--threshold-maroon); }
 .history-crosshair { stroke: var(--focus); stroke-width: 1; stroke-dasharray: 3 2; vector-effect: non-scaling-stroke; }
 .history-tooltip { position: absolute; z-index: 2; display: grid; gap: 0.35rem; min-width: max-content; max-width: 12rem; translate: 0.5rem -50%; border: 1px solid var(--divider); border-radius: 0.3rem; background: var(--surface); box-shadow: 0 0.35rem 1rem rgb(0 0 0 / 24%); padding: 0.5rem 0.6rem; pointer-events: none; color: var(--fg); font: 0.62rem/1.25 var(--mono); }
 .history-tooltip-left { translate: calc(-100% - 0.5rem) -50%; }
@@ -542,14 +553,17 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .history-tooltip .history-tooltip-marker-light-blue { background: var(--threshold-light-blue); }
 .history-tooltip .history-tooltip-marker-dark-blue { background: var(--threshold-dark-blue); }
 .history-tooltip .history-tooltip-marker-yellow { background: var(--threshold-yellow); }
+.history-tooltip .history-tooltip-marker-orange { background: var(--threshold-orange); }
 .history-tooltip .history-tooltip-marker-red { background: var(--threshold-red); }
+.history-tooltip .history-tooltip-marker-purple { background: var(--threshold-purple); }
+.history-tooltip .history-tooltip-marker-maroon { background: var(--threshold-maroon); }
 .history-tooltip .history-tooltip-marker-secondary { background: var(--muted); }
 .history-tooltip .history-tooltip-secondary { border: 1px solid var(--muted); background: transparent; }
 .x-axis-labels { position: relative; grid-column: 2; padding-top: 0.25rem; color: var(--muted); font: 0.52rem/1 var(--mono); }
 .x-axis-labels span { position: absolute; translate: -50% 0; white-space: nowrap; }
 .x-axis-labels span:first-child { translate: 0 0; }
 .x-axis-labels span:last-child { translate: -100% 0; }
-.indoor-no-data { display: grid; place-items: center; min-height: 11.5rem; border: 1px solid var(--divider); color: var(--muted); font-size: 0.64rem; }
+.indoor-no-data { display: grid; align-content: center; justify-items: center; gap: 0.35rem; min-height: 11.5rem; border: 1px solid var(--divider); color: var(--muted); font-size: 0.64rem; }
 .purifier-grid { margin-top: 1rem; }
 .indoor-action-history { margin-top: 1rem; }
 .indoor-action-status { display: grid; gap: 0.35rem; }

@@ -8,15 +8,15 @@ import { aqiTone, pm10Tone, pm25Tone } from './weather-status.js';
 
 const WINDOWS = ['1h', '3h', '6h', '24h', '7d', '30d'] as const;
 type Window = typeof WINDOWS[number];
-type WeatherHistoryThreshold = { value: number; tone: 'blue' | 'light-blue' | 'dark-blue' | 'yellow' | 'red' };
-type WeatherHistoryMetric = { alias: string; label: string; thresholds: WeatherHistoryThreshold[]; secondaryThresholds?: WeatherHistoryThreshold[]; scale: HistoryScale; secondaryAlias?: string; secondaryLabel?: string; colorByThreshold?: boolean; renderAs?: 'line' | 'bar' };
+type WeatherHistoryThreshold = { value: number; tone: 'blue' | 'light-blue' | 'dark-blue' | 'yellow' | 'orange' | 'red' | 'purple' | 'maroon' };
+type WeatherHistoryMetric = { alias: string; label: string; thresholds: WeatherHistoryThreshold[]; secondaryThresholds?: WeatherHistoryThreshold[]; scale: HistoryScale; secondaryAlias?: string; secondaryLabel?: string; colorByThreshold?: boolean; renderAs?: 'line' | 'bar'; scaleNote?: string };
 const HISTORY_METRICS: WeatherHistoryMetric[] = [
-  { alias: 'outdoor.us_aqi', label: 'Air quality index', colorByThreshold: true, thresholds: [{ value: 51, tone: 'yellow' }, { value: 101, tone: 'red' }], scale: { fixedMin: 0, fixedMax: 350, ticks: [0, 50, 100, 150, 200, 250, 300, 350], digits: 0 } },
-  { alias: 'outdoor.pm25', secondaryAlias: 'outdoor.pm10', secondaryLabel: 'PM10', label: 'Particulate matter', colorByThreshold: true, thresholds: [{ value: 9.1, tone: 'yellow' }, { value: 35.5, tone: 'red' }], secondaryThresholds: [{ value: 55, tone: 'yellow' }, { value: 155, tone: 'red' }], scale: { fixedMin: 0, minSpan: 40, digits: 1 } },
-  { alias: 'outdoor.temperature', label: 'Temperature', colorByThreshold: true, thresholds: [{ value: 80, tone: 'yellow' }, { value: 95, tone: 'red' }], scale: { minSpan: 30, digits: 0 } },
-  { alias: 'outdoor.humidity', label: 'Humidity', colorByThreshold: true, thresholds: [{ value: 70, tone: 'yellow' }, { value: 85, tone: 'red' }], scale: { fixedMin: 0, fixedMax: 100, ticks: [0, 20, 40, 60, 80, 100], digits: 0 } },
-  { alias: 'outdoor.precipitation', label: 'Precipitation', colorByThreshold: true, thresholds: [{ value: 0.01, tone: 'light-blue' }, { value: 0.1, tone: 'blue' }], scale: { minSpan: 0.1, hardMin: 0, digits: 2 } },
-  { alias: 'outdoor.wind_speed', label: 'Wind speed', renderAs: 'bar', thresholds: [], scale: { fixedMin: 0, minSpan: 20, digits: 0 } },
+  { alias: 'outdoor.us_aqi', label: 'Air quality index', colorByThreshold: true, thresholds: [{ value: 51, tone: 'yellow' }, { value: 101, tone: 'orange' }, { value: 151, tone: 'red' }, { value: 201, tone: 'purple' }, { value: 301, tone: 'maroon' }], scale: { fixedMin: 0, fixedMax: 350, ticks: [0, 50, 100, 150, 200, 250, 300, 350], digits: 0 } },
+  { alias: 'outdoor.pm25', secondaryAlias: 'outdoor.pm10', secondaryLabel: 'PM10', label: 'Particulate matter · 24h rolling average', colorByThreshold: true, thresholds: [{ value: 9.1, tone: 'yellow' }, { value: 35.5, tone: 'orange' }, { value: 55.5, tone: 'red' }, { value: 125.5, tone: 'purple' }, { value: 225.5, tone: 'maroon' }], secondaryThresholds: [{ value: 55, tone: 'yellow' }, { value: 155, tone: 'orange' }, { value: 255, tone: 'red' }, { value: 355, tone: 'purple' }, { value: 425, tone: 'maroon' }], scale: { fixedMin: 0, minSpan: 40, digits: 1 } },
+  { alias: 'outdoor.temperature', label: 'Temperature', colorByThreshold: true, scaleNote: 'Visual scale · warm ≥80°F · hot ≥95°F', thresholds: [{ value: 80, tone: 'yellow' }, { value: 95, tone: 'red' }], scale: { minSpan: 30, digits: 0 } },
+  { alias: 'outdoor.humidity', label: 'Humidity', colorByThreshold: true, scaleNote: 'Visual scale · humid ≥70% · very humid ≥85%', thresholds: [{ value: 70, tone: 'yellow' }, { value: 85, tone: 'red' }], scale: { fixedMin: 0, fixedMax: 100, ticks: [0, 20, 40, 60, 80, 100], digits: 0 } },
+  { alias: 'outdoor.precipitation', label: 'Precipitation', colorByThreshold: true, scaleNote: 'Visual scale · measurable ≥0.01 in · heavier ≥0.10 in', thresholds: [{ value: 0.01, tone: 'light-blue' }, { value: 0.1, tone: 'blue' }], scale: { minSpan: 0.1, hardMin: 0, digits: 2 } },
+  { alias: 'outdoor.wind_speed', label: 'Wind speed', renderAs: 'bar', scaleNote: 'Visual scale · blue bars · height indicates speed', thresholds: [], scale: { fixedMin: 0, minSpan: 20, digits: 0 } },
 ];
 
 function localTime(value: string | null) {
@@ -92,6 +92,7 @@ export function WeatherScreen({ weather = fixtureWeather }: { weather?: Weather 
         {...(metric.secondaryThresholds ? { secondaryThresholds: [...metric.secondaryThresholds] } : {})}
         scale={metric.scale}
         {...(metric.renderAs ? { renderAs: metric.renderAs } : {})}
+        {...(metric.scaleNote ? { scaleNote: metric.scaleNote } : {})}
         {...(metric.colorByThreshold ? { colorByThreshold: true } : {})}
         {...('secondaryAlias' in metric && history[metric.secondaryAlias] ? { secondarySeries: history[metric.secondaryAlias] } : {})}
         {...('secondaryLabel' in metric ? { secondaryLabel: metric.secondaryLabel } : {})}

@@ -18,7 +18,7 @@ type Review = { command: IndoorCommand; target: string; current: string; request
 type IndoorReading = IndoorState['sensors'][0]['readings']['temperature'];
 type ThermostatState = IndoorState['thermostats'][0];
 type PurifierState = IndoorState['purifiers'][number];
-type ThresholdTone = 'blue' | 'light-blue' | 'dark-blue' | 'yellow' | 'red';
+type ThresholdTone = 'blue' | 'light-blue' | 'dark-blue' | 'yellow' | 'orange' | 'red' | 'purple' | 'maroon';
 type TraceTone = 'green' | ThresholdTone | 'secondary';
 type HistoryThreshold = { value: number; tone: ThresholdTone };
 type HistoryMetric = { alias: string; label: string; thresholds: HistoryThreshold[]; scale: HistoryScale; secondaryAlias?: string; secondaryLabel?: string };
@@ -140,7 +140,7 @@ function trendTone(metric: string, value: number, thresholds: HistoryThreshold[]
   return 'green';
 }
 
-export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, thresholds, secondaryThresholds = [], scale, colorByThreshold = false, renderAs = 'line' }: {
+export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, thresholds, secondaryThresholds = [], scale, colorByThreshold = false, renderAs = 'line', scaleNote }: {
   series: TimeSeries | undefined;
   secondarySeries?: TimeSeries;
   label: string;
@@ -150,12 +150,13 @@ export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, t
   scale: HistoryScale;
   colorByThreshold?: boolean;
   renderAs?: 'line' | 'bar';
+  scaleNote?: string;
 }) {
   const plot = useRef<HTMLDivElement>(null);
   const gradientId = `history-trace-${useId().replaceAll(':', '')}`;
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const interactionSeries = series?.points.length ? series : secondarySeries;
-  if (!interactionSeries?.points.length) return <div className="indoor-no-data" role="status">NO DATA · {label}</div>;
+  if (!interactionSeries?.points.length) return <div className="indoor-no-data" role="status"><span>NO DATA · {label}</span>{scaleNote ? <small className="history-scale-note">{scaleNote}</small> : null}</div>;
   const primaryValues = series?.points.map((point) => point.value) ?? [];
   const secondaryValues = secondarySeries?.points.map((point) => point.value) ?? [];
   const values = [...primaryValues, ...secondaryValues];
@@ -291,7 +292,7 @@ export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, t
     + ` Thresholds ${thresholds.map((threshold) => threshold.value).join(', ')} ${interactionSeries.unit}.`;
   return (
     <figure className="indoor-history-graph">
-      <figcaption><strong>{label}</strong><span>{valueLabel(interactionSeries.points.at(-1)!.value)} {interactionSeries.unit}</span></figcaption>
+      <figcaption><div><strong>{label}</strong>{scaleNote ? <small className="history-scale-note">{scaleNote}</small> : null}</div><span>{valueLabel(interactionSeries.points.at(-1)!.value)} {interactionSeries.unit}</span></figcaption>
       {secondaryLabel ? <div className="history-legend" aria-label={`${label} graph legend`}>
         <span><i className="history-legend-primary" aria-hidden="true" />PM2.5</span>
         <span><i className="history-legend-secondary" aria-hidden="true" />{secondaryLabel}</span>

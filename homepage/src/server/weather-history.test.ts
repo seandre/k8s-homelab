@@ -56,4 +56,20 @@ describe('weather history adapter', () => {
     await Promise.all([adapter.read('outdoor.pm25', '24h'), adapter.read('outdoor.pm10', '24h')]);
     expect(requests).toBe(1);
   });
+
+  it('calculates EPA-compatible 24-hour particulate averages on the server', async () => {
+    const time = Array.from({ length: 25 }, (_, index) => now.getTime() / 1_000 - (24 - index) * 3_600);
+    const adapter = new WeatherHistoryAdapter(45.52, -122.68, async () => ({
+      ok: true,
+      json: async () => ({ hourly: {
+        time, us_aqi: time.map(() => 80),
+        pm2_5: time.map((_, index) => index === 24 ? 60 : 12.04),
+        pm10: time.map((_, index) => index === 24 ? 200 : 50.9),
+      } }),
+    }), () => now);
+    const [pm25, pm10] = await Promise.all([adapter.read('outdoor.pm25', '1h'), adapter.read('outdoor.pm10', '1h')]);
+    expect(pm25?.points.at(-1)?.value).toBe(14);
+    expect(pm10?.points.at(-1)?.value).toBe(57);
+    expect(pm25?.metadata.source).toBe('open-meteo-outdoor-history');
+  });
 });

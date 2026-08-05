@@ -23,6 +23,16 @@ const HourlySchema = z.object({
   wind_speed_10m: z.array(z.number().nullable()).optional(),
 });
 const ResponseSchema = z.object({ hourly: HourlySchema });
+const rollingParticulateAliases = new Set<WeatherHistoryAlias>(['outdoor.pm25', 'outdoor.pm10']);
+
+function rollingParticulateValue(times: number[], values: (number | null)[], index: number, alias: WeatherHistoryAlias) {
+  const end = times[index]!;
+  const start = end - 86_400;
+  const samples = values.flatMap((value, sampleIndex) => value === null || times[sampleIndex]! <= start || times[sampleIndex]! > end ? [] : [{ timestamp: times[sampleIndex]!, value }]);
+  if (!samples.length || end - samples[0]!.timestamp < 82_800) return null;
+  const average = samples.reduce((sum, sample) => sum + sample.value, 0) / samples.length;
+  return alias === 'outdoor.pm25' ? Math.trunc(average * 10) / 10 : Math.trunc(average);
+}
 
 export type WeatherHistoryAlias = keyof typeof catalog;
 export type WeatherHistoryFetch = (url: string) => Promise<{ ok: boolean; json(): Promise<unknown> }>;
@@ -74,7 +84,7 @@ export class WeatherHistoryAdapter {
     const values = hourly?.[field];
     if (!hourly || !values) return null;
     const points = hourly.time.flatMap((timestamp, index) => {
-      const value = values[index];
+      const value = rollingParticulateAliases.has(alias) ? rollingParticulateValue(hourly.time, values, index, alias) : values[index];
       const instant = timestamp * 1_000;
       return value === null || value === undefined || instant < start.getTime() || instant > end.getTime() ? [] : [{ timestamp: new Date(instant).toISOString(), value }];
     });
