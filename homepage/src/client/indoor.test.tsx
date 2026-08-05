@@ -248,6 +248,9 @@ describe('indoor dashboard', () => {
     expect(computeHistoryDomain([12, 67.1], { fixedMin: 0, minSpan: 40 })).toEqual({
       min: 0, max: 100, step: 20, ticks: [0, 20, 40, 60, 80, 100],
     });
+    expect(computeHistoryDomain([3, 24], { fixedMin: 0, minSpan: 20 })).toEqual({
+      min: 0, max: 25, step: 5, ticks: [0, 5, 10, 15, 20, 25],
+    });
   });
 
   it('colors explicitly configured outdoor traces by threshold', () => {
@@ -385,7 +388,7 @@ describe('indoor dashboard', () => {
       secondaryLabel="PM10"
       thresholds={[{ value: 5, tone: 'yellow' }, { value: 15, tone: 'red' }]}
       secondaryThresholds={[{ value: 10, tone: 'yellow' }, { value: 20, tone: 'red' }]}
-      scale={{ minSpan: 20, hardMin: 0 }}
+      scale={{ fixedMin: 0, minSpan: 20 }}
       series={{
         metric: 'airgradient_living_room.pm25',
         unit: 'µg/m³',
@@ -412,6 +415,8 @@ describe('indoor dashboard', () => {
     expect(markup).toContain('<path');
     expect(markup).toContain('history-line-smoothed');
     expect(markup).toContain('history-line-secondary');
+    expect(markup).toContain('<clipPath id="history-trace-');
+    expect(markup).toMatch(/<g clip-path="url\(#history-trace-[^"]+-clip\)"/);
     expect(markup).toMatch(/history-line history-line-secondary" style="stroke:url\(#history-trace-[^"]+-secondary\)/);
     expect(markup).toContain('graph legend');
     expect(markup).toContain('PM2.5');

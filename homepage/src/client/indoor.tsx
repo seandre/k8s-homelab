@@ -154,6 +154,7 @@ export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, t
 }) {
   const plot = useRef<HTMLDivElement>(null);
   const gradientId = `history-trace-${useId().replaceAll(':', '')}`;
+  const clipId = `${gradientId}-clip`;
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const interactionSeries = series?.points.length ? series : secondarySeries;
   if (!interactionSeries?.points.length) return <div className="indoor-no-data" role="status"><span>NO DATA · {label}</span>{scaleNote ? <small className="history-scale-note">{scaleNote}</small> : null}</div>;
@@ -323,18 +324,18 @@ export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, t
           }}
         >
           <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-            {thresholdTrace || secondaryTraceStops.length ? <defs>{thresholdTrace ? <linearGradient id={gradientId} gradientUnits="userSpaceOnUse" x1={plotLeft} x2={plotRight}>
+            <defs><clipPath id={clipId}><rect x={plotLeft} y={plotTop} width={plotRight - plotLeft} height={plotBottom - plotTop} /></clipPath>{thresholdTrace ? <linearGradient id={gradientId} gradientUnits="userSpaceOnUse" x1={plotLeft} x2={plotRight}>
               {traceStops.map((stop, index) => <stop key={`${stop.offset}-${index}`} offset={`${stop.offset}%`} className={`history-trace-stop history-trace-stop-${stop.tone}`} />)}
             </linearGradient> : null}{secondaryTraceStops.length ? <linearGradient id={`${gradientId}-secondary`} gradientUnits="userSpaceOnUse" x1={plotLeft} x2={plotRight}>
               {secondaryTraceStops.map((stop, index) => <stop key={`${stop.offset}-${index}`} offset={`${stop.offset}%`} className={`history-trace-stop history-trace-stop-${stop.tone}`} />)}
-            </linearGradient> : null}</defs> : null}
+            </linearGradient> : null}</defs>
             {ticks.map((value) => <line key={value} x1={plotLeft} x2={plotRight} y1={y(value)} y2={y(value)} className="y-axis-grid" />)}
             {xTicks.map(({ x }) => <line key={x} x1={x} x2={x} y1={plotTop} y2={plotBottom} className="x-axis-grid" />)}
             <line x1={plotLeft} x2={plotLeft} y1={plotTop} y2={plotBottom} className="y-axis-line" />
             {thresholds.filter(({ value }) => value >= min && value <= max).map(({ value, tone }) =>
               <line key={value} x1={plotLeft} x2={plotRight} y1={y(value)} y2={y(value)} className={`threshold-line threshold-tone-${tone}`} />,
             )}
-            {renderAs === 'bar' ? chartPoints.map((point, index) => <rect
+            <g clipPath={`url(#${clipId})`}>{renderAs === 'bar' ? chartPoints.map((point, index) => <rect
               key={`${series!.points[index]!.timestamp}-${index}`}
               className="history-bar history-bar-blue"
               x={Math.max(plotLeft, point.x - barWidth / 2)}
@@ -346,7 +347,7 @@ export function HistoryGraph({ series, secondarySeries, label, secondaryLabel, t
               : chartPoints.length ? <polyline points={points} className="history-line" style={thresholdTrace ? { stroke: `url(#${gradientId})` } : undefined} vectorEffect="non-scaling-stroke" /> : null}
             {secondaryChartPoints.length > 2
               ? <path d={smoothSvgPath(secondaryChartPoints)} className="history-line history-line-secondary" style={secondaryTraceStops.length ? { stroke: `url(#${gradientId}-secondary)` } : undefined} vectorEffect="non-scaling-stroke" />
-              : secondaryChartPoints.length ? <polyline points={secondaryPoints} className="history-line history-line-secondary" style={secondaryTraceStops.length ? { stroke: `url(#${gradientId}-secondary)` } : undefined} vectorEffect="non-scaling-stroke" /> : null}
+              : secondaryChartPoints.length ? <polyline points={secondaryPoints} className="history-line history-line-secondary" style={secondaryTraceStops.length ? { stroke: `url(#${gradientId}-secondary)` } : undefined} vectorEffect="non-scaling-stroke" /> : null}</g>
             {hoveredChartPoint ? <>
               <line x1={hoveredChartPoint.x} x2={hoveredChartPoint.x} y1={plotTop} y2={plotBottom} className="history-crosshair" />
             </> : null}
@@ -669,7 +670,7 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
   }, [ventilationActive]);
   const metrics = useMemo<HistoryMetric[]>(() => [
     { alias: 'airgradient_living_room.co2', label: 'CO₂', thresholds: [{ value: 600, tone: 'blue' }, { value: 800, tone: 'yellow' }, { value: 1000, tone: 'red' }], scale: { fixedMin: 400, fixedMax: 1400, ticks: [400, 600, 800, 1000, 1200, 1400], digits: 0 } },
-    { alias: 'airgradient_living_room.pm25', secondaryAlias: 'airgradient_living_room.pm10', secondaryLabel: 'PM10', label: 'Particulate matter', thresholds: [{ value: 5, tone: 'yellow' }, { value: 15, tone: 'red' }], scale: { minSpan: 20, hardMin: 0, digits: 0 } },
+    { alias: 'airgradient_living_room.pm25', secondaryAlias: 'airgradient_living_room.pm10', secondaryLabel: 'PM10', label: 'Particulate matter', thresholds: [{ value: 5, tone: 'yellow' }, { value: 15, tone: 'red' }], scale: { fixedMin: 0, minSpan: 20, digits: 0 } },
     { alias: 'airgradient_living_room.tvoc_index', label: 'TVOC index', thresholds: [{ value: 100, tone: 'blue' }, { value: 150, tone: 'yellow' }, { value: 250, tone: 'red' }], scale: { fixedMin: 0, fixedMax: 500, ticks: [0, 100, 200, 300, 400, 500], digits: 0 } },
     { alias: 'airgradient_living_room.nox_index', label: 'NOx index', thresholds: [{ value: 20, tone: 'yellow' }, { value: 150, tone: 'red' }], scale: { fixedMin: 0, fixedMax: 500, ticks: [0, 100, 200, 300, 400, 500], digits: 0 } },
     { alias: 'airgradient_living_room.temperature', label: 'Temperature', thresholds: [{ value: 65, tone: 'dark-blue' }, { value: 68, tone: 'light-blue' }, { value: 72, tone: 'yellow' }, { value: 75, tone: 'red' }], scale: { fixedMin: 60, fixedMax: 80, ticks: [60, 65, 70, 75, 80], digits: 0 } },
