@@ -80,7 +80,7 @@ The compact terminal-style header displays:
 | Kubernetes | k3s node and control-plane health, resource summary, unhealthy workloads, and relevant alerts |
 | OKD | `NOT PROVISIONED` initially; later cluster summary and individual control-plane nodes |
 | Services | Searchable launcher, server-side reachability, status, and relevant drill-down links |
-| Weather | Current conditions, icon, sunrise/sunset, U.S. AQI, PM2.5, and PM10 for Portland `97209` |
+| Weather | Current conditions, icon, sunrise/sunset, U.S. AQI, PM2.5, PM10, outdoor history, and a draggable AQI heat/station map with point forecasts; default Portland `97209` |
 
 ### Proxmox Panels
 
@@ -183,7 +183,7 @@ The application remains stateless, so replicas and cluster copies require no dat
 | PBS | Read-only PBS API | Reachability, datastore, backup freshness, and failures |
 | UniFi | Supported read-only API | Controller health, network metrics, and speed-test history |
 | USP-PDU-PRO | Local UniFi API through hardened UnPoller, strict TLS, API-key Secret, and fixed Prometheus queries | Total measured wattage and exact `pve-01`/`pve-02` outlet wattage; other labeled outlets, including OKD nodes, contribute only to total |
-| Weather/AQI | WeatherAPI, NWS, AirNow, and Open-Meteo | Current Portland utility data plus server-normalized Open-Meteo outdoor history |
+| Weather/AQI | WeatherAPI, NWS, AirNow, Open-Meteo, and OpenStreetMap | Current Portland utility data, server-normalized outdoor history, bounded/cached AQI model samples, AirNow station markers, click forecasts, and a browser-loaded attributed basemap |
 | Service state | Backend allowlisted probes | Server-side reachability |
 
 The browser never receives upstream credentials or contacts privileged infrastructure APIs directly. Glances is a migration bridge, not the target telemetry platform. No exporter is installed on a hypervisor or infrastructure host without an explicit least-privilege review.

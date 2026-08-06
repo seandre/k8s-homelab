@@ -5,6 +5,7 @@ import { fixtureWeather } from '../shared/fixtures.js';
 import { nextHistoryRefreshDelay, type HistoryScale } from './indoor-chart.js';
 import { HistoryGraph } from './indoor.js';
 import { aqiTone, pm10Tone, pm25Tone } from './weather-status.js';
+import { AirQualityMap } from './weather-map.js';
 
 const WINDOWS = ['1h', '3h', '6h', '24h', '7d', '30d'] as const;
 type Window = typeof WINDOWS[number];
@@ -98,5 +99,6 @@ export function WeatherScreen({ weather = fixtureWeather }: { weather?: Weather 
         {...('secondaryLabel' in metric ? { secondaryLabel: metric.secondaryLabel } : {})}
       />)}</div>
     </section>
+    <AirQualityMap />
   </main>;
 }

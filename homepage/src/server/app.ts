@@ -10,6 +10,7 @@ import { gitOwnedRuntimeConfig, type RuntimeConfig } from './runtime-config.js';
 import { INDOOR_HISTORY_WINDOWS, isIndoorHistoryAlias, type IndoorHistoryAdapter, type IndoorHistoryWindow } from './indoor-history.js';
 import { type IndoorActionGateway } from './indoor-actions.js';
 import { isWeatherHistoryAlias, type WeatherHistoryAdapter } from './weather-history.js';
+import type { AirQualityMapAdapter } from './air-quality-map.js';
 
 export type BootstrapProvider = () => Bootstrap | Promise<Bootstrap>;
 
@@ -24,6 +25,7 @@ export interface AppOptions {
   indoorHistory?: Pick<IndoorHistoryAdapter, 'read'>;
   weatherHistory?: Pick<WeatherHistoryAdapter, 'read'>;
   indoorActions?: IndoorActionGateway;
+  airQualityMap?: Pick<AirQualityMapAdapter, 'read' | 'detail'>;
 }
 
 export function buildApp(options: AppOptions): FastifyInstance {
@@ -44,7 +46,7 @@ export function buildApp(options: AppOptions): FastifyInstance {
     logger.info('request.complete', {
       requestId: request.id,
       method: request.method,
-      url: request.url,
+      url: request.url.split('?')[0],
       statusCode: reply.statusCode,
     });
   });
@@ -128,6 +130,21 @@ export function buildApp(options: AppOptions): FastifyInstance {
       logger.error('history.failed', { requestId: request.id, error: error instanceof Error ? error.message : 'unknown error' });
       return reply.code(500).send({ error: { code: 'INTERNAL_ERROR', message: 'History is temporarily unavailable.' }, requestId: request.id });
     }
+  });
+
+  app.get('/api/v1/weather/air-quality-map', async (request, reply) => {
+    if (!options.airQualityMap) return reply.code(503).send({ error: { code: 'MAP_UNAVAILABLE', message: 'Air quality map is unavailable.' }, requestId: request.id });
+    const query = request.query as Record<string, string>; const values = ['north', 'south', 'east', 'west'].map((key) => Number(query[key]));
+    const [north, south, east, west] = values;
+    if (values.some((value) => !Number.isFinite(value)) || north! <= south! || east! <= west! || north! > 85 || south! < -85 || east! > 180 || west! < -180 || north! - south! > 8 || east! - west! > 8) return reply.code(400).send({ error: { code: 'INVALID_MAP_BOUNDS', message: 'Zoom in to load air quality data.' }, requestId: request.id });
+    try { return { data: await options.airQualityMap.read({ north: north!, south: south!, east: east!, west: west! }), requestId: request.id }; } catch { return reply.code(502).send({ error: { code: 'MAP_PROVIDER_FAILED', message: 'Air quality map data is temporarily unavailable.' }, requestId: request.id }); }
+  });
+
+  app.get('/api/v1/weather/air-quality-point', async (request, reply) => {
+    if (!options.airQualityMap) return reply.code(503).send({ error: { code: 'MAP_UNAVAILABLE', message: 'Air quality map is unavailable.' }, requestId: request.id });
+    const query = request.query as Record<string, string>; const latitude = Number(query.latitude); const longitude = Number(query.longitude);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < -85 || latitude > 85 || longitude < -180 || longitude > 180) return reply.code(400).send({ error: { code: 'INVALID_LOCATION', message: 'A valid map location is required.' }, requestId: request.id });
+    try { return { data: await options.airQualityMap.detail(latitude, longitude), requestId: request.id }; } catch { return reply.code(502).send({ error: { code: 'MAP_PROVIDER_FAILED', message: 'Air quality forecast is temporarily unavailable.' }, requestId: request.id }); }
   });
 
   app.get('/api/v1/events', (request, reply) => {

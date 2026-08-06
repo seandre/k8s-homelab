@@ -47,6 +47,21 @@
   color: var(--fg);
 }
 
+.air-map-section { margin-top: 2rem; }
+.air-map-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr); gap: 1rem; margin-top: 1rem; }
+.air-map { min-height: 520px; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: #17202a; z-index: 0; }
+.air-map-detail { min-height: 200px; padding: 1.1rem; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); }
+.air-map-detail h3, .air-map-detail h4 { margin-top: 0; }
+.air-map-detail dl { margin: 0 0 1.2rem; }
+.air-map-detail dl div, .air-map-forecast div { display: flex; justify-content: space-between; gap: .75rem; padding: .48rem 0; border-bottom: 1px solid var(--line); }
+.air-map-detail dt, .air-map-detail dd { margin: 0; }
+.air-map-forecast { max-height: 300px; overflow: auto; }
+.air-map-legend { display: flex; flex-wrap: wrap; gap: .65rem 1rem; margin-top: .8rem; font-size: .78rem; }
+.air-map-legend span { display: inline-flex; align-items: center; gap: .35rem; }
+.air-map-legend i { width: .72rem; height: .72rem; border-radius: 50%; }
+.map-home-button { align-self: center; padding: .55rem .8rem; border: 1px solid var(--line); border-radius: 8px; color: inherit; background: var(--panel); cursor: pointer; }
+@media (max-width: 760px) { .air-map-layout { grid-template-columns: 1fr; } .air-map { min-height: 420px; } }
+
 :root[data-appearance='light'] {
   color-scheme: light;
   --bg: #f4f5f2;

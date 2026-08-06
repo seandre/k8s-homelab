@@ -10,6 +10,7 @@ import { IndoorActionGateway } from './indoor-actions.js';
 import { HomeAssistantActionExecutor, HomeAssistantControlMapSchema } from './home-assistant-actions.js';
 import { FileActionPersistence } from './action-persistence.js';
 import { WeatherHistoryAdapter } from './weather-history.js';
+import { AirQualityMapAdapter } from './air-quality-map.js';
 
 const config = loadConfig();
 const logger = createLogger();
@@ -25,6 +26,7 @@ const weatherHistory = new WeatherHistoryAdapter(gitOwnedRuntimeConfig.weatherLo
   const response = await fetch(url);
   return { ok: response.ok, json: () => response.json() };
 });
+const airQualityMap = new AirQualityMapAdapter(async (url) => { const response = await fetch(url); return { ok: response.ok, status: response.status, json: () => response.json() }; }, process.env.AIRNOW_API_KEY?.trim() || null);
 async function loadIndoorActions() {
   if (!liveTelemetryEnabled) return undefined;
   try {
@@ -54,6 +56,7 @@ const app = buildApp({
   eventBroker,
   indoorHistory,
   weatherHistory,
+  airQualityMap,
   ...(indoorActions ? { indoorActions } : {}),
   ...(liveTelemetryEnabled ? { bootstrapProvider: telemetry.bootstrap } : {}),
 });
