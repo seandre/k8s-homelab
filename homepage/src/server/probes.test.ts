@@ -12,9 +12,10 @@ describe('allowlisted reachability probes', () => {
     const fetcher: ProbeFetch = async (url, init) => { requests.push({ url, method: init.method, redirect: init.redirect }); return { ok: healthy, status: healthy ? 200 : 503 }; };
     const runner = new AllowlistedProbeRunner(enabledConfig(), fetcher, clock);
     expect(await runner.run('argocd-probe')).toMatchObject({ status: 'UP', metadata: { freshness: 'CURRENT' } });
-    healthy = false; expect((await runner.run('argocd-probe')).status).toBe('UP');
-    expect((await runner.run('argocd-probe')).status).toBe('DEGRADED');
-    healthy = true; clock.advance(15_000); expect((await runner.run('argocd-probe')).status).toBe('DEGRADED');
+    healthy = false; clock.advance(30_000); expect((await runner.run('argocd-probe')).status).toBe('UP');
+    clock.advance(30_000); expect((await runner.run('argocd-probe')).status).toBe('DEGRADED');
+    healthy = true; clock.advance(30_000); expect((await runner.run('argocd-probe')).status).toBe('DEGRADED');
+    clock.advance(30_000);
     expect((await runner.run('argocd-probe')).status).toBe('UP');
     expect(requests).toEqual(expect.arrayContaining([{ url: 'http://argocd-server.argocd.svc', method: 'HEAD', redirect: 'manual' }]));
     await expect(runner.run('https://example.com')).rejects.toBeInstanceOf(ProbeTargetNotAllowedError);

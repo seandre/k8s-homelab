@@ -105,6 +105,18 @@ export const WorkloadSchema = z.object({
 });
 export type Workload = z.infer<typeof WorkloadSchema>;
 
+export const PlatformOperatorSchema = z.object({
+  id: z.string().min(1),
+  clusterId: z.string().min(1),
+  name: z.string().min(1),
+  version: z.string().min(1).nullable(),
+  available: z.boolean(),
+  progressing: z.boolean(),
+  degraded: z.boolean(),
+  metadata: SourceMetadataSchema,
+}).strict();
+export type PlatformOperator = z.infer<typeof PlatformOperatorSchema>;
+
 export const LatencyProtocolSchema = z.enum(['ICMP', 'TCP', 'HTTPS']);
 export type LatencyProtocol = z.infer<typeof LatencyProtocolSchema>;
 
@@ -384,7 +396,7 @@ export function indoorVentilationStateVersion(indoor: IndoorState) {
 }
 
 export const BootstrapSchema = z.object({
-  schemaVersion: z.literal(4),
+  schemaVersion: z.literal(5),
   generatedAt: z.string().datetime({ offset: true }),
   globalSeverity: SeveritySchema,
   alerts: z.array(AlertSchema),
@@ -392,6 +404,7 @@ export const BootstrapSchema = z.object({
   hosts: z.array(HostSchema),
   clusters: z.array(ClusterSchema),
   workloads: z.array(WorkloadSchema),
+  platformOperators: z.array(PlatformOperatorSchema),
   network: NetworkSummarySchema,
   storage: StorageSummarySchema,
   storageBackups: z.array(StorageBackupSchema),

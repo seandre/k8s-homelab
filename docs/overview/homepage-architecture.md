@@ -1,6 +1,6 @@
 # Overview 04: Homelab Homepage Architecture
 
-> Status: implemented on k3s and serving `home.lab.seandre.dev` after the approved HP-029 cutover. HP-030 Git-only rollback and forward recovery passed on 2026-07-20. Live read-only PDU telemetry is enabled at Git revision `c3d8968`; the owner-approved shortened Gate D technical soak passed at `2026-07-20T21:37:34Z`. The existing Homepage deployment remains deployed as the named rollback target. See the [HP-031 v1 evidence index](homepage-v1-evidence.md).
+> Status: implemented on k3s and serving `home.lab.seandre.dev` after the approved HP-029 cutover. Direct read-only OKD telemetry and the independently pinned preview/production split are implemented in source on 2026-08-11; rollout remains blocked on the 30-minute path preflight and genuine 24-hour preview soak. The existing Homepage deployment remains the named rollback target. See the [HP-031 v1 evidence index](homepage-v1-evidence.md).
 
 This document defines the product, application, telemetry, security, and deployment architecture for a custom homelab homepage inspired by the default [btop](https://github.com/aristocratos/btop) interface.
 
@@ -29,7 +29,7 @@ The interface must remain modern, simple, readable, and resistant to information
 - Fifteen-minute default graphs with 5-minute, 15-minute, and 1-hour selections.
 - Reduced polling while the browser tab is hidden.
 - Proxmox host summaries and drill-down for `pve-01` and `pve-02`.
-- High-level k3s state and a placeholder-aware OKD view before OKD exists.
+- Direct read-only k3s and OKD node, workload, capacity, utilization, and platform-operator state.
 - Read-only alert aggregation, service reachability, and latency.
 - Existing UniFi speed-test results without triggering new tests.
 - Measured USP-PDU-PRO total power and exact `pve-01`/`pve-02` outlet power
@@ -74,11 +74,11 @@ The compact terminal-style header displays:
 | View | Primary content |
 |---|---|
 | Overview | Global state, active alerts, Proxmox summaries, aggregate k3s/OKD health, network summary, service status, and weather |
-| Compute | Matching `pve-01`/`pve-02` panels, future aggregate and individual OKD nodes, and k3s nodes |
+| Compute | Matching `pve-01`/`pve-02` panels plus live k3s and OKD nodes |
 | Network | Gateway/Internet latency, ingress VIPs, UniFi state, network graphs, and existing speed-test results |
 | Storage/Backups | Host storage drill-down, PBS reachability, datastore state, and backup age/failure state |
 | Kubernetes | k3s node and control-plane health, resource summary, unhealthy workloads, and relevant alerts |
-| OKD | `NOT PROVISIONED` initially; later cluster summary and individual control-plane nodes |
+| OKD | Capacity and utilization, individual control-plane nodes, ClusterOperator health, and unhealthy workloads |
 | Services | Searchable launcher, server-side reachability, status, and relevant drill-down links |
 | Weather | Current conditions, icon, sunrise/sunset, U.S. AQI, PM2.5, PM10, outdoor history, and a draggable AQI heat/station map with point forecasts; default Portland `97209` |
 
@@ -156,7 +156,7 @@ Fastify backend / integration gateway
           │
           ├─ Prometheus / Alertmanager
           │    └─ local TLS-verified UnPoller PDU exporter
-          ├─ k3s and future OKD APIs
+          ├─ k3s and OKD APIs
           ├─ Argo CD API
           ├─ Proxmox and PBS APIs
           ├─ UniFi API
@@ -167,7 +167,9 @@ Fastify backend / integration gateway
 
 The implementation uses TypeScript, React, Vite, Fastify, REST, Server-Sent Events, CSS Grid, and Canvas or SVG graphs. It is one repository and one deployable container image. Prometheus retains historical metrics; the backend caches only current normalized state. SSE fits the read-only server-to-browser traffic and avoids unnecessary bidirectional connections.
 
-The application remains stateless, so replicas and cluster copies require no database synchronization.
+Read-only telemetry remains stateless. Indoor actions are the sole exception:
+production alone owns an RWO idempotency journal, while preview has no control
+credentials, mapping, enabled mutation gateway, or action-state mount.
 
 ## Data-Source Ownership
 
@@ -213,7 +215,7 @@ informational/no-data only and do not change PVE, Kubernetes, or global health.
 
 Checks run every 15 seconds. Two consecutive failures mark a service degraded; two consecutive successes mark it recovered. The interface explicitly labels these as server-side checks.
 
-Latency targets are the gateway at `192.168.40.1`, public resolvers `1.1.1.1` and `8.8.8.8`, k3s ingress at `192.168.40.30`, future OKD API at `192.168.40.29`, and future OKD ingress at `192.168.40.31`. TCP or HTTPS timing substitutes when ICMP is unavailable. Planned targets are not errors before activation.
+Latency targets are the gateway at `192.168.40.1`, public resolvers `1.1.1.1` and `8.8.8.8`, k3s ingress at `192.168.40.30`, OKD API at `192.168.40.29`, and OKD ingress at `192.168.40.31`. TCP or HTTPS timing substitutes when ICMP is unavailable.
 
 ### Freshness
 
@@ -262,22 +264,23 @@ Browser-local storage owns panel arrangement and size overrides, appearance pref
 - Kubernetes deploys an immutable digest rather than a mutable tag.
 - A scoped image-pull Secret provides private-registry access.
 
-### k3s v1
+### k3s production and preview
 
-- Run two stateless replicas with startup, readiness, and liveness probes.
-- Spread replicas across eligible k3s nodes when capacity permits.
-- Use a PodDisruptionBudget and rolling updates.
+- Run independently digest-pinned preview and production Deployments with probes and PodDisruptionBudgets.
+- Preview is read-only and never mounts indoor-control credentials, mappings, or the RWO action journal.
+- Production alone owns indoor controls and the RWO journal. Argo CD sync waves remove those mounts from preview before production acquires the claim.
+- CI changes the preview digest only. Promotion copies the exact soaked digest to production; rollback restores only the prior production digest.
 - Preserve the current Homepage manifests until acceptance.
 - Introduce the custom app on a preview hostname first.
 - Cut over `home.lab.seandre.dev` only after security, responsive, integration, and rollback gates pass.
 - Rollback restores the current Homepage service and ingress without first deleting its configuration.
 
-### Future OKD
+### OKD telemetry boundary
 
-- Reuse the same image digest and common Kubernetes base.
-- Use cluster overlays for ingress or Route, service account, network policy, pull secret, and platform security constraints.
-- Run both stateless copies before changing primary ownership.
-- Exercise manual traffic switching and rollback before automatic failover work.
+- The k3s backend uses six fixed `GET` collection paths on `api.okd.lab.seandre.dev:6443`; it is not an arbitrary Kubernetes proxy.
+- A dedicated OKD ServiceAccount can only `get/list` the six resource families represented by those paths.
+- Bootstrap schema v5 exposes normalized nodes, workloads, capacity, utilization, and ClusterOperators. CPU and memory are display-only; NotReady nodes, degraded/unavailable operators, unready workloads, and source freshness drive health.
+- OKD Prometheus, Alertmanager, application hosting, traffic switching, storage, and automatic failover remain outside this release.
 
 ## Availability Roadmap
 

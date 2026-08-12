@@ -16,7 +16,7 @@ export class ProbeTargetNotAllowedError extends Error {
   constructor() { super('Probe target is not configured.'); this.name = 'ProbeTargetNotAllowedError'; }
 }
 
-interface ProbeState { normalizer: SourceNormalizer<number>; target: string; enabled: boolean; }
+interface ProbeState { normalizer: SourceNormalizer<number>; target: string; enabled: boolean; intervalMs: number; lastAttemptMs: number; }
 
 export class AllowlistedProbeRunner {
   private readonly states = new Map<string, ProbeState>();
@@ -30,14 +30,16 @@ export class AllowlistedProbeRunner {
     this.clock = clock;
     for (const probe of config.probes) {
       const source = config.sources.find((candidate) => candidate.id === probe.sourceId)!;
-      this.states.set(probe.id, { target: probe.target, enabled: source.enabled && config.featureFlags.probes, normalizer: new SourceNormalizer<number>({ source: `probe:${probe.id}`, staleAfterMs: probe.intervalMs * 2, clock, unsupported: !(source.enabled && config.featureFlags.probes) }) });
+      this.states.set(probe.id, { target: probe.target, enabled: source.enabled && config.featureFlags.probes, intervalMs: probe.intervalMs, lastAttemptMs: Number.NEGATIVE_INFINITY, normalizer: new SourceNormalizer<number>({ source: `probe:${probe.id}`, staleAfterMs: probe.intervalMs * 2, clock, unsupported: !(source.enabled && config.featureFlags.probes) }) });
     }
   }
 
   async run(id: string): Promise<ProbeResult> {
     const state = this.states.get(id);
     if (!state) throw new ProbeTargetNotAllowedError();
-    if (state.enabled && state.normalizer.canAttempt()) {
+    const nowMs = this.clock.now().getTime();
+    if (state.enabled && nowMs - state.lastAttemptMs >= state.intervalMs && state.normalizer.canAttempt()) {
+      state.lastAttemptMs = nowMs;
       const started = this.clock.now().getTime();
       try {
         let response = await withTimeout(this.fetcher(state.target, { method: 'HEAD', redirect: 'manual' }), this.timeoutMs);

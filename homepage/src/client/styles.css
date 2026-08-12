@@ -244,15 +244,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .network-latency { grid-column: span 7; }
 .network-throughput { grid-column: span 5; }
 .network-ingress, .network-unifi, .network-speedtest { grid-column: span 4; }
-.network-planned { grid-column: span 12; }
+.network-okd { grid-column: span 12; }
 .network-graphs { margin-top: 0; }
 .vip-list { display: grid; gap: 0.45rem; }
 .vip-list span { display: flex; justify-content: space-between; gap: 0.5rem; border-bottom: 1px dotted var(--divider); padding-bottom: 0.35rem; color: var(--title); font-size: 0.7rem; }
 .vip-list small, .network-note { color: var(--muted); font-size: 0.58rem; }
 .network-note { margin: 0.5rem 0 0; line-height: 1.4; }
-.planned-endpoint { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto; align-items: center; gap: 0.5rem; padding: 0.35rem; border-bottom: 1px dotted var(--divider); }
-.planned-endpoint strong { color: var(--title); font-size: 0.68rem; }
-.planned-endpoint small { overflow: hidden; color: var(--muted); font-size: 0.55rem; text-overflow: ellipsis; white-space: nowrap; }
+.okd-endpoint { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto; align-items: center; gap: 0.5rem; padding: 0.35rem; border-bottom: 1px dotted var(--divider); }
+.okd-endpoint strong { color: var(--title); font-size: 0.68rem; }
+.okd-endpoint small { overflow: hidden; color: var(--muted); font-size: 0.55rem; text-overflow: ellipsis; white-space: nowrap; }
 .network-fixture-states { margin-top: 1rem; }
 .storage-summary-grid, .storage-backup-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
 .storage-state { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.55rem; }
@@ -660,8 +660,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .pve-workload-row { grid-template-columns: 1fr; }
   .overview-summary-grid { grid-template-columns: 1fr; }
   .compute-node-grid { grid-template-columns: 1fr; }
-  .network-latency, .network-throughput, .network-ingress, .network-unifi, .network-speedtest, .network-planned { grid-column: 1 / -1; }
-  .planned-endpoint { grid-template-columns: 1fr; gap: 0.2rem; }
+  .network-latency, .network-throughput, .network-ingress, .network-unifi, .network-speedtest, .network-okd { grid-column: 1 / -1; }
+  .okd-endpoint { grid-template-columns: 1fr; gap: 0.2rem; }
   .storage-summary-grid, .storage-backup-grid { grid-template-columns: 1fr; }
   .service-launcher-grid { grid-template-columns: 1fr; }
   .weather-screen-grid { grid-template-columns: 1fr; }

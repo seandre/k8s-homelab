@@ -12,3 +12,18 @@ spec:
     matchLabels:
       app.kubernetes.io/name: homepage-custom
       app.kubernetes.io/instance: preview
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: homepage-custom-production
+  namespace: homepage
+  labels:
+    app.kubernetes.io/name: homepage-custom
+    app.kubernetes.io/instance: production
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: homepage-custom
+      app.kubernetes.io/instance: production

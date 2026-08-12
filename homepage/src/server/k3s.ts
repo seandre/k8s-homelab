@@ -44,7 +44,7 @@ function workloadRecords(kind: string, list: z.infer<typeof WorkloadListSchema>,
     const desired = item.spec?.replicas ?? item.status?.desiredNumberScheduled ?? 1;
     const ready = item.status?.readyReplicas ?? item.status?.currentNumberScheduled ?? 0;
     const healthy = ready >= desired;
-    return { id: `${kind}:${item.metadata.namespace}:${item.metadata.name}`, name: item.metadata.name, clusterId: 'k3s', namespace: item.metadata.namespace, readyReplicas: ready, desiredReplicas: desired, href: null, metadata: { ...metadata, severity: healthy ? 'OK' : 'WARN', message: healthy ? undefined : 'Workload is not fully ready.' } };
+    return { id: `k3s:${kind}:${item.metadata.namespace}:${item.metadata.name}`, name: item.metadata.name, clusterId: 'k3s', namespace: item.metadata.namespace, readyReplicas: ready, desiredReplicas: desired, href: null, metadata: { ...metadata, severity: healthy ? 'OK' : 'WARN', message: healthy ? undefined : 'Workload is not fully ready.' } };
   });
 }
 

@@ -36,10 +36,11 @@ describe('Kubernetes fixture views', () => {
     expect(html).toContain('Download: 12Mb/s, above midline; upload: 5.0Mb/s, below midline');
   });
 
-  it('renders the future OKD state as neutral, not as an error', () => {
+  it('renders live OKD capacity, nodes, operators, and unhealthy workloads', () => {
     const html = renderToStaticMarkup(<OkdScreen />);
-    expect(html).toContain('NOT PROVISIONED');
-    expect(html).toContain('RESERVED TOPOLOGY');
-    expect(html).not.toContain('ERROR');
+    expect(html).toContain('OKD cluster health');
+    expect(html).toContain('ClusterOperators');
+    expect(html).toContain('Unhealthy OKD workloads');
+    expect(html).not.toContain('NOT PROVISIONED');
   });
 });

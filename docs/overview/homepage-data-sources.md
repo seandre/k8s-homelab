@@ -1,10 +1,9 @@
 # Homepage Data Sources and Credential Map
 
-Status: live-source contract updated 2026-07-20. Preview-only PDU mapping is
-enabled at `c3d8968`; its owner-approved shortened Gate D technical soak passed
-at `2026-07-20T21:37:34Z`. Host
-node_exporter installation still requires the operator steps
-in [Homepage Observability Expansion](../operations/homepage-observability.md).
+Status: direct OKD source contract updated 2026-08-11. Implementation is
+complete in source, but rollout remains blocked on the continuous 30-minute
+DNS/API preflight and genuine 24-hour preview soak in
+[Homepage Observability Expansion](../operations/homepage-observability.md#okd-direct-telemetry-rollout).
 
 This map defines the server-side integration boundary for the custom Homepage.
 The browser receives only normalized, allowlisted contracts from the backend. It
@@ -20,7 +19,7 @@ unresolved.
 | Prometheus | Homelab monitoring | `http://kube-prometheus-stack-prometheus.monitoring.svc:9090` | HTTP REST; fixed PromQL catalog | Four Git-owned aggregate capacity/usage queries plus three fixed outlet-power queries; no admin, config, reload, write, arbitrary metric, or browser-supplied PromQL API | None | 5s loop / 3s | Cluster values stale after 45s; PDU values stale after 75s | Return normalized scalars and source state only; never return PDU name/outlet labels | `IMPLEMENTED PREVIEW`; validated PDU mapping enabled at `c3d8968`, shortened Gate D technical soak passed `2026-07-20T21:37:34Z` |
 | Alertmanager | Homelab monitoring | `http://kube-prometheus-stack-alertmanager.monitoring.svc:9093` | HTTP REST | Read active alerts only; no silence, acknowledgement, delete, or task APIs | None | 5s loop / 3s | Last good alert set becomes stale after 45s | Allowlist name, severity, start time, summary/description; remove receivers and internal labels | `IMPLEMENTED PREVIEW`: direct active-alert read only |
 | k3s API | Homelab cluster owner | `https://kubernetes.default.svc` | Kubernetes HTTPS API | Dedicated ServiceAccount with least-privilege get/list/watch for the approved node, workload, namespace, condition, resource-summary, and event fields needed by the Compute and Kubernetes views; no create/update/patch/delete/exec/port-forward | In-cluster ServiceAccount token; Kubernetes-mounted, not a Git Secret | 15s / 3s | Cache normalized cluster state; stale on API failure | Never expose token, headers, raw objects, annotations, or Secret data | `READY`: healthy, degraded, forbidden, empty, stale fixtures required |
-| Future OKD API | OKD platform owner | **Planned:** `https://api.okd.lab.seandre.dev` (`192.168.40.29` reserved; inactive until OKD is provisioned) | Kubernetes HTTPS API | Dedicated read-only identity equivalent to k3s, scoped to approved cluster summaries | `homepage-okd-api` / `server`, `ca`, `token` | 15s / 3s | Inactive before provisioning is `NOT PROVISIONED`; stale only after activation and a prior sample | Never expose token, CA private material, headers, raw objects, or Secret data | `READY`: `NOT PROVISIONED` plus healthy/error fixtures |
+| OKD API | OKD platform owner | `https://api.okd.lab.seandre.dev:6443` (`192.168.40.29`) | Kubernetes HTTPS API with public-trust TLS verification | `get/list` only on nodes, node metrics, Deployments, StatefulSets, DaemonSets, and ClusterOperators; no Secrets, ConfigMaps, pod logs/exec, or mutation | required `homepage/homepage-okd-api` / `server`, `token`; no CA key because the endpoint uses public trust | no faster than 15s / 3s | Retain last good; two failures open the circuit, two successes recover; configured/no sample is `NO DATA`/`WARN` | Never expose token, headers, condition messages, raw objects, annotations, or credential-shaped fields; schema v5 emits normalized operators only | `IMPLEMENTED`; deployment remains blocked on the 30-minute preflight and genuine 24-hour preview soak |
 | Argo CD | Homelab GitOps owner | `https://argocd.lab.seandre.dev/api/v1/applications` | HTTPS REST | Read approved Application health/sync fields plus project/name, operation phase, revision, and safe status message; no sync, rollback, terminate, or repository operations | `homepage/homepage-argocd-readonly` / `server`, `token` | 5s loop / 3s | Cache last good application summary; stale on failure | Allowlist app name, health, sync, revision, operation phase, and safe message; remove repository details and credentials | `IMPLEMENTED PREVIEW`: requires Gate C response review |
 | Proxmox `pve-01` | Virtualization owner | `https://pve-01.lab.seandre.dev:8006/api2/json` | HTTPS REST | Read-only node status, aggregate running/stopped VM and container counts, uptime, memory, swap, and aggregate storage; no task, VM, storage, or configuration writes | `homepage-proxmox-pve01` / `server`, `token-id`, `token-secret`; `ca` only if a private CA is introduced | 15s / 5s | Last value labeled `STALE` with age; no sample is `NO DATA` | Remove token, cookies, raw error bodies, guest names, IDs, configuration, task data, and all unapproved fields | `VERIFIED 2026-07-19`: live read-only request returned 200; adapter remains disabled pending enablement |
 | Proxmox `pve-02` | Virtualization owner | `https://pve-02.lab.seandre.dev:8006/api2/json` | HTTPS REST | Read-only node status, aggregate running/stopped VM and container counts, uptime, memory, swap, and aggregate storage; no mutation endpoints | `homepage-proxmox-pve02` / `server`, `token-id`, `token-secret` (the endpoint presents a publicly trusted certificate) | 15s / 5s | Last value labeled `STALE` with age; no sample is `NO DATA` | Remove token, cookies, raw error bodies, guest names, IDs, configuration, task data, and all unapproved fields | `VERIFIED 2026-07-19`: node endpoint, public TLS, and live read-only request returned 200; adapter remains disabled pending enablement |
@@ -43,7 +42,8 @@ unresolved.
   an arbitrary URL, query, host, port, PromQL expression, Kubernetes resource, or
   Proxmox path.
 - `NOT PROVISIONED` is reserved for planned systems that are intentionally
-  inactive, especially the future OKD API. `NOT SUPPORTED` remains available
+  inactive. The enabled OKD API now reports `NO DATA`/`WARN` until its first
+  successful sample. `NOT SUPPORTED` remains available
   for optional integrations without a verified supported interface; the PDU
   no longer uses that state because its local UnPoller path passed preflight.
 - Poll intervals and timeouts above are proposed implementation defaults where

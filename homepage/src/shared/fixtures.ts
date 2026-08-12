@@ -4,6 +4,7 @@ import type {
   Cluster,
   Host,
   NetworkSummary,
+  PlatformOperator,
   ServiceStatus,
   StorageBackup,
   TimeSeries,
@@ -217,10 +218,10 @@ export const fixtureHosts: Host[] = [
     id: name,
     name,
     kind: 'OKD_NODE' as const,
-    cpuPercent: null,
-    memoryPercent: null,
-    memoryUsedBytes: null,
-    memoryTotalBytes: null,
+    cpuPercent: name === 'okd-cp-01' ? 18 : name === 'okd-cp-02' ? 23 : 16,
+    memoryPercent: name === 'okd-cp-01' ? 42 : name === 'okd-cp-02' ? 38 : 44,
+    memoryUsedBytes: name === 'okd-cp-01' ? 14_431_256_576 : name === 'okd-cp-02' ? 26_111_344_640 : 30_237_982_720,
+    memoryTotalBytes: name === 'okd-cp-01' ? 34_359_738_368 : 68_719_476_736,
     diskUsedBytes: null,
     diskTotalBytes: null,
     diskIoPercent: null,
@@ -240,7 +241,7 @@ export const fixtureHosts: Host[] = [
     networkIngressBitsPerSecond: null,
     networkEgressBitsPerSecond: null,
     networkTotalBytes: null,
-    metadata: metadata('fixture-okd-api', 'NOT_PROVISIONED', 'INFO', 'OKD is not provisioned.'),
+    metadata: metadata('fixture-okd-api', 'CURRENT', 'OK'),
   })),
 ];
 
@@ -262,30 +263,36 @@ export const fixtureClusters: Cluster[] = [
     id: 'okd',
     name: 'OKD',
     platform: 'OKD',
-    nodeCount: null,
-    readyNodeCount: null,
-    workloadCount: null,
-    cpuCapacityCores: null,
-    cpuUsedCores: null,
-    memoryCapacityBytes: null,
-    memoryUsedBytes: null,
-    metadata: metadata('fixture-okd-api', 'NOT_PROVISIONED', 'INFO', 'OKD is reserved but not provisioned.'),
+    nodeCount: 3,
+    readyNodeCount: 3,
+    workloadCount: 142,
+    cpuCapacityCores: 18,
+    cpuUsedCores: 3.4,
+    memoryCapacityBytes: 171_798_691_840,
+    memoryUsedBytes: 70_780_583_936,
+    metadata: metadata('fixture-okd-api', 'CURRENT', 'OK'),
   },
 ];
 
 export const fixtureWorkloads: Workload[] = [
   {
-    id: 'argocd-server', name: 'argocd-server', clusterId: 'k3s', namespace: 'argocd', readyReplicas: 1, desiredReplicas: 1, href: 'https://argocd.lab.seandre.dev',
+    id: 'k3s:deployment:argocd:argocd-server', name: 'argocd-server', clusterId: 'k3s', namespace: 'argocd', readyReplicas: 1, desiredReplicas: 1, href: 'https://argocd.lab.seandre.dev',
     metadata: metadata('fixture-k3s-api', 'CURRENT', 'OK'),
   },
   {
-    id: 'homepage', name: 'homepage', clusterId: 'k3s', namespace: 'homelab', readyReplicas: 2, desiredReplicas: 2, href: 'https://argocd.lab.seandre.dev',
+    id: 'k3s:deployment:homelab:homepage', name: 'homepage', clusterId: 'k3s', namespace: 'homelab', readyReplicas: 2, desiredReplicas: 2, href: 'https://argocd.lab.seandre.dev',
     metadata: metadata('fixture-k3s-api', 'CURRENT', 'OK'),
   },
   {
-    id: 'koreader-sync', name: 'koreader-sync', clusterId: 'k3s', namespace: 'apps', readyReplicas: 0, desiredReplicas: 1, href: 'https://argocd.lab.seandre.dev',
+    id: 'k3s:deployment:apps:koreader-sync', name: 'koreader-sync', clusterId: 'k3s', namespace: 'apps', readyReplicas: 0, desiredReplicas: 1, href: 'https://argocd.lab.seandre.dev',
     metadata: metadata('fixture-k3s-api', 'CURRENT', 'WARN', 'Deployment is waiting for a ready replica.'),
   },
+];
+
+export const fixturePlatformOperators: PlatformOperator[] = [
+  { id: 'okd:operator:kube-apiserver', clusterId: 'okd', name: 'kube-apiserver', version: '4.22.0-okd-scos.7', available: true, progressing: false, degraded: false, metadata: metadata('fixture-okd-api', 'CURRENT', 'OK') },
+  { id: 'okd:operator:ingress', clusterId: 'okd', name: 'ingress', version: '4.22.0-okd-scos.7', available: true, progressing: false, degraded: false, metadata: metadata('fixture-okd-api', 'CURRENT', 'OK') },
+  { id: 'okd:operator:storage', clusterId: 'okd', name: 'storage', version: '4.22.0-okd-scos.7', available: true, progressing: false, degraded: false, metadata: metadata('fixture-okd-api', 'CURRENT', 'OK') },
 ];
 
 export const fixtureNetwork: NetworkSummary = {
@@ -294,7 +301,7 @@ export const fixtureNetwork: NetworkSummary = {
   internetLatencyMs: 18.2,
   internetLatencyProtocol: 'HTTPS',
   ingressVip: '192.168.40.30',
-  ingressVips: ['192.168.40.30', '192.168.40.29'],
+  ingressVips: ['192.168.40.30', '192.168.40.29', '192.168.40.31'],
   unifi: {
     controller: null,
     status: null,
@@ -485,14 +492,24 @@ export const fixtureServices: ServiceStatus[] = [
     metadata: metadata('fixture-bookmarks', 'CURRENT', 'INFO', 'Bookmark; replaces the previous Homepage Docs bookmark.'),
   },
   {
+    id: 'okd-api',
+    name: 'OKD API',
+    group: 'Infrastructure',
+    description: 'Read-only OKD cluster API',
+    href: 'https://api.okd.lab.seandre.dev:6443',
+    status: 'UP',
+    latencyMs: 12,
+    metadata: metadata('fixture-service-probes', 'CURRENT', 'OK'),
+  },
+  {
     id: 'okd-console',
     name: 'OKD Console',
-    group: 'Planned',
-    description: 'Future OKD cluster console',
+    group: 'Infrastructure',
+    description: 'OKD cluster console',
     href: 'https://console-openshift-console.apps.okd.lab.seandre.dev',
-    status: 'DOWN',
-    latencyMs: null,
-    metadata: metadata('fixture-service-probes', 'NOT_PROVISIONED', 'INFO', 'OKD is not provisioned.'),
+    status: 'UP',
+    latencyMs: 18,
+    metadata: metadata('fixture-service-probes', 'CURRENT', 'OK'),
   },
 ];
 
@@ -511,7 +528,7 @@ export const fixtureWeather: Weather = {
 };
 
 export const healthyBootstrapFixture: Bootstrap = {
-  schemaVersion: 4,
+  schemaVersion: 5,
   generatedAt: FIXTURE_TIME,
   globalSeverity: 'WARN',
   alerts: fixtureAlerts,
@@ -519,6 +536,7 @@ export const healthyBootstrapFixture: Bootstrap = {
   hosts: fixtureHosts,
   clusters: fixtureClusters,
   workloads: fixtureWorkloads,
+  platformOperators: fixturePlatformOperators,
   network: fixtureNetwork,
   storage: fixtureStorage,
   storageBackups: fixtureStorageBackups,

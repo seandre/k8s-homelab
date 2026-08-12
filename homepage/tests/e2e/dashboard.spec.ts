@@ -88,6 +88,80 @@ test('lists active alerts and navigates directly to their closest panel', async 
   await expect(alerts).toBeHidden();
 });
 
+test('renders actionable OKD failures without duplicate cluster alerts', async ({ page }) => {
+  const bootstrap = structuredClone(healthyBootstrapFixture);
+  bootstrap.alerts = [];
+  bootstrap.globalSeverity = 'CRIT';
+  const cluster = bootstrap.clusters.find((item) => item.id === 'okd')!;
+  cluster.metadata = { ...cluster.metadata, severity: 'CRIT', message: 'Specific OKD health causes require attention.' };
+  const node = bootstrap.hosts.find((item) => item.kind === 'OKD_NODE')!;
+  node.metadata = { ...node.metadata, severity: 'CRIT', message: 'Node is not Ready.' };
+  const operator = bootstrap.platformOperators[0]!;
+  operator.available = true;
+  operator.progressing = false;
+  operator.degraded = true;
+  operator.metadata = { ...operator.metadata, severity: 'CRIT', message: 'Operator reports a degraded condition.' };
+  bootstrap.workloads.push({
+    id: 'okd:deployment:apps:broken', name: 'broken', clusterId: 'okd', namespace: 'apps',
+    readyReplicas: 0, desiredReplicas: 1, href: null,
+    metadata: { ...cluster.metadata, severity: 'WARN', message: 'Workload is not fully ready.' },
+  });
+  await page.route('**/api/v1/events', (route) => route.abort());
+  await page.route('**/api/v1/bootstrap', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ data: bootstrap, requestId: 'okd-failure-e2e' }),
+  }));
+
+  await page.goto('/okd');
+  await expect(page.getByRole('heading', { name: 'OKD cluster health' })).toBeVisible();
+  await expect(page.getByRole('region', { name: node.name }).getByText('NOT READY', { exact: true })).toBeVisible();
+  const operatorPanel = page.getByRole('region', { name: operator.name });
+  await expect(operatorPanel.locator('.metric').filter({ hasText: 'DEGRADED' }).getByText('YES', { exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'broken' }).getByText('0 / 1', { exact: true })).toBeVisible();
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations.filter(({ impact }) => impact === 'serious' || impact === 'critical')).toEqual([]);
+
+  await page.getByRole('button', { name: /CRIT · \d+ alerts?/ }).click();
+  const drawer = page.locator('#global-alert-menu');
+  await expect(drawer.getByRole('link', { name: new RegExp(operator.name) })).toHaveAttribute('href', '/okd#okd-operators');
+  await expect(drawer.getByRole('link', { name: /apps\/broken/ })).toHaveAttribute('href', '/okd#okd-workloads');
+  await expect(drawer.getByRole('link', { name: new RegExp(node.name) })).toHaveAttribute('href', '/okd#okd-node-health');
+  await expect(drawer.getByRole('link', { name: /^OKD\b/ })).toHaveCount(0);
+});
+
+test('shows configured OKD no-data state consistently across public views', async ({ page }) => {
+  const bootstrap = structuredClone(healthyBootstrapFixture);
+  bootstrap.globalSeverity = 'WARN';
+  bootstrap.hosts = bootstrap.hosts.filter((item) => item.kind !== 'OKD_NODE');
+  bootstrap.platformOperators = [];
+  bootstrap.workloads = bootstrap.workloads.filter((item) => item.clusterId !== 'okd');
+  const cluster = bootstrap.clusters.find((item) => item.id === 'okd')!;
+  Object.assign(cluster, {
+    nodeCount: null, readyNodeCount: null, workloadCount: null, cpuCapacityCores: null,
+    cpuUsedCores: null, memoryCapacityBytes: null, memoryUsedBytes: null,
+    metadata: { ...cluster.metadata, freshness: 'NO_DATA', severity: 'WARN', message: 'No successful OKD API sample is available.' },
+  });
+  await page.route('**/api/v1/events', (route) => route.abort());
+  await page.route('**/api/v1/bootstrap', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ data: bootstrap, requestId: 'okd-no-data-e2e' }),
+  }));
+
+  await page.goto('/');
+  await expect(page.getByRole('region', { name: 'OKD' }).getByText('NO DATA', { exact: true })).toBeVisible();
+  await page.goto('/compute');
+  await expect(page.getByText('No successful OKD node sample is available.')).toBeVisible();
+  await page.goto('/network');
+  await expect(page.getByRole('heading', { name: 'OKD endpoints' })).toBeVisible();
+  await page.goto('/services');
+  await expect(page.getByRole('link', { name: /OKD Console/ })).toBeVisible();
+  await page.goto('/okd');
+  await expect(page.getByText('No successful ClusterOperator sample is available.')).toBeVisible();
+  await expect(page.getByText('No unhealthy OKD workloads currently reported.')).toBeVisible();
+});
+
 test('renders the responsive indoor dashboard and requires review before controls', async ({ page }) => {
   test.setTimeout(60_000);
   let historyRequestCount = 0;
@@ -612,13 +686,13 @@ for (const viewport of [
     await page.setViewportSize(viewport);
     await page.goto('/');
     const summaries = page.locator('.overview-summary-grid > .panel');
-    await expect(summaries).toHaveCount(4);
+    await expect(summaries).toHaveCount(5);
     const topEdges = await summaries.evaluateAll((cards) => cards.map((card) => Math.round(card.getBoundingClientRect().top)));
     expect(new Set(topEdges.slice(0, viewport.columns)).size).toBe(1);
-    if (viewport.columns < 4) expect(topEdges[viewport.columns]).toBeGreaterThan(topEdges[0]!);
+    if (viewport.columns < 5) expect(topEdges[viewport.columns]).toBeGreaterThan(topEdges[0]!);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await expect(page.getByRole('heading', { name: 'Services', exact: true })).toHaveCount(0);
-    await expect(page.getByRole('heading', { name: 'OKD', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'OKD', exact: true })).toHaveCount(1);
     const cpuGraphs = page.locator('.pve-cpu-region .dot-graph-fill-width .dot-graph-trace');
     await expect(cpuGraphs).toHaveCount(2);
     const graphCoverage = await cpuGraphs.evaluateAll((graphs) => graphs.map((graph) => {

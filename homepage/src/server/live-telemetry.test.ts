@@ -79,6 +79,13 @@ describe('live telemetry', () => {
     (telemetry as unknown as { k3s: { read(): Promise<{ hosts: typeof hosts; cluster: typeof cluster; workloads: [] }> } }).k3s = {
       read: async () => ({ hosts, cluster, workloads: [] }),
     };
+    const okdHosts = healthyBootstrapFixture.hosts.filter((host) => host.kind === 'OKD_NODE');
+    const okdCluster = healthyBootstrapFixture.clusters.find((candidate) => candidate.platform === 'OKD')!;
+    const okdWorkloads = healthyBootstrapFixture.workloads.filter((workload) => workload.clusterId === 'okd');
+    const platformOperators = healthyBootstrapFixture.platformOperators;
+    (telemetry as unknown as { okd: { read(): Promise<{ hosts: typeof okdHosts; cluster: typeof okdCluster; workloads: typeof okdWorkloads; platformOperators: typeof platformOperators }> } }).okd = {
+      read: async () => ({ hosts: okdHosts, cluster: okdCluster, workloads: okdWorkloads, platformOperators }),
+    };
 
     await telemetry.refresh();
     await telemetry.refresh();
@@ -88,5 +95,8 @@ describe('live telemetry', () => {
     expect(series.find((candidate) => candidate.metric === 'k3s-worker-01 MEMORY')?.points).toHaveLength(2);
     expect(series.find((candidate) => candidate.metric === 'k3s CPU')?.points).toHaveLength(2);
     expect(series.find((candidate) => candidate.metric === 'k3s MEMORY')?.points).toHaveLength(2);
+    expect(series.find((candidate) => candidate.metric === 'okd-cp-01 CPU')?.points).toHaveLength(2);
+    expect(series.find((candidate) => candidate.metric === 'okd MEMORY')?.points).toHaveLength(2);
+    expect(telemetry.bootstrap().platformOperators).toEqual(platformOperators);
   });
 });

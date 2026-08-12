@@ -16,6 +16,7 @@ import type { RuntimeConfig } from './runtime-config.js';
 import { UniFiAdapter } from './unifi.js';
 import { HomeAssistantIndoorAdapter } from './home-assistant.js';
 import { HomeAssistantControlMapSchema } from './home-assistant-actions.js';
+import { OkdAdapter, normalizeOkdServer, type OkdReadClient, type OkdSnapshot } from './okd.js';
 
 export const POLL_INTERVAL_MS = 2_000;
 const FULL_REFRESH_INTERVAL_MS = 6_000;
@@ -94,6 +95,7 @@ export class LiveTelemetry {
   private glancesReadInFlight: Promise<Host[]> | undefined;
   private proxmox: ProxmoxAdapter | undefined;
   private k3s: K3sAdapter | undefined;
+  private okd: OkdAdapter | undefined;
   private argocd: ArgoCdAdapter | undefined;
   private pbs: PbsAdapter | undefined;
   private unifi: UniFiAdapter | undefined;
@@ -210,6 +212,39 @@ export class LiveTelemetry {
     return this.k3s.read();
   }
 
+  private async okdSnapshot(): Promise<OkdSnapshot> {
+    if (!this.okd) {
+      const [serverValue, token] = await Promise.all([
+        this.secretReader(`${SECRET_ROOT}/okd/server`),
+        this.secretReader(`${SECRET_ROOT}/okd/token`),
+      ]);
+      const observedAt = new Date().toISOString();
+      if (!serverValue || !token) return {
+        hosts: [], workloads: [], platformOperators: [],
+        cluster: { id: 'okd', name: 'OKD', platform: 'OKD', nodeCount: null, readyNodeCount: null, workloadCount: null, cpuCapacityCores: null, cpuUsedCores: null, memoryCapacityBytes: null, memoryUsedBytes: null, metadata: { source: 'okd-api', observedAt, freshness: 'NO_DATA', severity: 'WARN', message: 'No successful OKD API sample is available.' } },
+      };
+      let server: string;
+      try { server = normalizeOkdServer(serverValue); } catch { return {
+        hosts: [], workloads: [], platformOperators: [],
+        cluster: { id: 'okd', name: 'OKD', platform: 'OKD', nodeCount: null, readyNodeCount: null, workloadCount: null, cpuCapacityCores: null, cpuUsedCores: null, memoryCapacityBytes: null, memoryUsedBytes: null, metadata: { source: 'okd-api', observedAt, freshness: 'NO_DATA', severity: 'WARN', message: 'No successful OKD API sample is available.' } },
+      }; }
+      const request = (path: string) => requestJson(`${server}${path}`, { headers: { authorization: `Bearer ${token}` }, timeoutMs: 3_000 }).then((response) => {
+        if (!response.ok) throw new Error(`OKD API returned ${response.status}.`);
+        return response.json();
+      });
+      const client: OkdReadClient = {
+        listNodes: () => request('/api/v1/nodes'),
+        listNodeMetrics: () => request('/apis/metrics.k8s.io/v1beta1/nodes'),
+        listDeployments: () => request('/apis/apps/v1/deployments'),
+        listStatefulSets: () => request('/apis/apps/v1/statefulsets'),
+        listDaemonSets: () => request('/apis/apps/v1/daemonsets'),
+        listClusterOperators: () => request('/apis/config.openshift.io/v1/clusteroperators'),
+      };
+      this.okd = new OkdAdapter(client);
+    }
+    return this.okd.read();
+  }
+
   private async argocdApplications() {
     if (!this.argocd) {
       const [server, token] = await Promise.all([this.secretReader(`${SECRET_ROOT}/argocd/server`), this.secretReader(`${SECRET_ROOT}/argocd/token`)]);
@@ -256,8 +291,8 @@ export class LiveTelemetry {
   }
 
   async refresh(recordGraphSample = true) {
-    const [proxmox, glances, k3s, prometheus, pduPower, udm, alerts, argocd, pbs, unifi, weather, probes, indoor] = await Promise.all([
-      this.proxmoxHosts(), this.glancesHosts(), this.k3sSnapshot(),
+    const [proxmox, glances, k3s, okd, prometheus, pduPower, udm, alerts, argocd, pbs, unifi, weather, probes, indoor] = await Promise.all([
+      this.proxmoxHosts(), this.glancesHosts(), this.k3sSnapshot(), this.okdSnapshot(),
       this.prometheus.readCluster((url) => this.httpFetch(url)),
       this.prometheus.readPduPower((url) => this.httpFetch(url)),
       this.prometheus.readUdm((url) => this.httpFetch(url)),
@@ -272,9 +307,9 @@ export class LiveTelemetry {
     const proxmoxHosts = ['pve-01', 'pve-02'].map((id) => ({ ...mergedHost(id, id, proxmoxById.get(id), glancesById.get(id), now), powerWatts: pduWatts[id] ?? null }));
     const base = this.emptyBootstrap();
     base.generatedAt = now;
-    base.hosts = [...proxmoxHosts, ...(k3s?.hosts ?? []) , ...base.hosts.filter((host) => host.kind === 'OKD_NODE')];
+    base.hosts = [...proxmoxHosts, ...(k3s?.hosts ?? []), ...okd.hosts];
     base.clusters = base.clusters.map((cluster) => {
-      if (cluster.platform !== 'K3S') return cluster;
+      if (cluster.platform === 'OKD') return okd.cluster;
       if (!k3s) return { ...cluster, nodeCount: null, readyNodeCount: null, workloadCount: null, cpuCapacityCores: null, cpuUsedCores: null, memoryCapacityBytes: null, memoryUsedBytes: null, metadata: { source: 'k3s-api', observedAt: now, freshness: 'NO_DATA', severity: 'INFO', message: 'No successful k3s API sample is available.' } };
       return {
         ...k3s.cluster,
@@ -284,16 +319,19 @@ export class LiveTelemetry {
         memoryUsedBytes: prometheus?.memoryUsedBytes ?? k3s.cluster.memoryUsedBytes,
       };
     });
-    base.workloads = k3s?.workloads ?? [];
+    base.workloads = [...(k3s?.workloads ?? []), ...okd.workloads];
+    base.platformOperators = okd.platformOperators;
     base.alerts = alerts;
     const k3sHosts = k3s?.hosts ?? [];
     const k3sCluster = base.clusters.find((cluster) => cluster.platform === 'K3S');
+    const okdCluster = base.clusters.find((cluster) => cluster.platform === 'OKD');
     if (recordGraphSample) {
       const sampleTimestamp = this.nextSampleTimestamp(now);
-      for (const host of [...proxmoxHosts, ...k3sHosts]) this.recordHost(host, sampleTimestamp);
+      for (const host of [...proxmoxHosts, ...k3sHosts, ...okd.hosts]) this.recordHost(host, sampleTimestamp);
       if (k3sCluster) this.recordCluster(k3sCluster, sampleTimestamp);
+      if (okdCluster) this.recordCluster(okdCluster, sampleTimestamp);
     }
-    base.timeSeries = this.timeSeries([...proxmoxHosts, ...k3sHosts], k3sCluster);
+    base.timeSeries = this.timeSeries([...proxmoxHosts, ...k3sHosts, ...okd.hosts], base.clusters);
     if (pbs) { base.storage = pbs.storage; base.storageBackups = pbs.backups; }
     base.network = { ...base.network, udm, pduPower: { totalWatts: pduPower.totalWatts, metadata: pduPower.metadata } };
     if (unifi) base.network = { ...base.network, ...unifi, metadata: unifi.unifi.metadata };
@@ -303,6 +341,8 @@ export class LiveTelemetry {
     base.globalSeverity = aggregateGlobalSeverity([
       ...base.hosts.map((host) => ({ metadata: host.metadata })),
       ...base.clusters.map((cluster) => ({ metadata: cluster.metadata })),
+      ...base.workloads.filter((workload) => workload.metadata.severity !== 'OK').map((workload) => ({ metadata: workload.metadata })),
+      ...base.platformOperators.map((operator) => ({ metadata: operator.metadata })),
       ...base.alerts.map((alert) => ({ metadata: alert.metadata })),
       { metadata: base.network.metadata }, { metadata: base.storage.pbs.metadata }, { metadata: base.weather.metadata },
       ...base.services.map((service) => ({ metadata: service.metadata })),
@@ -330,10 +370,12 @@ export class LiveTelemetry {
     const base = structuredClone(this.latest);
     base.generatedAt = now;
     base.hosts = [...proxmoxHosts, ...base.hosts.filter((host) => host.kind !== 'PROXMOX')];
-    base.timeSeries = this.timeSeries([...proxmoxHosts, ...k3sHosts], k3sCluster);
+    base.timeSeries = this.timeSeries([...proxmoxHosts, ...k3sHosts, ...base.hosts.filter((host) => host.kind === 'OKD_NODE')], base.clusters);
     base.globalSeverity = aggregateGlobalSeverity([
       ...base.hosts.map((host) => ({ metadata: host.metadata })),
       ...base.clusters.map((cluster) => ({ metadata: cluster.metadata })),
+      ...base.workloads.filter((workload) => workload.metadata.severity !== 'OK').map((workload) => ({ metadata: workload.metadata })),
+      ...base.platformOperators.map((operator) => ({ metadata: operator.metadata })),
       ...base.alerts.map((alert) => ({ metadata: alert.metadata })),
       { metadata: base.network.metadata }, { metadata: base.storage.pbs.metadata }, { metadata: base.weather.metadata },
       ...base.services.map((service) => ({ metadata: service.metadata })),
@@ -351,6 +393,7 @@ export class LiveTelemetry {
     base.network = { ...base.network, gatewayLatencyMs: null, gatewayLatencyProtocol: null, internetLatencyMs: null, internetLatencyProtocol: null, unifi: { controller: null, status: null, metadata: unavailable }, udm: { wanDownloadMbps: null, wanUploadMbps: null, wanTotalBytes: null, latencyMs: null, cpuPercent: null, memoryPercent: null, temperatureCelsius: null, uptimeSeconds: null, clientCount: null, metadata: unavailable }, pduPower: { totalWatts: null, metadata: unavailable }, lastSpeedTest: { downloadMbps: null, uploadMbps: null, latencyMs: null, observedAt: null, metadata: unavailable }, metadata: unavailable };
     base.storage = { ...base.storage, pbs: { ...base.storage.pbs, reachable: null, metadata: unavailable } };
     base.storageBackups = [];
+    base.platformOperators = [];
     base.services = [];
     base.weather = { ...base.weather, temperatureFahrenheit: null, condition: null, sunrise: null, sunset: null, usAqi: null, pm25: null, pm10: null, conditionsMetadata: unavailable, airQualityMetadata: unavailable, metadata: unavailable };
     return base;
@@ -384,10 +427,10 @@ export class LiveTelemetry {
 
   private recordCluster(cluster: Cluster, timestamp: string) {
     const metrics: Array<[string, number | null]> = [
-      ['k3s CPU', cluster.cpuUsedCores !== null && cluster.cpuCapacityCores
+      [`${cluster.id} CPU`, cluster.cpuUsedCores !== null && cluster.cpuCapacityCores
         ? cluster.cpuUsedCores / cluster.cpuCapacityCores * 100
         : null],
-      ['k3s MEMORY', cluster.memoryUsedBytes !== null && cluster.memoryCapacityBytes
+      [`${cluster.id} MEMORY`, cluster.memoryUsedBytes !== null && cluster.memoryCapacityBytes
         ? cluster.memoryUsedBytes / cluster.memoryCapacityBytes * 100
         : null],
     ];
@@ -405,11 +448,12 @@ export class LiveTelemetry {
     return new Date(timestampMs).toISOString();
   }
 
-  private timeSeries(hosts: Host[], cluster?: Cluster): TimeSeries[] {
+  private timeSeries(hosts: Host[], clusters: Cluster[] = []): TimeSeries[] {
     const current = new Map(hosts.map((host) => [host.name, host]));
     return [...this.history.entries()].map(([metric, points]) => {
       const host = current.get(metric.split(' ')[0]!);
-      return { metric, unit: metric.endsWith('RX') || metric.endsWith('TX') ? 'Mb/s' : '%', window: '15m', points, metadata: host?.metadata ?? (metric.startsWith('k3s ') && cluster ? cluster.metadata : { source: 'live-telemetry', observedAt: new Date().toISOString(), freshness: 'NO_DATA', severity: 'INFO' }) };
+      const cluster = clusters.find((candidate) => metric.startsWith(`${candidate.id} `));
+      return { metric, unit: metric.endsWith('RX') || metric.endsWith('TX') ? 'Mb/s' : '%', window: '15m', points, metadata: host?.metadata ?? cluster?.metadata ?? { source: 'live-telemetry', observedAt: new Date().toISOString(), freshness: 'NO_DATA', severity: 'INFO' } };
     });
   }
 }

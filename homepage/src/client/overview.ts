@@ -5,9 +5,9 @@ export interface OverviewModel {
   globalSeverity: Bootstrap['globalSeverity'];
   proxmoxHosts: Host[];
   k3sNodes: Host[];
-  futureOkdNodes: Host[];
+  okdNodes: Host[];
   k3s: Cluster | undefined;
-  futureOkd: Cluster | undefined;
+  okd: Cluster | undefined;
   workloads: Bootstrap['workloads'];
   network: Bootstrap['network'];
   services: Bootstrap['services'];
@@ -20,9 +20,9 @@ export function buildOverviewModel(bootstrap: Bootstrap): OverviewModel {
     globalSeverity: bootstrap.globalSeverity,
     proxmoxHosts: bootstrap.hosts.filter((host) => host.kind === 'PROXMOX'),
     k3sNodes: bootstrap.hosts.filter((host) => host.kind === 'K3S_NODE'),
-    futureOkdNodes: bootstrap.hosts.filter((host) => host.kind === 'OKD_NODE'),
+    okdNodes: bootstrap.hosts.filter((host) => host.kind === 'OKD_NODE'),
     k3s: bootstrap.clusters.find((cluster) => cluster.platform === 'K3S'),
-    futureOkd: bootstrap.clusters.find((cluster) => cluster.platform === 'OKD'),
+    okd: bootstrap.clusters.find((cluster) => cluster.platform === 'OKD'),
     workloads: bootstrap.workloads,
     network: bootstrap.network,
     services: bootstrap.services,

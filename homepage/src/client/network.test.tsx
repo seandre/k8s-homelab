@@ -5,7 +5,7 @@ import { healthyBootstrapFixture } from '../shared/fixtures.js';
 import { NetworkScreen } from './network.js';
 
 describe('Network fixture view', () => {
-  it('renders read-only protocol-labeled latency, PDU total draw, and planned endpoint states', () => {
+  it('renders read-only protocol-labeled latency, PDU total draw, and live OKD endpoint states', () => {
     const markup = renderToStaticMarkup(<NetworkScreen />);
     expect(markup).toContain('GATEWAY / ICMP');
     expect(markup).toContain('INTERNET / HTTPS');
@@ -16,7 +16,10 @@ describe('Network fixture view', () => {
     expect(markup.match(/dot-matrix-fixed/g)).toHaveLength(3);
     expect(markup).toContain('traffic-matrix-fixed');
     expect(markup).not.toContain('braille-cell');
-    expect(markup).toContain('NOT PROVISIONED');
+    expect(markup).toContain('OKD endpoints');
+    expect(markup).toContain('LIVE / STRICT TLS');
+    expect(markup).toContain('OKD Console');
+    expect(markup).not.toContain('NOT PROVISIONED');
     expect(markup).not.toContain('Run speed test');
   });
 

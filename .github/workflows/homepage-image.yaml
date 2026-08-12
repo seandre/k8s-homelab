@@ -4,6 +4,10 @@ on:
   pull_request:
     paths:
       - homepage/**
+      - kubernetes/apps/homepage-custom-preview/**
+      - kubernetes/clusters/okd/observability/homepage/**
+      - scripts/validate-homepage-rollout-manifests.sh
+      - scripts/validate-okd-homepage-rbac.sh
       - .github/workflows/homepage-image.yaml
   push:
     branches: [main]
@@ -11,6 +15,12 @@ on:
       - homepage/**
       - .github/workflows/homepage-image.yaml
   workflow_dispatch:
+    inputs:
+      deploy_preview:
+        description: Confirm the 30-minute OKD path preflight passed and deploy the scanned candidate to preview only
+        required: true
+        type: boolean
+        default: false
 
 concurrency:
   group: homepage-image-${{ github.ref }}
@@ -56,6 +66,10 @@ jobs:
       - name: Run integration tests
         run: npm run test:integration
 
+      - name: Render k3s and OKD Kubernetes resources
+        working-directory: ${{ github.workspace }}
+        run: scripts/validate-homepage-rollout-manifests.sh
+
       # Visual baselines are rendered and reviewed on macOS; retain portable
       # keyboard, navigation, and accessibility browser coverage on Ubuntu.
       # Playwright's web server performs the production build.
@@ -63,7 +77,7 @@ jobs:
         run: npm run test:e2e -- --grep-invert 'matches the .* overview'
 
   container-pr:
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -93,7 +107,7 @@ jobs:
           ignore-unfixed: true
 
   container-main:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.deploy_preview)
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -149,7 +163,7 @@ jobs:
     needs:
       - quality
       - container-main
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.deploy_preview
     runs-on: ubuntu-latest
     permissions:
       contents: write

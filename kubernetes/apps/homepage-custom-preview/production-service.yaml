@@ -10,7 +10,7 @@ metadata:
 spec:
   selector:
     app.kubernetes.io/name: homepage-custom
-    app.kubernetes.io/instance: preview
+    app.kubernetes.io/instance: production
   ports:
     - name: http
       port: 3000

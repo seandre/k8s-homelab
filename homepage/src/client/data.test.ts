@@ -7,6 +7,7 @@ describe('client bootstrap event parsing', () => {
     expect(parseBootstrapEvent(JSON.stringify(healthyBootstrapFixture))).toEqual(healthyBootstrapFixture);
     expect(parseBootstrapEvent('{not-json}')).toBeNull();
     expect(parseBootstrapEvent(JSON.stringify({ schemaVersion: 1 }))).toBeNull();
+    expect(parseBootstrapEvent(JSON.stringify({ ...healthyBootstrapFixture, schemaVersion: 4 }))).toBeNull();
   });
 });
 

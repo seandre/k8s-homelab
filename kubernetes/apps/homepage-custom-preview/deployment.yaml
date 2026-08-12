@@ -3,13 +3,13 @@ kind: Deployment
 metadata:
   name: homepage-custom-preview
   namespace: homepage
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
   labels:
     app.kubernetes.io/name: homepage-custom
     app.kubernetes.io/instance: preview
     app.kubernetes.io/component: dashboard
 spec:
-  # A single gateway owns the RWO idempotency journal and per-target execution
-  # locks. Availability is restored by the Deployment after failure.
   replicas: 1
   revisionHistoryLimit: 2
   strategy:
@@ -20,8 +20,6 @@ spec:
       app.kubernetes.io/instance: preview
   template:
     metadata:
-      annotations:
-        homelab.seandre.dev/runtime-secret-revision: "airgradient-control-v1"
       labels:
         app.kubernetes.io/name: homepage-custom
         app.kubernetes.io/instance: preview
@@ -124,14 +122,9 @@ spec:
             - name: home-assistant-credentials
               mountPath: /var/run/homepage-secrets/home-assistant
               readOnly: true
-            - name: home-assistant-control-map
-              mountPath: /var/run/homepage-secrets/home-assistant-control
+            - name: okd-credentials
+              mountPath: /var/run/homepage-secrets/okd
               readOnly: true
-            - name: home-assistant-control-token
-              mountPath: /var/run/homepage-secrets/home-assistant-control-token
-              readOnly: true
-            - name: action-state
-              mountPath: /var/lib/homepage
       volumes:
         - name: preview-runtime-config
           configMap:
@@ -165,16 +158,6 @@ spec:
           secret:
             secretName: homepage-home-assistant-readonly
             optional: true
-        # Runtime-only private entity mappings. Values are deliberately absent
-        # from Git and the public bootstrap/action contracts.
-        - name: home-assistant-control-map
+        - name: okd-credentials
           secret:
-            secretName: homepage-home-assistant-control
-            optional: true
-        - name: home-assistant-control-token
-          secret:
-            secretName: homepage-home-assistant-control-token
-            optional: true
-        - name: action-state
-          persistentVolumeClaim:
-            claimName: homepage-indoor-actions
+            secretName: homepage-okd-api

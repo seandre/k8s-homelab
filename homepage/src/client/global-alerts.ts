@@ -25,6 +25,7 @@ function destinationForAlert(name: string, source: string, alertSummary: string)
   if (/backup|pbs|storage|datastore/.test(value)) return '/storage-backups#pbs-status';
   if (/network|unifi|internet|gateway|pdu/.test(value)) return '/network#network-overview';
   if (/service|probe|endpoint|ingress/.test(value)) return '/services#services';
+  if (/okd|openshift|clusteroperator/.test(value)) return '/okd#okd';
   if (/k3s|kube|node|pod|workload|deployment|daemonset|statefulset/.test(value)) return '/kubernetes#k3s-health-title';
   if (/proxmox|pve|host|cpu|memory|disk/.test(value)) return '/compute#proxmox-title';
   return '/#overview-alerts';
@@ -56,12 +57,18 @@ export function buildGlobalAlertItems(bootstrap: Bootstrap): GlobalAlertItem[] {
       `host-${host.id}`,
       host.name,
       host.metadata,
-      host.kind === 'PROXMOX' ? '/compute#proxmox-title' : host.kind === 'K3S_NODE' ? '/kubernetes#k3s-health-title' : '/okd#okd',
+      host.kind === 'PROXMOX' ? '/compute#proxmox-title' : host.kind === 'K3S_NODE' ? '/kubernetes#k3s-health-title' : '/okd#okd-node-health',
     );
   }
+  const specificClusterCauses = new Set<string>();
+  for (const host of bootstrap.hosts) if (active(host.metadata) && host.kind !== 'PROXMOX') specificClusterCauses.add(host.kind === 'OKD_NODE' ? 'okd' : 'k3s');
+  for (const workload of bootstrap.workloads) if (active(workload.metadata)) specificClusterCauses.add(workload.clusterId);
+  for (const operator of bootstrap.platformOperators) if (active(operator.metadata)) specificClusterCauses.add(operator.clusterId);
   for (const cluster of bootstrap.clusters) {
-    add(`cluster-${cluster.id}`, cluster.name, cluster.metadata, cluster.platform === 'K3S' ? '/kubernetes#cluster-summary' : '/okd#okd');
+    if (!specificClusterCauses.has(cluster.id)) add(`cluster-${cluster.id}`, cluster.name, cluster.metadata, cluster.platform === 'K3S' ? '/kubernetes#cluster-summary' : '/okd#okd');
   }
+  for (const workload of bootstrap.workloads) add(`workload-${workload.id}`, `${workload.namespace}/${workload.name}`, workload.metadata, workload.clusterId === 'okd' ? '/okd#okd-workloads' : '/kubernetes#k3s-workload-title');
+  for (const operator of bootstrap.platformOperators) add(`operator-${operator.id}`, operator.name, operator.metadata, '/okd#okd-operators');
   add('network', 'Network', bootstrap.network.metadata, '/network#network-overview');
   add('pbs', 'Proxmox Backup Server', bootstrap.storage.pbs.metadata, '/storage-backups#pbs-status');
   add('weather-conditions', 'Weather conditions', bootstrap.weather.conditionsMetadata, '/weather#weather-conditions');

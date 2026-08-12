@@ -23,11 +23,16 @@ describe('shared contracts', () => {
   it('rejects credential-shaped fields in the public bootstrap contract', () => {
     expect(BootstrapSchema.safeParse({ ...healthyBootstrapFixture, token: 'never' }).success).toBe(false);
     expect(BootstrapSchema.parse(healthyBootstrapFixture)).not.toHaveProperty('token');
+    const serialized = JSON.stringify(BootstrapSchema.parse(healthyBootstrapFixture));
+    expect(serialized).not.toMatch(/"(?:token|authorization|headers|rawObject|conditionMessage|kubeconfig|clientCertificate)"/i);
+    expect(healthyBootstrapFixture.workloads.every((workload) => workload.id.startsWith(`${workload.clusterId}:`))).toBe(true);
+    expect(healthyBootstrapFixture.platformOperators.every((operator) => operator.id.startsWith(`${operator.clusterId}:operator:`))).toBe(true);
   });
 
-  it('requires strict bootstrap schema version 4 and normalized AirGradient state', () => {
+  it('requires strict bootstrap schema version 5 and normalized AirGradient state', () => {
     expect(BootstrapSchema.safeParse({ ...healthyBootstrapFixture, schemaVersion: 3 }).success).toBe(false);
-    expect(healthyBootstrapFixture.schemaVersion).toBe(4);
+    expect(healthyBootstrapFixture.schemaVersion).toBe(5);
+    expect(BootstrapSchema.safeParse({ ...healthyBootstrapFixture, schemaVersion: 4 }).success).toBe(false);
     expect(BootstrapSchema.safeParse({ ...healthyBootstrapFixture, unexpected: true }).success).toBe(false);
     expect(BootstrapSchema.safeParse({
       ...healthyBootstrapFixture,

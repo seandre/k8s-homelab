@@ -1,16 +1,14 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: homepage-custom-preview
+  name: homepage-custom
   namespace: homepage
   labels:
     app.kubernetes.io/name: homepage-custom
-    app.kubernetes.io/instance: preview
 spec:
   podSelector:
     matchLabels:
       app.kubernetes.io/name: homepage-custom
-      app.kubernetes.io/instance: preview
   policyTypes:
     - Ingress
     - Egress
@@ -121,16 +119,15 @@ spec:
       ports:
         - protocol: TCP
           port: 443
-        # The kubernetes Service exposes 443 but DNATs to the control-plane
-        # EndpointSlice on 6443; policy enforcement observes that endpoint.
-        - protocol: TCP
-          port: 6443
+        # Allows both the k3s control-plane endpoint and the OKD API VIP.
         - protocol: TCP
           port: 8006
         - protocol: TCP
           port: 8007
         - protocol: TCP
           port: 61208
+        - protocol: TCP
+          port: 6443
     # Standard NetworkPolicy cannot constrain external HTTPS by DNS name. The
     # backend's Git-owned hostname allowlist remains the application boundary.
     - to:

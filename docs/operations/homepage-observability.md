@@ -1,6 +1,10 @@
 # Homepage Observability Expansion
 
-Status: implemented in the preview GitOps path on 2026-07-20. The UniFi PDU
+Status: OKD direct telemetry is implemented in source on 2026-08-11. The
+continuous preflight passed on 2026-08-12; preview deployment and its mandatory
+24-hour soak remain before production promotion. The
+earlier observability expansion was implemented in the preview GitOps path on
+2026-07-20. The UniFi PDU
 preflight passed and its mapping is enabled at Git revision `c3d8968`; the
 owner-approved shortened Gate D technical soak passed at
 `2026-07-20T21:37:34Z`. Production Homepage traffic has not changed. Host
@@ -293,3 +297,122 @@ mapping, exporter, and preview Homepage commits), sync through Argo CD, and
 retain the stock Homepage. Do not delete the manual controller Secret or the
 Prometheus PVC as part of rollback unless intentionally rotating credentials or
 discarding retained history.
+
+## OKD direct telemetry rollout
+
+Status: implemented in source and GitOps manifests on 2026-08-11. The
+`bastion-01` DNS/API route passed the continuous preflight on 2026-08-12. The
+candidate is authorized for preview deployment only and must complete a genuine
+24-hour preview soak before production promotion. Do not shorten that window.
+
+### Identity and k3s Secret
+
+Apply `kubernetes/clusters/okd/observability/homepage` with the OKD admin
+context. It creates `homepage-observability/homepage-k3s-reader`, its narrow
+ClusterRole and binding, and the manually populated service-account token
+Secret. Run `scripts/validate-okd-homepage-rbac.sh` against that context. All
+six positive checks and every negative check must pass.
+
+Retrieve the token without printing it into a ticket or committing it. Create
+the required k3s Secret through a protected temporary file or approved secret
+manager workflow. It has exactly two keys:
+
+```text
+server = https://api.okd.lab.seandre.dev:6443
+token  = <homepage-k3s-reader token>
+```
+
+Do not add a CA key, kubeconfig, username, client certificate, or insecure-TLS
+flag. The public certificate chain is the trust source. Both preview and
+production require `homepage/homepage-okd-api`; the pod must remain unready if
+it is absent.
+
+The persistent token is a documented exception to [OKD's preference for
+bounded TokenRequest credentials](https://docs.okd.io/4.20/nodes/pods/nodes-pods-secrets.html)
+because this consumer is in a separate cluster with no shared credential
+broker. Its exposure lasts until explicit revocation, so
+store it only in the password manager and Kubernetes Secret, audit its RBAC,
+and rotate it every 90 days.
+
+### Ninety-day token rotation
+
+1. Create a second annotated service-account token Secret for the same ServiceAccount; keep the old token valid.
+2. Update only `homepage/homepage-okd-api` with the new token and unchanged approved server.
+3. Restart preview, then production, and verify current OKD samples, strict TLS, API permissions, UI state, and response/log redaction in both.
+4. Delete the old OKD token Secret only after both Deployments have produced successful samples with the replacement.
+5. Record the issue, activation, verification, revocation, and next-due dates without recording either token.
+
+If the new token fails, restore the old k3s Secret while overlap still exists.
+If either token may have leaked, revoke it immediately, suspend the adapter if
+necessary, and review API audit logs; the ordinary overlap schedule no longer
+applies.
+
+### Continuous 30-minute preflight
+
+Start a fresh timer after every failed check or interruption. For 30 continuous
+minutes, both `utility-01` and a disposable k3s test pod must resolve the API
+and console through normal DNS. Strict-TLS requests to API `/readyz` and the
+console must succeed, all three nodes must remain `Ready`, and every
+ClusterOperator must be Available, not Progressing, and not Degraded. Never use
+the `.29` VIP directly as an adapter fallback and never use `curl -k`.
+
+Record timestamps and pass/fail summaries only. Do not paste tokens, headers,
+raw ClusterOperator messages, or kubeconfig content into evidence.
+
+Do not merge or apply the k3s Deployment split until this gate has passed and
+the required `homepage-okd-api` Secret exists. The active Argo CD Application
+is automated; merging the manifests is itself the one-time migration.
+
+#### Preflight record — 2026-08-12
+
+The uninterrupted gate ran from `2026-08-12T22:00:03Z` through
+`2026-08-12T22:30:03Z` and passed 110 of 110 samples. During the full window,
+normal DNS returned the approved API and console addresses from both
+`utility-01` and the disposable k3s pod; strict-TLS API readiness and console
+requests succeeded; all three nodes remained `Ready`; every ClusterOperator
+remained Available, not Progressing, and not Degraded; and no pending CSR
+appeared.
+
+The final snapshot also returned HTTP `200` for all six allowlisted API
+resource families from k3s, showed zero probe-pod restarts, and confirmed the
+k3s Secret contains only `server` and `token`. The OKD RBAC validator passed
+all positive and negative checks. The disposable probe was deleted after the
+evidence was captured; the read-only identity and required Secret remain.
+
+Before this successful window, `pve-02` was power-cycled and its Intel e1000e
+link was stabilized by persistently disabling TSO and GSO on `nic0`. The final
+snapshot showed both features off, the `bastion-01` VM running, and no hardware
+unit hang in the current boot. DNS was also corrected so private wildcard AAAA
+lookups return an authoritative empty answer instead of `NXDOMAIN`; no direct
+control-plane-IP fallback or TLS bypass was introduced.
+
+### Preview-only deployment and 24-hour soak
+
+After the preflight passes, manually dispatch the Homepage image workflow with
+`deploy_preview=true`. Push builds publish a scanned candidate but never deploy
+it automatically; the gated dispatch pins only `homepage-custom-preview`.
+Confirm production still contains its prior digest and preview has no
+`home-assistant-control*` or `action-state` mounts. During one uninterrupted
+24-hour window require:
+
+- node CPU/memory within one refresh interval of `oc adm top nodes`, plus exact node and workload inventory totals;
+- correct Overview, Compute, Network, Services, OKD, global severity, alert deduplication, and alert destinations for healthy and observed unhealthy states;
+- no unexplained stale interval, pod restart, permission failure, raw condition message, credential-shaped response/log field, or TLS bypass;
+- recovery from observed transient failures without browser cache clearing; and
+- image digest, start/end time, restart count, source freshness, and redaction evidence recorded in the evidence index.
+
+Any candidate, RBAC, credential, network policy, severity, or public-contract
+change invalidates the soak and starts a new 24-hour window.
+
+### Promotion and rollback
+
+After approval, copy the exact preview `image:` value (tag plus digest) into
+`production-deployment.yaml`; do not rebuild or retag. Re-run API, UI, alert,
+TLS, RBAC, and redaction checks against production. Promotion changes no Secret
+or Service selector.
+
+Rollback changes only production's image to its previous digest. Keep the
+read-only OKD identity and preview Deployment unless credentials are suspected.
+The one-time Deployment split uses Argo CD waves: the PVC exists first, preview
+is reconciled read-only next, and production acquires the RWO journal last.
+Homepage remains available, but indoor actions can briefly be unavailable.

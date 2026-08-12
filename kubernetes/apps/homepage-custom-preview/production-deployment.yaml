@@ -1,0 +1,130 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homepage-custom-production
+  namespace: homepage
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+  labels:
+    app.kubernetes.io/name: homepage-custom
+    app.kubernetes.io/instance: production
+    app.kubernetes.io/component: control-gateway
+spec:
+  # The production gateway is the only workload allowed to own the RWO action
+  # journal and indoor-control credentials.
+  replicas: 1
+  revisionHistoryLimit: 2
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: homepage-custom
+      app.kubernetes.io/instance: production
+  template:
+    metadata:
+      annotations:
+        homelab.seandre.dev/runtime-secret-revision: "airgradient-control-v1"
+      labels:
+        app.kubernetes.io/name: homepage-custom
+        app.kubernetes.io/instance: production
+        app.kubernetes.io/component: control-gateway
+    spec:
+      serviceAccountName: homepage-custom-k3s-reader
+      automountServiceAccountToken: true
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: homepage
+          # Promotion changes only this digest after the 24-hour preview soak.
+          image: ghcr.io/seandre/k8s-homelab-homepage:sha-ca5033f@sha256:91f90bdea9e1ebae80e9c16515acb12df68e64ca9f89f813819879b73367afec
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          env:
+            - name: HOMEPAGE_RUNTIME_MODE
+              value: production
+            - name: LIVE_TELEMETRY
+              value: "true"
+            - name: AIRNOW_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: homepage-airnow-readonly
+                  key: api-key
+                  optional: true
+            - name: WEATHERAPI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: homepage-weatherapi-readonly
+                  key: api-key
+                  optional: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+          livenessProbe:
+            httpGet: { path: /api/health/live, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet: { path: /api/health/ready, port: http }
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - { name: runtime-config, mountPath: /etc/homepage-preview, readOnly: true }
+            - { name: tmp, mountPath: /tmp }
+            - { name: argocd-credentials, mountPath: /var/run/homepage-secrets/argocd, readOnly: true }
+            - { name: pve01-credentials, mountPath: /var/run/homepage-secrets/pve01, readOnly: true }
+            - { name: pve02-credentials, mountPath: /var/run/homepage-secrets/pve02, readOnly: true }
+            - { name: pbs-credentials, mountPath: /var/run/homepage-secrets/pbs, readOnly: true }
+            - { name: unifi-credentials, mountPath: /var/run/homepage-secrets/unifi, readOnly: true }
+            - { name: home-assistant-credentials, mountPath: /var/run/homepage-secrets/home-assistant, readOnly: true }
+            - { name: okd-credentials, mountPath: /var/run/homepage-secrets/okd, readOnly: true }
+            - { name: home-assistant-control-map, mountPath: /var/run/homepage-secrets/home-assistant-control, readOnly: true }
+            - { name: home-assistant-control-token, mountPath: /var/run/homepage-secrets/home-assistant-control-token, readOnly: true }
+            - { name: action-state, mountPath: /var/lib/homepage }
+      volumes:
+        - name: runtime-config
+          configMap: { name: homepage-custom-preview }
+        - name: tmp
+          emptyDir: { medium: Memory }
+        - name: argocd-credentials
+          secret: { secretName: homepage-argocd-readonly, optional: true }
+        - name: pve01-credentials
+          secret: { secretName: homepage-proxmox-pve01, optional: true }
+        - name: pve02-credentials
+          secret: { secretName: homepage-proxmox-pve02, optional: true }
+        - name: pbs-credentials
+          secret: { secretName: homepage-pbs-readonly, optional: true }
+        - name: unifi-credentials
+          secret: { secretName: homepage-unifi-readonly, optional: true }
+        - name: home-assistant-credentials
+          secret: { secretName: homepage-home-assistant-readonly, optional: true }
+        - name: okd-credentials
+          secret: { secretName: homepage-okd-api }
+        - name: home-assistant-control-map
+          secret: { secretName: homepage-home-assistant-control, optional: true }
+        - name: home-assistant-control-token
+          secret: { secretName: homepage-home-assistant-control-token, optional: true }
+        - name: action-state
+          persistentVolumeClaim: { claimName: homepage-indoor-actions }

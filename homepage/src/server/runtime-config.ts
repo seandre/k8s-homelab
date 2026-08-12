@@ -23,7 +23,7 @@ export const RuntimeConfigSchema = z.object({
   historyMetrics: z.array(z.object({ metric: z.string().min(1), windows: z.array(z.enum(['5m', '15m', '1h', '3h', '6h', '24h', '7d', '30d', 'custom'])).min(1) }).strict()).min(1),
   thresholds: z.object({ cpuWarnPercent: z.number().min(0).max(100), cpuCritPercent: z.number().min(0).max(100), backupWarnAgeSeconds: z.number().int().positive() }).strict(),
   weatherLocation: z.object({ postalCode: z.literal('97209'), latitude: z.number().min(-90).max(90), longitude: z.number().min(-180).max(180) }).strict(),
-  featureFlags: z.object({ fixtures: z.boolean(), weather: z.boolean(), probes: z.boolean(), prometheus: z.boolean(), argocd: z.boolean(), proxmox: z.boolean(), pbs: z.boolean(), unifi: z.boolean() }).strict(),
+  featureFlags: z.object({ fixtures: z.boolean(), weather: z.boolean(), probes: z.boolean(), prometheus: z.boolean(), argocd: z.boolean(), proxmox: z.boolean(), pbs: z.boolean(), unifi: z.boolean(), okd: z.boolean() }).strict(),
 }).strict().superRefine((config, context) => {
   const ids = [...config.views.map(({ id }) => id), ...config.serviceLinks.map(({ id }) => id), ...config.sources.map(({ id }) => id), ...config.probes.map(({ id }) => id)];
   if (new Set(ids).size !== ids.length) context.addIssue({ code: z.ZodIssueCode.custom, message: 'IDs must be unique across configuration sections.' });
@@ -48,13 +48,13 @@ export function loadRuntimeConfig(input: unknown): RuntimeConfig {
 }
 
 export const gitOwnedRuntimeConfig: RuntimeConfig = loadRuntimeConfig({
-  allowedHosts: ['argocd.lab.seandre.dev', 'grafana.lab.seandre.dev', 'unifi.ui.com', 'api.ui.com', 'pve-01.lab.seandre.dev', 'pve-02.lab.seandre.dev', 'pbs-01.lab.seandre.dev', 'ha.lab.seandre.dev', 'nexus.lab.seandre.dev', 'docs.lab.seandre.dev', 'nginx-test.lab.seandre.dev', 'github.com', 'api.weatherapi.com', 'api.weather.gov', 'www.airnowapi.org', 'api.open-meteo.com', 'air-quality-api.open-meteo.com', 'argocd-server.argocd.svc', 'kube-prometheus-stack-grafana.monitoring.svc', 'homelab-docs.homelab-docs.svc', 'nginx-test.nginx-test.svc', 'home-assistant.home-assistant.svc', 'kube-prometheus-stack-prometheus.monitoring.svc', 'kube-prometheus-stack-alertmanager.monitoring.svc'],
+  allowedHosts: ['argocd.lab.seandre.dev', 'grafana.lab.seandre.dev', 'api.okd.lab.seandre.dev', 'console-openshift-console.apps.okd.lab.seandre.dev', 'unifi.ui.com', 'api.ui.com', 'pve-01.lab.seandre.dev', 'pve-02.lab.seandre.dev', 'pbs-01.lab.seandre.dev', 'ha.lab.seandre.dev', 'nexus.lab.seandre.dev', 'docs.lab.seandre.dev', 'nginx-test.lab.seandre.dev', 'github.com', 'api.weatherapi.com', 'api.weather.gov', 'www.airnowapi.org', 'api.open-meteo.com', 'air-quality-api.open-meteo.com', 'argocd-server.argocd.svc', 'kube-prometheus-stack-grafana.monitoring.svc', 'homelab-docs.homelab-docs.svc', 'nginx-test.nginx-test.svc', 'home-assistant.home-assistant.svc', 'kube-prometheus-stack-prometheus.monitoring.svc', 'kube-prometheus-stack-alertmanager.monitoring.svc'],
   views: ['overview', 'compute', 'network', 'storage-backups', 'kubernetes', 'okd', 'services', 'weather'].map((id) => ({ id, enabled: true })),
   defaultLayout: { navigation: 'expanded', density: 'compact', overview: 'balanced' },
   serviceLinks: [
     ['argocd', 'Argo CD', 'https://argocd.lab.seandre.dev', 'Infrastructure'], ['grafana', 'Grafana', 'https://grafana.lab.seandre.dev', 'Infrastructure'], ['unifi', 'UniFi', 'https://unifi.ui.com', 'Infrastructure'],
     ['pve-01-link', 'pve-01', 'https://pve-01.lab.seandre.dev:8006', 'Host Status'], ['pve-02-link', 'pve-02', 'https://pve-02.lab.seandre.dev:8006', 'Host Status'], ['bastion-01', 'bastion-01', 'https://nexus.lab.seandre.dev', 'Host Status'],
-    ['homelab-docs', 'Homelab Docs', 'https://docs.lab.seandre.dev', 'Apps'], ['nginx-test', 'nginx test', 'https://nginx-test.lab.seandre.dev', 'Apps'], ['repository', 'Repository', 'https://github.com/seandre/k8s-homelab', 'Homelab'], ['homepage-github', 'Homepage GitHub', 'https://github.com/gethomepage/homepage', 'Homelab'],
+    ['homelab-docs', 'Homelab Docs', 'https://docs.lab.seandre.dev', 'Apps'], ['nginx-test', 'nginx test', 'https://nginx-test.lab.seandre.dev', 'Apps'], ['repository', 'Repository', 'https://github.com/seandre/k8s-homelab', 'Homelab'], ['homepage-github', 'Homepage GitHub', 'https://github.com/gethomepage/homepage', 'Homelab'], ['okd-api', 'OKD API', 'https://api.okd.lab.seandre.dev:6443', 'Infrastructure'], ['okd-console', 'OKD Console', 'https://console-openshift-console.apps.okd.lab.seandre.dev', 'Infrastructure'],
   ].map(([id, label, href, group]) => ({ id, label, href, group })),
   sources: [
     { id: 'weather-source', enabled: true, endpoint: 'https://api.weather.gov', timeoutMs: 5_000, stateWhenDisabled: 'NOT_SUPPORTED' },
@@ -66,6 +66,7 @@ export const gitOwnedRuntimeConfig: RuntimeConfig = loadRuntimeConfig({
     { id: 'pbs-source', enabled: true, endpoint: 'https://pbs-01.lab.seandre.dev:8007/api2/json', timeoutMs: 5_000, stateWhenDisabled: 'NOT_SUPPORTED' },
     { id: 'unifi-source', enabled: true, endpoint: 'https://api.ui.com/v1', timeoutMs: 5_000, stateWhenDisabled: 'NOT_SUPPORTED' },
     { id: 'home-assistant-source', enabled: true, endpoint: 'http://home-assistant.home-assistant.svc:8123', timeoutMs: 5_000, stateWhenDisabled: 'NOT_SUPPORTED' },
+    { id: 'okd-source', enabled: true, endpoint: 'https://api.okd.lab.seandre.dev:6443', timeoutMs: 3_000, stateWhenDisabled: 'NOT_SUPPORTED' },
   ],
   probes: [
     ['argocd-probe', 'http://argocd-server.argocd.svc'],
@@ -78,6 +79,8 @@ export const gitOwnedRuntimeConfig: RuntimeConfig = loadRuntimeConfig({
     ['nginx-test-probe', 'http://nginx-test.nginx-test.svc'],
     ['repository-probe', 'https://github.com/seandre/k8s-homelab'],
     ['homepage-github-probe', 'https://github.com/gethomepage/homepage'],
+    ['okd-api-probe', 'https://api.okd.lab.seandre.dev:6443/readyz'],
+    ['okd-console-probe', 'https://console-openshift-console.apps.okd.lab.seandre.dev'],
   ].map(([id, target]) => ({ id: id!, sourceId: 'service-probes', target: target!, protocol: target!.startsWith('https:') ? 'HTTPS' as const : 'TCP' as const, intervalMs: 30_000 })),
   credentialReferences: [
     { id: 'argocd-readonly', namespace: 'homepage', secretName: 'homepage-argocd-readonly', keys: ['server', 'token'] },
@@ -90,12 +93,15 @@ export const gitOwnedRuntimeConfig: RuntimeConfig = loadRuntimeConfig({
     { id: 'home-assistant-control-token', namespace: 'homepage', secretName: 'homepage-home-assistant-control-token', keys: ['token'] },
     { id: 'airnow-readonly', namespace: 'homepage', secretName: 'homepage-airnow-readonly', keys: ['api-key'] },
     { id: 'weatherapi-readonly', namespace: 'homepage', secretName: 'homepage-weatherapi-readonly', keys: ['api-key'] },
+    { id: 'okd-readonly', namespace: 'homepage', secretName: 'homepage-okd-api', keys: ['server', 'token'] },
   ],
   // Validated against Prometheus: one USP-PDU-Pro device and one series for
   // each of the required pve-01 and pve-02 outlet labels.
   pduPower: { enabled: true, deviceName: 'USP-PDU-Pro' },
   historyMetrics: [
     ...['pve-01', 'pve-02'].flatMap((host) => ['CPU', 'MEMORY', 'DISK', 'RX', 'TX'].map((metric) => ({ metric: `${host} ${metric}`, windows: ['15m'] as const }))),
+    ...['okd-cp-01', 'okd-cp-02', 'okd-cp-03'].flatMap((host) => ['CPU', 'MEMORY'].map((metric) => ({ metric: `${host} ${metric}`, windows: ['15m'] as const }))),
+    ...['CPU', 'MEMORY'].map((metric) => ({ metric: `okd ${metric}`, windows: ['15m'] as const })),
     ...Object.keys({
       'aranet_living_room.temperature': 1, 'aranet_living_room.humidity': 1, 'aranet_living_room.pressure': 1, 'aranet_living_room.co2': 1, 'aranet_living_room.battery': 1,
       'nest_living_room.current_temperature': 1, 'nest_living_room.humidity': 1,
@@ -110,5 +116,5 @@ export const gitOwnedRuntimeConfig: RuntimeConfig = loadRuntimeConfig({
   ],
   thresholds: { cpuWarnPercent: 70, cpuCritPercent: 90, backupWarnAgeSeconds: 86_400 },
   weatherLocation: { postalCode: '97209', latitude: 45.527412, longitude: -122.686270 },
-  featureFlags: { fixtures: false, weather: true, probes: true, prometheus: true, argocd: true, proxmox: true, pbs: true, unifi: true },
+  featureFlags: { fixtures: false, weather: true, probes: true, prometheus: true, argocd: true, proxmox: true, pbs: true, unifi: true, okd: true },
 });

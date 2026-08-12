@@ -36,7 +36,7 @@ describe('overview network tile', () => {
 });
 
 describe('overview dashboard content', () => {
-  it('shows operational essentials without duplicating dedicated Services or OKD views', () => {
+  it('shows operational essentials including the OKD health summary', () => {
     const markup = renderToStaticMarkup(<OverviewScreen bootstrap={healthyBootstrapFixture} />);
 
     expect(markup).toContain('pve-01');
@@ -46,7 +46,8 @@ describe('overview dashboard content', () => {
     expect(markup).toContain('Kubernetes');
     expect(markup).toContain('Weather');
     expect(markup).not.toContain('>Services<');
-    expect(markup).not.toContain('>OKD<');
+    expect(markup).toContain('>OKD<');
+    expect(markup).toContain('WORKLOAD / OKD');
     expect(markup).not.toContain('NOT PROVISIONED');
     expect(markup).not.toContain('WARN · 1 alert');
     expect(markup).toContain('Last refresh');
