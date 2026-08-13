@@ -78,7 +78,7 @@ export function ProxmoxPanel({ host, expanded, onExpand, timeSeries = [] }: { ho
   const maxUpload = uploadHistory.length === 0 ? null : Math.max(...uploadHistory);
   const disk = host.diskTotalBytes === null || host.diskUsedBytes === null ? null : Math.round(host.diskUsedBytes / host.diskTotalBytes * 100);
   return (
-    <Panel className="cpu-box pve-card" title={host.name} eyebrow="CPU / PROXMOX" severity={host.metadata.severity} freshness={host.metadata.freshness} href={`https://${host.name}.lab.seandre.dev:8006`} expanded={expanded} onExpand={onExpand}>
+    <Panel className="cpu-box pve-card proxmox-card" title={host.name} eyebrow="CPU / PROXMOX" severity={host.metadata.severity} freshness={host.metadata.freshness} href={`https://${host.name}.lab.seandre.dev:8006`} expanded={expanded} onExpand={onExpand}>
       <div className="pve-cpu-region">
         <DotGraph label="CPU" values={seriesValues(timeSeries, `${host.name} CPU`, cpu)} unit="%" tone="cpu" height={8} />
         <div className="pve-cpu-summary"><strong>{host.cpuModel ?? 'CPU MODEL N/S'}</strong><span>TEMP <b>{host.temperatureCelsius ?? '—'}°C</b></span><span>LOAD <b>{host.loadAverage?.[0].toFixed(2) ?? 'N/S'}</b></span><span>PWR <b>{host.powerWatts === null ? 'N/S' : Math.round(host.powerWatts)}{host.powerWatts === null ? '' : ' W'}</b></span><span>UP <b>{uptimeLabel(host.uptimeSeconds)}</b></span></div>

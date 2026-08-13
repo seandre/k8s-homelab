@@ -11,12 +11,14 @@ import { ServicesScreen } from './services.js';
 
 describe('OKD cross-view states', () => {
   it('renders healthy OKD data across Overview, Compute, Network, Services, and OKD', () => {
+    const compute = renderToStaticMarkup(<ComputeScreen bootstrap={healthyBootstrapFixture} />);
+    const okd = renderToStaticMarkup(<OkdScreen bootstrap={healthyBootstrapFixture} />);
     const screens = [
       renderToStaticMarkup(<OverviewScreen bootstrap={healthyBootstrapFixture} />),
-      renderToStaticMarkup(<ComputeScreen bootstrap={healthyBootstrapFixture} />),
+      compute,
       renderToStaticMarkup(<NetworkScreen bootstrap={healthyBootstrapFixture} />),
       renderToStaticMarkup(<ServicesScreen bootstrap={healthyBootstrapFixture} search="OKD" />),
-      renderToStaticMarkup(<OkdScreen bootstrap={healthyBootstrapFixture} />),
+      okd,
     ].join('\n');
     expect(screens).toContain('WORKLOAD / OKD');
     expect(screens).toContain('okd-cp-01');
@@ -24,6 +26,13 @@ describe('OKD cross-view states', () => {
     expect(screens).toContain('OKD Console');
     expect(screens).toContain('All ClusterOperators are available and stable.');
     expect(screens).not.toContain('NOT PROVISIONED');
+    expect(compute.match(/CPU \/ OKD/g)).toHaveLength(3);
+    expect(okd.match(/CPU \/ OKD/g)).toHaveLength(3);
+    expect(compute.match(/okd-node-card/g)).toHaveLength(3);
+    expect(okd.match(/okd-node-card/g)).toHaveLength(3);
+    expect(okd).toContain('SCHEDULABLE CONTROL PLANE');
+    expect(okd).toContain('MEMORY SAMPLES');
+    expect(okd).toContain('Open ↗');
   });
 
   it.each([

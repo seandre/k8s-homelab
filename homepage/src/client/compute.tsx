@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Metric, Panel } from './components.js';
 import { buildOverviewModel } from './overview.js';
 import { ProxmoxPanel } from './proxmox.js';
+import { OkdNodePanel } from './cluster-node.js';
 import { healthyBootstrapFixture } from '../shared/fixtures.js';
 import type { Bootstrap } from '../shared/contracts.js';
 
@@ -15,7 +16,7 @@ export function ComputeScreen({ bootstrap = healthyBootstrapFixture }: { bootstr
       <section className="hero-row"><div><span className="panel-eyebrow">COMPUTE / READ-ONLY TELEMETRY</span><h1>Hosts and clusters</h1></div></section>
       <section className="compute-section" aria-labelledby="proxmox-title"><div className="section-heading"><span className="panel-eyebrow">VIRTUALIZATION</span><h2 id="proxmox-title">Proxmox hosts</h2></div><div className="pve-overview compute-host-grid">{model.proxmoxHosts.map((host) => <ProxmoxPanel key={host.id} host={host} timeSeries={bootstrap.timeSeries} expanded={expandedHosts.includes(host.id)} onExpand={() => toggleExpandedHost(host.id)} />)}</div></section>
       <section className="compute-section" aria-labelledby="k3s-nodes-title"><div className="section-heading"><span className="panel-eyebrow">WORKLOAD / k3s</span><h2 id="k3s-nodes-title">k3s nodes</h2></div><div className="compute-node-grid">{model.k3sNodes.map((node) => <Panel className="workload-box" key={node.id} title={node.name} eyebrow="K3S NODE" severity={node.metadata.severity} freshness={node.metadata.freshness}><div className="metric-grid"><Metric label="CPU" value={node.cpuPercent ?? '—'} unit="%" /><Metric label="MEMORY" value={node.memoryPercent ?? '—'} unit="%" /><Metric label="STATUS" value={node.metadata.severity === 'WARN' ? 'PRESSURE' : 'READY'} /></div></Panel>)}</div></section>
-      <section className="compute-section" aria-labelledby="okd-nodes-title"><div className="section-heading"><span className="panel-eyebrow">WORKLOAD / OKD</span><h2 id="okd-nodes-title">OKD control-plane nodes</h2></div>{model.okdNodes.length ? <div className="compute-node-grid">{model.okdNodes.map((node) => <Panel className="workload-box" key={node.id} title={node.name} eyebrow="OKD CONTROL PLANE" severity={node.metadata.severity} freshness={node.metadata.freshness}><div className="metric-grid"><Metric label="CPU" value={node.cpuPercent ?? '—'} unit="%" /><Metric label="MEMORY" value={node.memoryPercent ?? '—'} unit="%" /><Metric label="STATUS" value={node.metadata.message === 'Node is not Ready.' ? 'NOT READY' : 'READY'} /></div></Panel>)}</div> : <div className="empty-state">No successful OKD node sample is available.</div>}</section>
+      <section className="compute-section" aria-labelledby="okd-nodes-title"><div className="section-heading"><span className="panel-eyebrow">WORKLOAD / OKD</span><h2 id="okd-nodes-title">OKD control-plane nodes</h2></div>{model.okdNodes.length ? <div className="pve-overview compute-host-grid">{model.okdNodes.map((node) => <OkdNodePanel key={node.id} node={node} timeSeries={bootstrap.timeSeries} />)}</div> : <div className="empty-state">No successful OKD node sample is available.</div>}</section>
     </main>
   );
 }
