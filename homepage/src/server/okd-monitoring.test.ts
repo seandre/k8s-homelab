@@ -36,6 +36,10 @@ describe('OKD monitoring adapter', () => {
     expect(queries).toEqual(Object.values(OKD_MONITORING_QUERIES));
     expect(queries).toHaveLength(16);
     expect(OKD_MONITORING_QUERIES.load1).toContain(String.raw`(\\.okd\\.lab\\.seandre\\.dev)?`);
+    expect(OKD_MONITORING_QUERIES.networkIngress).toContain('irate(node_network_receive_bytes_total{device="eno1"}[2m])');
+    expect(OKD_MONITORING_QUERIES.networkEgress).toContain('irate(node_network_transmit_bytes_total{device="eno1"}[2m])');
+    expect(OKD_MONITORING_QUERIES.networkIngress).not.toContain('node_network_receive_bytes_total{device="eno1"}[5m]');
+    expect(OKD_MONITORING_QUERIES.networkEgress).not.toContain('node_network_transmit_bytes_total{device="eno1"}[5m]');
     expect(snapshot.value?.get('okd-cp-01')).toMatchObject({
       loadAverage: [0.62, 0.58, 0.51],
       cpuCorePercentages: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],

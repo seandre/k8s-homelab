@@ -79,6 +79,10 @@ test('matches OKD node cards to the Proxmox layout with power, load, and per-cor
   await expect(node.locator('.disk-resource')).toContainText('I/O WAIT 2.6%');
   await expect(node.locator('.network-resource')).toContainText('TOTAL TRANSFER');
   await expect(node.locator('.network-resource')).not.toContainText('N/S');
+  await expect(node.locator('.network-resource .traffic-matrix-fixed')).toHaveCount(1);
+  await expect(node.locator('.network-resource .traffic-graph-trace')).toHaveAttribute('style', /--traffic-rows: 4/);
+  await expect(node.locator('.network-resource .dot-graph')).toHaveCount(0);
+  await expect(node.locator('.network-resource .traffic-graph')).toHaveAttribute('aria-label', /Download: .* above midline; upload: .* below midline/);
 
   await node.getByRole('button', { name: 'Expand details' }).click();
 

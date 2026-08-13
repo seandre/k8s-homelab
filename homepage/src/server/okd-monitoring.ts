@@ -42,8 +42,11 @@ export const OKD_MONITORING_QUERIES = {
   diskTotal: `max by (nodename) (node_filesystem_size_bytes{mountpoint="/sysroot",fstype="xfs"} * on(instance) group_left(nodename) ${nodeInfo})`,
   diskAvailable: `max by (nodename) (node_filesystem_avail_bytes{mountpoint="/sysroot",fstype="xfs"} * on(instance) group_left(nodename) ${nodeInfo})`,
   diskIo: `clamp_max(max by (nodename) (rate(node_disk_io_time_seconds_total{device="nvme0n1"}[5m]) * on(instance) group_left(nodename) ${nodeInfo}) * 100, 100)`,
-  networkIngress: `clamp_min(max by (nodename) (rate(node_network_receive_bytes_total{device="eno1"}[5m]) * 8 * on(instance) group_left(nodename) ${nodeInfo}), 0)`,
-  networkEgress: `clamp_min(max by (nodename) (rate(node_network_transmit_bytes_total{device="eno1"}[5m]) * 8 * on(instance) group_left(nodename) ${nodeInfo}), 0)`,
+  // Use the latest scrape pair so the mirrored graph has the same responsive
+  // throughput semantics as the Proxmox cards' live Glances feed. A 5m rate
+  // made normal OKD traffic look like a nearly flat, continuously filled bar.
+  networkIngress: `clamp_min(max by (nodename) (irate(node_network_receive_bytes_total{device="eno1"}[2m]) * 8 * on(instance) group_left(nodename) ${nodeInfo}), 0)`,
+  networkEgress: `clamp_min(max by (nodename) (irate(node_network_transmit_bytes_total{device="eno1"}[2m]) * 8 * on(instance) group_left(nodename) ${nodeInfo}), 0)`,
   networkTotal: `max by (nodename) ((node_network_receive_bytes_total{device="eno1"} + node_network_transmit_bytes_total{device="eno1"}) * on(instance) group_left(nodename) ${nodeInfo})`,
   swapTotal: `max by (nodename) (node_memory_SwapTotal_bytes * on(instance) group_left(nodename) ${nodeInfo})`,
   swapFree: `max by (nodename) (node_memory_SwapFree_bytes * on(instance) group_left(nodename) ${nodeInfo})`,

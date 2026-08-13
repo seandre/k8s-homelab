@@ -54,6 +54,22 @@ describe('OKD cross-view states', () => {
     expect(html).toContain('C0');
   });
 
+  it('renders OKD network history with the same mirrored graph setup as Proxmox', () => {
+    const node = healthyBootstrapFixture.hosts.find((host) => host.name === 'okd-cp-01')!;
+    const baseSeries = healthyBootstrapFixture.timeSeries[0]!;
+    const networkHistory = [
+      { ...baseSeries, metric: 'okd-cp-01 RX', unit: 'Mb/s', points: [{ timestamp: '2026-07-19T11:55:00.000Z', value: 1.2 }, { timestamp: '2026-07-19T12:00:00.000Z', value: 2.4 }] },
+      { ...baseSeries, metric: 'okd-cp-01 TX', unit: 'Mb/s', points: [{ timestamp: '2026-07-19T11:55:00.000Z', value: 0.8 }, { timestamp: '2026-07-19T12:00:00.000Z', value: 1.6 }] },
+    ];
+    const html = renderToStaticMarkup(<OkdNodePanel node={node} expanded={false} onExpand={() => undefined} timeSeries={networkHistory} />);
+    expect(html).toContain('traffic-matrix-fixed');
+    expect(html).toContain('--traffic-rows:4');
+    expect(html).toContain('Download: 2.4Mb/s, above midline; upload: 1.6Mb/s, below midline');
+    expect(html).toContain('MAX RX <b>2.4 Mb/s</b> · MAX TX <b>1.6 Mb/s</b>');
+    expect(html.match(/traffic-matrix-column-download/g)).toHaveLength(138);
+    expect(html.match(/traffic-matrix-column-upload/g)).toHaveLength(138);
+  });
+
   it.each([
     ['progressing', { available: true, progressing: true, degraded: false, severity: 'INFO' as const, detail: 'Operator is progressing.' }],
     ['unavailable', { available: false, progressing: false, degraded: false, severity: 'WARN' as const, detail: 'Operator is not available.' }],
