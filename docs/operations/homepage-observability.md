@@ -538,6 +538,31 @@ redaction checks passed. Production remained pinned to
 This candidate's uninterrupted soak must run through at least
 `2026-08-14T15:20:13Z`.
 
+Commit `3e01b7a` corrected the OKD network graph feed to match the Proxmox
+cards' responsive throughput semantics. The shared mirrored graph component,
+four-row layout, units, peak labels, and total-transfer field were already
+identical; the mismatch was the OKD five-minute moving-average query. The two
+fixed `eno1` expressions now use the latest scrape pair from a two-minute
+lookback, which was verified against all three allowlisted nodes before
+deployment. Poll frequency, query count, RBAC, TLS, and the public contract did
+not change.
+
+The image workflow passed lint, types, 192 unit tests, integration, Kubernetes
+rendering, 31 Playwright/accessibility checks (including OKD graph parity), the
+production build, and exact-image scanning. GitOps commit `ffbd2f7` pinned
+preview to
+`sha256:9c81674bf9ae501bbee543c75dc3a5178622d528b626f806405ca6decc825304`.
+The new container started at `2026-08-13T17:06:52Z` with zero restarts. The
+live baseline reported schema 5, global severity `OK`, current non-null RX/TX
+and total counters for all three nodes, and all six current RX/TX history
+series. After four independent OKD samples, every series contained distinct
+values; the public 15-minute RX history route returned HTTP `200`. Strict-TLS
+health, Compute, OKD, bootstrap, Argo CD Synced/Healthy, and response-redaction
+checks passed. Production remained pinned to
+`sha256:91f90bdea9e1ebae80e9c16515acb12df68e64ca9f89f813819879b73367afec`.
+This candidate's uninterrupted soak must run through at least
+`2026-08-14T17:06:52Z`.
+
 ### Promotion and rollback
 
 After approval, copy the exact preview `image:` value (tag plus digest) into
