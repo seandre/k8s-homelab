@@ -225,7 +225,7 @@ export const fixtureHosts: Host[] = [
     diskUsedBytes: null,
     diskTotalBytes: null,
     diskIoPercent: null,
-    cpuModel: null,
+    cpuModel: 'AMD Ryzen 5 PRO 5650GE · 6C/12T',
     cpuCorePercentages: null,
     loadAverage: null,
     cpuClockMhz: null,

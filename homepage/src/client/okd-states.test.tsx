@@ -30,7 +30,9 @@ describe('OKD cross-view states', () => {
     expect(okd.match(/CPU \/ OKD/g)).toHaveLength(3);
     expect(compute.match(/okd-node-card/g)).toHaveLength(3);
     expect(okd.match(/okd-node-card/g)).toHaveLength(3);
-    expect(okd).toContain('SCHEDULABLE CONTROL PLANE');
+    expect(okd.match(/AMD Ryzen 5 PRO 5650GE · 6C\/12T/g)).toHaveLength(3);
+    expect(okd).toContain('PLATFORM');
+    expect(okd).toContain('BARE METAL');
     expect(okd).toContain('MEMORY SAMPLES');
     expect(okd).toContain('Open ↗');
   });

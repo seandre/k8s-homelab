@@ -53,7 +53,7 @@ describe('OKD read-only adapter', () => {
   it('normalizes totals, readiness, operators, and cluster-qualified workload IDs', async () => {
     const snapshot = await new OkdAdapter(client(), new MutableClock()).read();
     expect(snapshot.cluster).toMatchObject({ nodeCount: 2, readyNodeCount: 1, workloadCount: 2, cpuCapacityCores: 12, cpuUsedCores: 2.1, memoryCapacityBytes: 96 * 1024 ** 3, memoryUsedBytes: 24 * 1024 ** 3, metadata: { severity: 'CRIT' } });
-    expect(snapshot.hosts[0]).toMatchObject({ id: 'okd:node:okd-cp-01', name: 'okd-cp-01', cpuPercent: 15, memoryPercent: 25, metadata: { severity: 'OK' } });
+    expect(snapshot.hosts[0]).toMatchObject({ id: 'okd:node:okd-cp-01', name: 'okd-cp-01', cpuModel: 'AMD Ryzen 5 PRO 5650GE · 6C/12T', cpuPercent: 15, memoryPercent: 25, metadata: { severity: 'OK' } });
     expect(snapshot.hosts[1]?.metadata).toMatchObject({ severity: 'CRIT', message: 'Node is not Ready.' });
     expect(snapshot.workloads.find((item) => item.name === 'broken')).toMatchObject({ id: 'okd:deployment:apps:broken', metadata: { severity: 'WARN', message: 'Workload is not fully ready.' } });
     expect(snapshot.platformOperators.find((item) => item.name === 'ingress')).toMatchObject({ version: '4.22.0', available: true, progressing: false, degraded: false, metadata: { severity: 'OK' } });

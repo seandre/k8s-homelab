@@ -6,6 +6,12 @@ export const OKD_CLUSTER_ID = 'okd';
 export const OKD_POLL_INTERVAL_MS = 15_000;
 export const OKD_REQUEST_TIMEOUT_MS = 3_000;
 
+const OKD_CPU_MODELS: Readonly<Record<string, string>> = {
+  'okd-cp-01': 'AMD Ryzen 5 PRO 5650GE · 6C/12T',
+  'okd-cp-02': 'AMD Ryzen 5 PRO 5650GE · 6C/12T',
+  'okd-cp-03': 'AMD Ryzen 5 PRO 5650GE · 6C/12T',
+};
+
 const ConditionSchema = z.object({ type: z.string(), status: z.string() });
 const NodeListSchema = z.object({ items: z.array(z.object({
   metadata: z.object({ name: z.string().min(1) }),
@@ -169,6 +175,7 @@ function configuredSnapshot(source: NormalizedSource<RawSnapshot>): OkdSnapshot 
       cpuPercent: cpuCapacity && cpuUsed !== null ? Math.min(100, Number((cpuUsed / cpuCapacity * 100).toFixed(1))) : null,
       memoryPercent: memoryTotal && memoryUsed !== null ? Math.min(100, Number((memoryUsed / memoryTotal * 100).toFixed(1))) : null,
       memoryUsedBytes: memoryUsed, memoryTotalBytes: memoryTotal, ...emptyHostFields(),
+      cpuModel: OKD_CPU_MODELS[name] ?? null,
       metadata: componentMetadata(sourceMetadata, ready ? 'OK' : 'CRIT', ready ? undefined : 'Node is not Ready.'),
     };
   });

@@ -41,11 +41,11 @@ export function OkdNodePanel({ node, timeSeries = [] }: { node: Host; timeSeries
       <div className="pve-cpu-region">
         <DotGraph label="CPU" values={cpuHistory} unit="%" tone="cpu" height={8} />
         <div className="pve-cpu-summary">
-          <strong>SCHEDULABLE CONTROL PLANE</strong>
-          <span>STATUS <b>{state}</b></span>
+          <strong>{node.cpuModel ?? 'CPU MODEL N/S'}</strong>
           <span>CPU <b>{node.cpuPercent ?? '—'}%</b></span>
           <span>MEM <b>{node.memoryPercent ?? '—'}%</b></span>
           <span>ROLE <b>MASTER / WORKER</b></span>
+          <span>PLATFORM <b>BARE METAL</b></span>
         </div>
       </div>
       <div className="pve-resource-grid">
@@ -57,7 +57,7 @@ export function OkdNodePanel({ node, timeSeries = [] }: { node: Host; timeSeries
         </section>
         <section className="pve-resource okd-health-resource">
           <h3>HEALTH</h3>
-          <p>READINESS <b>{state === 'READY' ? 'PASSING' : 'FAILING'}</b></p>
+          <p>READINESS <b>{state}</b></p>
           <p>SEVERITY <b>{node.metadata.severity}</b></p>
           <p>FRESHNESS <b>{node.metadata.freshness.replace('_', ' ')}</b></p>
         </section>
