@@ -2,8 +2,8 @@
 
 Status: OKD direct telemetry is implemented in source on 2026-08-11. The
 continuous preflight passed on 2026-08-12. The current preview candidate began
-its mandatory 24-hour soak at `2026-08-13T04:49:03Z`; production promotion
-remains blocked through at least `2026-08-14T04:49:03Z`. The
+its mandatory 24-hour soak at `2026-08-13T05:03:26Z`; production promotion
+remains blocked through at least `2026-08-14T05:03:26Z`. The
 earlier observability expansion was implemented in the preview GitOps path on
 2026-07-20. The UniFi PDU
 preflight passed and its mapping is enabled at Git revision `c3d8968`; the
@@ -442,6 +442,26 @@ The public response contained zero credential-shaped keys. The only preview
 error event was the expected `indoor.actions.disabled` event caused by the
 preview Deployment's deliberate lack of control credentials. This candidate's
 uninterrupted soak must run through at least `2026-08-14T04:49:03Z`.
+
+Commit `adcd779` then replaced the prominent OKD readiness label with the
+git-owned hardware inventory value `AMD Ryzen 5 PRO 5650GE · 6C/12T` while
+retaining live readiness in each card's Health section. Kubernetes does not
+publish a friendly processor model in the ordinary Node response, so this
+label is intentionally keyed by normalized node name; utilization, memory,
+readiness, freshness, and severity remain live OKD API data. No additional API
+route or RBAC permission was added.
+
+The image workflow and exact-digest scan passed, and GitOps commit `33d55d3`
+pinned preview to
+`sha256:70d0459534065d3fefa98bf977b58f13a1f05ab1063925fae6acfef10a8150e2`.
+The new live baseline passed at `2026-08-13T05:03:26Z`: all three cards rendered
+the expected model without overflow, schema 5 remained current and globally
+`OK`, all 34 ClusterOperators were healthy, no OKD workload was unhealthy, the
+public response contained zero credential-shaped keys, Argo CD was Synced and
+Healthy, and preview was Ready with zero restarts. Production retained digest
+`sha256:91f90bdea9e1ebae80e9c16515acb12df68e64ca9f89f813819879b73367afec`.
+This candidate's uninterrupted soak must run through at least
+`2026-08-14T05:03:26Z`.
 
 ### Promotion and rollback
 
