@@ -1,8 +1,9 @@
 # Homepage Observability Expansion
 
 Status: OKD direct telemetry is implemented in source on 2026-08-11. The
-continuous preflight passed on 2026-08-12; preview deployment and its mandatory
-24-hour soak remain before production promotion. The
+continuous preflight passed on 2026-08-12. The fixed preview candidate began
+its mandatory 24-hour soak at `2026-08-13T02:56:22Z`; production promotion
+remains blocked through at least `2026-08-14T02:56:22Z`. The
 earlier observability expansion was implemented in the preview GitOps path on
 2026-07-20. The UniFi PDU
 preflight passed and its mapping is enabled at Git revision `c3d8968`; the
@@ -403,6 +404,25 @@ Confirm production still contains its prior digest and preview has no
 
 Any candidate, RBAC, credential, network policy, severity, or public-contract
 change invalidates the soak and starts a new 24-hour window.
+
+#### Preview soak record — 2026-08-13
+
+The first scanned preview candidate exposed a validation failure before its
+soak began: all eight OKD CPU/memory history series stayed at one point. Commit
+`d88b7bd` corrected the two-second graph sampler and added a regression test.
+The replacement workflow passed quality, browser, manifest, build, and exact
+image-digest scan checks, then GitOps commit `c7b619f` pinned preview to
+`sha256:c77a3dd7dd2769e1cb3be6340fc3fc84e85723431b54c2e9a43c92b5d53b869b`.
+Production retained its previous digest.
+
+The replacement preview baseline passed at `2026-08-13T02:56:22Z`. Schema 5
+reported three current and healthy OKD nodes, 34 healthy ClusterOperators, 83
+workloads with none unready, global severity `OK`, and eight current history
+series with at least 30 points each. Every approved route returned HTTP `200`
+with strict TLS; preview and production were Ready with zero restarts; Argo CD
+was Synced and Healthy; and summarized response/log scans found no permission
+failure or credential-shaped field/value. The uninterrupted soak must run
+through at least `2026-08-14T02:56:22Z`; any invalidating change restarts it.
 
 ### Promotion and rollback
 
