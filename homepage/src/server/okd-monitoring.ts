@@ -27,7 +27,9 @@ type OkdNodeMonitoring = {
 };
 
 const allowedNodes = ['okd-cp-01', 'okd-cp-02', 'okd-cp-03'] as const;
-const nodePattern = 'okd-cp-0[123](\\.okd\\.lab\\.seandre\\.dev)?';
+// PromQL string literals must contain two backslashes so the PromQL parser
+// passes one escaped dot through to the RE2 regular expression.
+const nodePattern = 'okd-cp-0[123](\\\\.okd\\\\.lab\\\\.seandre\\\\.dev)?';
 const nodeInfo = `node_uname_info{nodename=~"${nodePattern}"}`;
 
 export const OKD_MONITORING_QUERIES = {

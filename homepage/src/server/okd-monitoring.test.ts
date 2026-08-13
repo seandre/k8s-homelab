@@ -22,6 +22,7 @@ describe('OKD monitoring adapter', () => {
       return { ok: true, json: async () => ({ status: 'success', data: { resultType: 'vector', result: response(query) } }) };
     });
     expect(queries).toEqual(Object.values(OKD_MONITORING_QUERIES));
+    expect(OKD_MONITORING_QUERIES.load1).toContain(String.raw`(\\.okd\\.lab\\.seandre\\.dev)?`);
     expect(snapshot.value?.get('okd-cp-01')).toMatchObject({ loadAverage: [0.62, 0.58, 0.51], cpuCorePercentages: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16] });
     expect(snapshot.metadata).toMatchObject({ source: 'okd-thanos', freshness: 'CURRENT', severity: 'OK' });
   });
