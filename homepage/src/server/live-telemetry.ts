@@ -317,7 +317,7 @@ export class LiveTelemetry {
     const okdWatts: Record<string, number | null> = { 'okd-cp-01': pduPower.okdCp01Watts, 'okd-cp-02': pduPower.okdCp02Watts, 'okd-cp-03': pduPower.okdCp03Watts };
     const okdHosts = okd.hosts.map((host) => {
       const monitoring = okdMonitoring?.value?.get(host.name);
-      return { ...host, powerWatts: okdWatts[host.name] ?? null, loadAverage: monitoring?.loadAverage ?? null, cpuCorePercentages: monitoring?.cpuCorePercentages ?? null };
+      return { ...host, ...(monitoring ?? {}), powerWatts: okdWatts[host.name] ?? null };
     });
     const base = this.emptyBootstrap();
     base.generatedAt = now;

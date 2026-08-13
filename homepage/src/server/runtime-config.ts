@@ -101,7 +101,7 @@ export const gitOwnedRuntimeConfig: RuntimeConfig = loadRuntimeConfig({
   pduPower: { enabled: true, deviceName: 'USP-PDU-Pro' },
   historyMetrics: [
     ...['pve-01', 'pve-02'].flatMap((host) => ['CPU', 'MEMORY', 'DISK', 'RX', 'TX'].map((metric) => ({ metric: `${host} ${metric}`, windows: ['15m'] as const }))),
-    ...['okd-cp-01', 'okd-cp-02', 'okd-cp-03'].flatMap((host) => ['CPU', 'MEMORY', ...Array.from({ length: 12 }, (_, index) => `CORE ${index}`)].map((metric) => ({ metric: `${host} ${metric}`, windows: ['15m'] as const }))),
+    ...['okd-cp-01', 'okd-cp-02', 'okd-cp-03'].flatMap((host) => ['CPU', 'MEMORY', 'DISK', 'RX', 'TX', ...Array.from({ length: 12 }, (_, index) => `CORE ${index}`)].map((metric) => ({ metric: `${host} ${metric}`, windows: ['15m'] as const }))),
     ...['CPU', 'MEMORY'].map((metric) => ({ metric: `okd ${metric}`, windows: ['15m'] as const })),
     ...Object.keys({
       'aranet_living_room.temperature': 1, 'aranet_living_room.humidity': 1, 'aranet_living_room.pressure': 1, 'aranet_living_room.co2': 1, 'aranet_living_room.battery': 1,

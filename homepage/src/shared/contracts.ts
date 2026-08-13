@@ -64,7 +64,9 @@ export const HostSchema = z.object({
   cpuClockMhz: z.number().nonnegative().nullable(),
   powerWatts: z.number().nonnegative().nullable(),
   swapUsedBytes: z.number().nonnegative().nullable(),
-  swapTotalBytes: z.number().positive().nullable(),
+  // Kubernetes nodes commonly disable swap, making a measured total of zero
+  // valid and distinct from an unsupported/null sample.
+  swapTotalBytes: z.number().nonnegative().nullable(),
   uptimeSeconds: z.number().int().nonnegative().nullable(),
   runningVmCount: z.number().int().nonnegative().nullable(),
   stoppedVmCount: z.number().int().nonnegative().nullable(),

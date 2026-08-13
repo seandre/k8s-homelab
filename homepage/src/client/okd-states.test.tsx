@@ -43,7 +43,13 @@ describe('OKD cross-view states', () => {
     const html = renderToStaticMarkup(<OkdNodePanel node={node} expanded onExpand={() => undefined} timeSeries={healthyBootstrapFixture.timeSeries} />);
     expect(html).toContain('CPU / OKD');
     expect(html).toContain('22 W');
+    expect(html).toContain('45.4°C');
+    expect(html).toContain('I/O WAIT');
+    expect(html).toContain('2.6%');
+    expect(html).toContain('TOTAL TRANSFER');
     expect(html).toContain('LOAD TREND');
+    expect(html).toContain('metric-value">0.0<small> GiB / 0.0 GiB');
+    expect(html).toContain('stopped: 42');
     expect(html).toContain('PER-CORE');
     expect(html).toContain('C0');
   });

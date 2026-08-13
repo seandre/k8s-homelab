@@ -75,11 +75,18 @@ test('matches OKD node cards to the Proxmox layout with power, load, and per-cor
   await expect(node.locator('.pve-cpu-summary span').filter({ hasText: /^LOAD/ })).toBeVisible();
   await expect(node.locator('.pve-cpu-summary span').filter({ hasText: /^PWR/ })).toBeVisible();
   await expect(node.getByText('22 W', { exact: true })).toBeVisible();
+  await expect(node.locator('.pve-cpu-summary span').filter({ hasText: /^TEMP 45.4°C$/ })).toBeVisible();
+  await expect(node.locator('.disk-resource')).toContainText('I/O WAIT 2.6%');
+  await expect(node.locator('.network-resource')).toContainText('TOTAL TRANSFER');
+  await expect(node.locator('.network-resource')).not.toContainText('N/S');
 
   await node.getByRole('button', { name: 'Expand details' }).click();
 
   await expect(node).toHaveClass(/panel-expanded/);
   await expect(node.getByText('LOAD TREND')).toBeVisible();
+  await expect(node.locator('.metric').filter({ hasText: /^SWAP/ })).toContainText('0.0 GiB / 0.0 GiB');
+  await expect(node.locator('.metric').filter({ hasText: /^CONTAINERS/ })).toContainText('64');
+  await expect(node.locator('.metric').filter({ hasText: /^CONTAINERS/ })).toContainText('stopped: 42');
   await expect(node.getByRole('region', { name: 'Per-core CPU utilization' })).toBeVisible();
   await expect(node.getByText('C0', { exact: true })).toBeVisible();
 });

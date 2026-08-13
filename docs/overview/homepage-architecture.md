@@ -95,9 +95,11 @@ Drill-down adds per-core utilization, load average, CPU clock, measured power wh
 
 Overview shows an aggregate OKD panel. Compute and `/okd` expose `okd-cp-01`,
 `okd-cp-02`, and `okd-cp-03` through the same host-card component used by
-Proxmox, including measured outlet power, load average, and expandable
-per-logical-core utilization. Unsupported disk, network, temperature, clock,
-swap, guest, and uptime fields remain explicitly `N/S` rather than inferred.
+Proxmox, including measured outlet power, load average, expandable
+per-logical-core utilization, root-disk capacity and I/O, physical-interface
+traffic, swap, hardware temperature, uptime, and kubelet container counts. OKD
+does not publish a CPU-clock gauge or a VM inventory in the approved source, so
+only those two fields remain explicitly `N/S` rather than inferred.
 
 ### Responsive and Keyboard Behavior
 
@@ -283,7 +285,7 @@ Browser-local storage owns panel arrangement and size overrides, appearance pref
 
 - The k3s backend uses six fixed `GET` collection paths on `api.okd.lab.seandre.dev:6443`; it is not an arbitrary Kubernetes proxy.
 - A dedicated OKD ServiceAccount can only `get/list` the six resource families represented by those paths.
-- Four fixed server-side PromQL expressions read load averages and per-core CPU from the strict-TLS OKD Thanos route. The browser cannot provide a query, route, label, or node name.
+- Sixteen fixed server-side PromQL expressions read load averages, per-core CPU, root-disk capacity/I/O, physical-interface traffic/totals, swap, hottest hardware temperature, uptime, and kubelet running/stopped container gauges from the strict-TLS OKD Thanos route. The browser cannot provide a query, route, label, device, mount point, or node name.
 - The built-in `cluster-monitoring-metrics-api` Role requires `get/create/update` on the virtual named `prometheuses/api` subresource. Those verbs authorize the query proxy only; separate negative tests prove that the identity cannot create, update, or delete actual Prometheus objects.
 - Bootstrap schema v5 exposes normalized nodes, workloads, capacity, utilization, and ClusterOperators. CPU and memory are display-only; NotReady nodes, degraded/unavailable operators, unready workloads, and source freshness drive health.
 - Arbitrary OKD Prometheus access, Alertmanager, application hosting, traffic switching, storage, and automatic failover remain outside this release.

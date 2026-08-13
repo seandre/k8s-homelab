@@ -29,6 +29,7 @@ describe('Git-owned runtime configuration', () => {
     expect(gitOwnedRuntimeConfig.pduPower).toEqual({ enabled: true, deviceName: 'USP-PDU-Pro' });
     expect(gitOwnedRuntimeConfig.sources.find((source) => source.id === 'okd-monitoring-source')).toMatchObject({ timeoutMs: 3_000, stateWhenDisabled: 'NOT_SUPPORTED' });
     expect(gitOwnedRuntimeConfig.historyMetrics).toContainEqual({ metric: 'okd-cp-01 CORE 11', windows: ['15m'] });
+    expect(gitOwnedRuntimeConfig.historyMetrics).toContainEqual({ metric: 'okd-cp-01 DISK', windows: ['15m'] });
     expect(gitOwnedRuntimeConfig.probes.every((probe) => probe.target !== 'https://example.com')).toBe(true);
     expect(gitOwnedRuntimeConfig.probes).toHaveLength(gitOwnedRuntimeConfig.serviceLinks.length);
   });

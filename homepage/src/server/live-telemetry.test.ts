@@ -122,9 +122,24 @@ describe('live telemetry', () => {
     (telemetry as unknown as { okd: { read(): Promise<{ hosts: typeof okdHosts; cluster: typeof okdCluster; workloads: typeof okdWorkloads; platformOperators: typeof platformOperators }> } }).okd = {
       read: async () => ({ hosts: okdHosts, cluster: okdCluster, workloads: okdWorkloads, platformOperators }),
     };
-    (telemetry as unknown as { okdMonitoring: { read(): Promise<{ value: Map<string, { loadAverage: [number, number, number]; cpuCorePercentages: number[] }>; metadata: object; circuit: string; consecutiveFailures: number; consecutiveSuccesses: number }> } }).okdMonitoring = {
+    (telemetry as unknown as { okdMonitoring: { read(): Promise<{ value: Map<string, { loadAverage: [number, number, number]; cpuCorePercentages: number[]; diskUsedBytes: number; diskTotalBytes: number; diskIoPercent: number; networkIngressBitsPerSecond: number; networkEgressBitsPerSecond: number; networkTotalBytes: number; swapUsedBytes: number; swapTotalBytes: number; temperatureCelsius: number; uptimeSeconds: number; runningContainerCount: number; stoppedContainerCount: number }>; metadata: object; circuit: string; consecutiveFailures: number; consecutiveSuccesses: number }> } }).okdMonitoring = {
       read: async () => ({
-        value: new Map(okdHosts.map((host, nodeIndex) => [host.name, { loadAverage: [0.5 + nodeIndex, 0.4 + nodeIndex, 0.3 + nodeIndex], cpuCorePercentages: Array.from({ length: 12 }, (_, core) => core + nodeIndex) }])),
+        value: new Map(okdHosts.map((host, nodeIndex) => [host.name, {
+          loadAverage: [0.5 + nodeIndex, 0.4 + nodeIndex, 0.3 + nodeIndex],
+          cpuCorePercentages: Array.from({ length: 12 }, (_, core) => core + nodeIndex),
+          diskUsedBytes: 37_163_175_936 + nodeIndex,
+          diskTotalBytes: 999_178_825_728,
+          diskIoPercent: 2.6 + nodeIndex,
+          networkIngressBitsPerSecond: 1_562_828 + nodeIndex,
+          networkEgressBitsPerSecond: 2_714_027 + nodeIndex,
+          networkTotalBytes: 160_578_052_807 + nodeIndex,
+          swapUsedBytes: 0,
+          swapTotalBytes: 0,
+          temperatureCelsius: 45.4 + nodeIndex,
+          uptimeSeconds: 161_353 + nodeIndex,
+          runningContainerCount: 64 + nodeIndex,
+          stoppedContainerCount: 42 + nodeIndex,
+        }])),
         metadata: {}, circuit: 'CLOSED', consecutiveFailures: 0, consecutiveSuccesses: 0,
       }),
     };
@@ -132,7 +147,23 @@ describe('live telemetry', () => {
     await telemetry.refresh();
 
     const host = telemetry.bootstrap().hosts.find((candidate) => candidate.name === 'okd-cp-01')!;
-    expect(host).toMatchObject({ powerWatts: 21.7, loadAverage: [0.5, 0.4, 0.3], cpuCorePercentages: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] });
+    expect(host).toMatchObject({
+      powerWatts: 21.7,
+      loadAverage: [0.5, 0.4, 0.3],
+      cpuCorePercentages: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      diskUsedBytes: 37_163_175_936,
+      diskTotalBytes: 999_178_825_728,
+      diskIoPercent: 2.6,
+      networkIngressBitsPerSecond: 1_562_828,
+      networkEgressBitsPerSecond: 2_714_027,
+      networkTotalBytes: 160_578_052_807,
+      swapUsedBytes: 0,
+      swapTotalBytes: 0,
+      temperatureCelsius: 45.4,
+      uptimeSeconds: 161_353,
+      runningContainerCount: 64,
+      stoppedContainerCount: 42,
+    });
     expect(telemetry.bootstrap().timeSeries.find((series) => series.metric === 'okd-cp-01 CORE 11')?.points).toEqual([{ timestamp: expect.any(String), value: 11 }]);
   });
 });
