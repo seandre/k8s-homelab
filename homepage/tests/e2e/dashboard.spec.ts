@@ -63,6 +63,27 @@ test('expands Proxmox cards independently without opening an overlay', async ({ 
   await expect(pve02.getByText('HOST DRILL-DOWN')).toBeVisible();
 });
 
+test('matches OKD node cards to the Proxmox layout with power, load, and per-core detail', async ({ page }) => {
+  await page.route('**/api/v1/events', (route) => route.abort());
+  await page.route('**/api/v1/bootstrap', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ data: healthyBootstrapFixture, requestId: 'okd-host-layout-e2e' }),
+  }));
+  await page.goto('/compute');
+  const node = page.locator('.okd-node-card').filter({ has: page.getByRole('heading', { name: 'okd-cp-01', exact: true }) });
+  await expect(node.locator('.pve-cpu-summary span').filter({ hasText: /^LOAD/ })).toBeVisible();
+  await expect(node.locator('.pve-cpu-summary span').filter({ hasText: /^PWR/ })).toBeVisible();
+  await expect(node.getByText('22 W', { exact: true })).toBeVisible();
+
+  await node.getByRole('button', { name: 'Expand details' }).click();
+
+  await expect(node).toHaveClass(/panel-expanded/);
+  await expect(node.getByText('LOAD TREND')).toBeVisible();
+  await expect(node.getByRole('region', { name: 'Per-core CPU utilization' })).toBeVisible();
+  await expect(node.getByText('C0', { exact: true })).toBeVisible();
+});
+
 test('has no serious or critical automated accessibility violations', async ({ page }) => {
   const results = await new AxeBuilder({ page }).analyze();
   const serious = results.violations.filter(({ impact }) => impact === 'serious' || impact === 'critical');
@@ -115,7 +136,7 @@ test('renders actionable OKD failures without duplicate cluster alerts', async (
 
   await page.goto('/okd');
   await expect(page.getByRole('heading', { name: 'OKD cluster health' })).toBeVisible();
-  await expect(page.getByRole('region', { name: node.name }).getByText('NOT READY', { exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: node.name }).getByText('CRIT', { exact: true })).toBeVisible();
   const operatorPanel = page.getByRole('region', { name: operator.name });
   await expect(operatorPanel.locator('.metric').filter({ hasText: 'DEGRADED' }).getByText('YES', { exact: true })).toBeVisible();
   await expect(page.getByRole('region', { name: 'broken' }).getByText('0 / 1', { exact: true })).toBeVisible();

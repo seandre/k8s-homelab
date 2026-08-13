@@ -106,10 +106,9 @@ The API key is tied to the UI account that creates it, so review that account's
 access before continuing; it is not a standalone Viewer identity. Do not reuse
 the separate Homepage Site Manager token.
 
-Rename the two PDU outlets exactly `pve-01` and `pve-02`; capitalization and
-hyphenation are part of the telemetry contract. Additional outlets labeled for
-OKD nodes are included in the PDU total only. They are not mapped to Homepage
-hosts and do not change the exact `pve-01`/`pve-02` contract.
+Name the five mapped PDU outlets exactly `pve-01`, `pve-02`, `okd-cp-01`,
+`okd-cp-02`, and `okd-cp-03`; capitalization and hyphenation are part of the
+telemetry contract. Homepage never controls these outlets.
 
 Create `monitoring/unpoller-unifi-readonly` manually from a protected local
 file. It must contain one key named `up.conf`; this Secret is intentionally not
@@ -205,6 +204,9 @@ one returned series for each required outlet:
 curl --get --data-urlencode 'query=count(count by (name) (unpoller_device_outlet_outlet_power))' http://127.0.0.1:9090/api/v1/query
 curl --get --data-urlencode 'query=count by (name) (unpoller_device_outlet_outlet_power{outlet_name="pve-01"})' http://127.0.0.1:9090/api/v1/query
 curl --get --data-urlencode 'query=count by (name) (unpoller_device_outlet_outlet_power{outlet_name="pve-02"})' http://127.0.0.1:9090/api/v1/query
+curl --get --data-urlencode 'query=count by (name) (unpoller_device_outlet_outlet_power{outlet_name="okd-cp-01"})' http://127.0.0.1:9090/api/v1/query
+curl --get --data-urlencode 'query=count by (name) (unpoller_device_outlet_outlet_power{outlet_name="okd-cp-02"})' http://127.0.0.1:9090/api/v1/query
+curl --get --data-urlencode 'query=count by (name) (unpoller_device_outlet_outlet_power{outlet_name="okd-cp-03"})' http://127.0.0.1:9090/api/v1/query
 ```
 
 Record the one discovered `name` label in
@@ -214,19 +216,22 @@ as one reviewed change. A failed count, an unexpected label, a missing outlet,
 or a TLS failure means leave the mapping disabled: Homepage continues to show
 `NOT SUPPORTED` and must not map any PDU values to a host.
 
-After deployment, query the three fixed expressions and compare the outlet and
+After deployment, query the six fixed expressions and compare the outlet and
 total watts with the UniFi dashboard within one 30-second collection interval:
 
 ```bash
 curl --get --data-urlencode 'query=sum(unpoller_device_outlet_outlet_power{name="RECORDED_PDU_NAME"})' http://127.0.0.1:9090/api/v1/query
 curl --get --data-urlencode 'query=sum(unpoller_device_outlet_outlet_power{name="RECORDED_PDU_NAME",outlet_name="pve-01"})' http://127.0.0.1:9090/api/v1/query
 curl --get --data-urlencode 'query=sum(unpoller_device_outlet_outlet_power{name="RECORDED_PDU_NAME",outlet_name="pve-02"})' http://127.0.0.1:9090/api/v1/query
+curl --get --data-urlencode 'query=sum(unpoller_device_outlet_outlet_power{name="RECORDED_PDU_NAME",outlet_name="okd-cp-01"})' http://127.0.0.1:9090/api/v1/query
+curl --get --data-urlencode 'query=sum(unpoller_device_outlet_outlet_power{name="RECORDED_PDU_NAME",outlet_name="okd-cp-02"})' http://127.0.0.1:9090/api/v1/query
+curl --get --data-urlencode 'query=sum(unpoller_device_outlet_outlet_power{name="RECORDED_PDU_NAME",outlet_name="okd-cp-03"})' http://127.0.0.1:9090/api/v1/query
 ```
 
 Only after those results and an API-key/certificate/mapping review may PDU
 power be called implemented. Soak preview for one hour with no target failure,
 stale PDU value, or false alert. The browser response must contain only the PDU
-total and the two host watts; it must not contain the controller, PDU name,
+total and the five host watts; it must not contain the controller, PDU name,
 outlet labels, credentials, or raw Prometheus data.
 
 ### Activation record — 2026-07-20
@@ -240,11 +245,10 @@ configuration. The preview Deployment uses immutable image digest
 The live path is local and read-only: UnPoller connects to `unifi.local` with
 strict certificate verification and the manually managed API-key Secret,
 Prometheus retains only `unpoller_device_outlet_outlet_power` plus scrape
-health, and Homepage runs three fixed aggregate queries. Bootstrap schema v2
-exposes only total watts, `pve-01`/`pve-02` host watts, freshness, and source
-state. It excludes the API key, controller and device identifiers, PDU name,
-outlet labels, and raw Prometheus data. OKD-labeled outlets contribute to the
-total PDU draw only.
+health, and Homepage runs six fixed aggregate queries. Bootstrap schema v5
+exposes only total watts and the five normalized host watts. It excludes the
+API key, controller and device identifiers, PDU name, outlet labels, query
+text, and raw Prometheus data.
 
 The replacement one-hour Gate D soak began at `2026-07-20T21:08:23Z`. The owner
 accepted a shortened window, which closed at `2026-07-20T21:37:34Z` after the
@@ -263,7 +267,7 @@ browser and reads only fixed, Git-owned endpoints and queries:
   totals, plus Glances CPU-core, sensor, filesystem, disk, and network fields.
 - k3s: nodes, workload readiness, `metrics.k8s.io` node CPU/memory, and the
   fixed Prometheus cluster-capacity catalog.
-- Prometheus: four fixed aggregate capacity/usage queries plus three fixed PDU
+- Prometheus: four fixed aggregate capacity/usage queries plus six fixed PDU
   aggregate queries after the preflight gate; no browser PromQL input exists.
 - Alertmanager: active alerts only; no silences, acknowledgements, or writes.
 - Argo CD, PBS, UniFi, Open-Meteo, and the fixed Argo CD reachability probe,
@@ -310,9 +314,26 @@ candidate is authorized for preview deployment only and must complete a genuine
 
 Apply `kubernetes/clusters/okd/observability/homepage` with the OKD admin
 context. It creates `homepage-observability/homepage-k3s-reader`, its narrow
-ClusterRole and binding, and the manually populated service-account token
-Secret. Run `scripts/validate-okd-homepage-rbac.sh` against that context. All
-six positive checks and every negative check must pass.
+ClusterRole and binding, a RoleBinding to the built-in
+`openshift-monitoring/cluster-monitoring-metrics-api` Role, and the manually
+populated service-account token Secret. Run
+`scripts/validate-okd-homepage-rbac.sh` against that context. Every positive
+and negative check must pass.
+
+The built-in monitoring Role grants `get/create/update` only on the named
+virtual `prometheuses/api` subresource `k8s`. OKD uses those verbs to authorize
+read-only Prometheus query proxy requests; they do not grant mutation of a
+Prometheus custom resource. The validator positively checks the virtual API
+verbs and negatively checks create/update/delete against actual
+`prometheuses.monitoring.coreos.com`, alongside Secrets, ConfigMaps, pod logs,
+exec, watches, and the existing mutation matrix.
+
+Homepage issues four fixed Thanos queries for node load1/load5/load15 and
+per-logical-core CPU idle-rate conversion. It polls no faster than 15 seconds
+with a three-second bound, retains the last good result, opens after two
+failures, and recovers after two successes. Only allowlisted OKD node names,
+three load scalars, and ordered core percentages enter schema v5. Query text,
+raw labels, errors, headers, and token material never enter the browser.
 
 Retrieve the token without printing it into a ticket or committing it. Create
 the required k3s Secret through a protected temporary file or approved secret

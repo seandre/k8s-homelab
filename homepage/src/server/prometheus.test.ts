@@ -21,7 +21,7 @@ describe('Prometheus adapter', () => {
     expect(urls.every((url) => url.startsWith('http://prometheus.monitoring.svc:9090/api/v1/query?query='))).toBe(true);
   });
 
-  it('uses three fixed PDU queries and preserves a measured zero outlet draw', async () => {
+  it('uses six fixed PDU queries and preserves a measured zero outlet draw', async () => {
     const urls: string[] = [];
     const adapter = new PrometheusAdapter('http://prometheus.monitoring.svc:9090', true, { enabled: true, deviceName: 'USP-PDU-Pro' });
     const result = await adapter.readPduPower(async (url) => {
@@ -31,18 +31,21 @@ describe('Prometheus adapter', () => {
         'sum(unpoller_device_outlet_outlet_power{name="USP-PDU-Pro"})': '82',
         'sum(unpoller_device_outlet_outlet_power{name="USP-PDU-Pro",outlet_name="pve-01"})': '82',
         'sum(unpoller_device_outlet_outlet_power{name="USP-PDU-Pro",outlet_name="pve-02"})': '0',
+        'sum(unpoller_device_outlet_outlet_power{name="USP-PDU-Pro",outlet_name="okd-cp-01"})': '21.7',
+        'sum(unpoller_device_outlet_outlet_power{name="USP-PDU-Pro",outlet_name="okd-cp-02"})': '27.2',
+        'sum(unpoller_device_outlet_outlet_power{name="USP-PDU-Pro",outlet_name="okd-cp-03"})': '21.8',
       };
       return { ok: true, json: async () => ({ status: 'success', data: { resultType: 'vector', result: [{ value: [0, values[query ?? '']!] }] } }) };
     });
-    expect(result).toMatchObject({ totalWatts: 82, pve01Watts: 82, pve02Watts: 0, metadata: { freshness: 'CURRENT', severity: 'OK' } });
-    expect(urls).toHaveLength(3);
+    expect(result).toMatchObject({ totalWatts: 82, pve01Watts: 82, pve02Watts: 0, okdCp01Watts: 21.7, okdCp02Watts: 27.2, okdCp03Watts: 21.8, metadata: { freshness: 'CURRENT', severity: 'OK' } });
+    expect(urls).toHaveLength(6);
     expect(buildPduPowerQueries('PDU "A"').totalWatts).toBe('sum(unpoller_device_outlet_outlet_power{name="PDU \\"A\\""})');
   });
 
   it('returns INFO/NO_DATA when any validated PDU outlet is missing or Prometheus fails', async () => {
     const adapter = new PrometheusAdapter('http://prometheus.monitoring.svc:9090', true, { enabled: true, deviceName: 'USP-PDU-Pro' });
     const missing = await adapter.readPduPower(async () => ({ ok: true, json: async () => ({ status: 'success', data: { resultType: 'vector', result: [] } }) }));
-    expect(missing).toMatchObject({ totalWatts: null, pve01Watts: null, pve02Watts: null, metadata: { freshness: 'NO_DATA', severity: 'INFO' } });
+    expect(missing).toMatchObject({ totalWatts: null, pve01Watts: null, pve02Watts: null, okdCp01Watts: null, metadata: { freshness: 'NO_DATA', severity: 'INFO' } });
     const failed = await adapter.readPduPower(async () => ({ ok: false, json: async () => ({}) }));
     expect(failed.metadata).toMatchObject({ freshness: 'NO_DATA', severity: 'INFO' });
   });

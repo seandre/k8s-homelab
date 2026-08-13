@@ -19,6 +19,9 @@ export interface PduPowerMetrics {
   totalWatts: number | null;
   pve01Watts: number | null;
   pve02Watts: number | null;
+  okdCp01Watts: number | null;
+  okdCp02Watts: number | null;
+  okdCp03Watts: number | null;
   metadata: SourceMetadata;
 }
 
@@ -42,7 +45,7 @@ function promqlString(value: string) {
   return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
-// This is deliberately a fixed three-query catalog. Device and outlet names
+// This is deliberately a fixed six-query catalog. Device and outlet names
 // come from the Git-owned runtime configuration, never from the browser.
 export function buildPduPowerQueries(deviceName: string) {
   const name = promqlString(deviceName);
@@ -51,6 +54,9 @@ export function buildPduPowerQueries(deviceName: string) {
     totalWatts: `sum(${selector})`,
     pve01Watts: `sum(${selector.replace('}', ',outlet_name="pve-01"}')})`,
     pve02Watts: `sum(${selector.replace('}', ',outlet_name="pve-02"}')})`,
+    okdCp01Watts: `sum(${selector.replace('}', ',outlet_name="okd-cp-01"}')})`,
+    okdCp02Watts: `sum(${selector.replace('}', ',outlet_name="okd-cp-02"}')})`,
+    okdCp03Watts: `sum(${selector.replace('}', ',outlet_name="okd-cp-03"}')})`,
   } as const;
 }
 
@@ -120,11 +126,19 @@ export class PrometheusAdapter {
         // A missing outlet must never be converted into a partial host or total
         // value. Zero is valid and remains distinct from no returned series.
         if (values.some((sample) => sample === null)) throw new Error('PDU mapping did not return every validated outlet.');
-        this.pduNormalizer.recordSuccess({ totalWatts: values[0]!, pve01Watts: values[1]!, pve02Watts: values[2]! });
+        this.pduNormalizer.recordSuccess({ totalWatts: values[0]!, pve01Watts: values[1]!, pve02Watts: values[2]!, okdCp01Watts: values[3]!, okdCp02Watts: values[4]!, okdCp03Watts: values[5]! });
       } catch { this.pduNormalizer.recordFailure(); }
     }
     const snapshot = this.pduNormalizer.snapshot();
-    return { totalWatts: snapshot.value?.totalWatts ?? null, pve01Watts: snapshot.value?.pve01Watts ?? null, pve02Watts: snapshot.value?.pve02Watts ?? null, metadata: snapshot.metadata };
+    return {
+      totalWatts: snapshot.value?.totalWatts ?? null,
+      pve01Watts: snapshot.value?.pve01Watts ?? null,
+      pve02Watts: snapshot.value?.pve02Watts ?? null,
+      okdCp01Watts: snapshot.value?.okdCp01Watts ?? null,
+      okdCp02Watts: snapshot.value?.okdCp02Watts ?? null,
+      okdCp03Watts: snapshot.value?.okdCp03Watts ?? null,
+      metadata: snapshot.metadata,
+    };
   }
 
   async readUdm(fetcher: PrometheusFetch): Promise<UdmTelemetry> {

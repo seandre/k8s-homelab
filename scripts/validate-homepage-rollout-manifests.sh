@@ -11,6 +11,7 @@ preview_doc="${render_dir}/preview-deployment.yaml"
 production_doc="${render_dir}/production-deployment.yaml"
 production_service_doc="${render_dir}/production-service.yaml"
 okd_role_doc="${render_dir}/okd-clusterrole.yaml"
+okd_monitoring_binding_doc="${render_dir}/okd-monitoring-rolebinding.yaml"
 
 kubectl kustomize "${repo_root}/kubernetes/apps/homepage-custom-preview" >"${k3s_render}"
 kubectl kustomize "${repo_root}/kubernetes/clusters/okd/observability/homepage" >"${okd_render}"
@@ -42,11 +43,16 @@ extract_document "${k3s_render}" Deployment homepage-custom-preview "${preview_d
 extract_document "${k3s_render}" Deployment homepage-custom-production "${production_doc}"
 extract_document "${k3s_render}" Service homepage-custom-production "${production_service_doc}"
 extract_document "${okd_render}" ClusterRole homepage-k3s-reader "${okd_role_doc}"
+extract_document "${okd_render}" RoleBinding homepage-k3s-reader-monitoring "${okd_monitoring_binding_doc}"
 
 if grep -Eq 'home-assistant-control|action-state|homepage-indoor-actions' "${preview_doc}"; then
   echo "preview must not mount indoor-control credentials, mappings, or action state" >&2
   exit 1
 fi
+grep -q 'namespace: openshift-monitoring' "${okd_monitoring_binding_doc}"
+grep -q 'kind: Role' "${okd_monitoring_binding_doc}"
+grep -q 'name: cluster-monitoring-metrics-api' "${okd_monitoring_binding_doc}"
+grep -q 'name: homepage-k3s-reader' "${okd_monitoring_binding_doc}"
 
 grep -q 'secretName: homepage-okd-api' "${preview_doc}"
 grep -q 'secretName: homepage-okd-api' "${production_doc}"

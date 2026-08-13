@@ -48,7 +48,7 @@ export function loadRuntimeConfig(input: unknown): RuntimeConfig {
 }
 
 export const gitOwnedRuntimeConfig: RuntimeConfig = loadRuntimeConfig({
-  allowedHosts: ['argocd.lab.seandre.dev', 'grafana.lab.seandre.dev', 'api.okd.lab.seandre.dev', 'console-openshift-console.apps.okd.lab.seandre.dev', 'unifi.ui.com', 'api.ui.com', 'pve-01.lab.seandre.dev', 'pve-02.lab.seandre.dev', 'pbs-01.lab.seandre.dev', 'ha.lab.seandre.dev', 'nexus.lab.seandre.dev', 'docs.lab.seandre.dev', 'nginx-test.lab.seandre.dev', 'github.com', 'api.weatherapi.com', 'api.weather.gov', 'www.airnowapi.org', 'api.open-meteo.com', 'air-quality-api.open-meteo.com', 'argocd-server.argocd.svc', 'kube-prometheus-stack-grafana.monitoring.svc', 'homelab-docs.homelab-docs.svc', 'nginx-test.nginx-test.svc', 'home-assistant.home-assistant.svc', 'kube-prometheus-stack-prometheus.monitoring.svc', 'kube-prometheus-stack-alertmanager.monitoring.svc'],
+  allowedHosts: ['argocd.lab.seandre.dev', 'grafana.lab.seandre.dev', 'api.okd.lab.seandre.dev', 'console-openshift-console.apps.okd.lab.seandre.dev', 'thanos-querier-openshift-monitoring.apps.okd.lab.seandre.dev', 'unifi.ui.com', 'api.ui.com', 'pve-01.lab.seandre.dev', 'pve-02.lab.seandre.dev', 'pbs-01.lab.seandre.dev', 'ha.lab.seandre.dev', 'nexus.lab.seandre.dev', 'docs.lab.seandre.dev', 'nginx-test.lab.seandre.dev', 'github.com', 'api.weatherapi.com', 'api.weather.gov', 'www.airnowapi.org', 'api.open-meteo.com', 'air-quality-api.open-meteo.com', 'argocd-server.argocd.svc', 'kube-prometheus-stack-grafana.monitoring.svc', 'homelab-docs.homelab-docs.svc', 'nginx-test.nginx-test.svc', 'home-assistant.home-assistant.svc', 'kube-prometheus-stack-prometheus.monitoring.svc', 'kube-prometheus-stack-alertmanager.monitoring.svc'],
   views: ['overview', 'compute', 'network', 'storage-backups', 'kubernetes', 'okd', 'services', 'weather'].map((id) => ({ id, enabled: true })),
   defaultLayout: { navigation: 'expanded', density: 'compact', overview: 'balanced' },
   serviceLinks: [
@@ -67,6 +67,7 @@ export const gitOwnedRuntimeConfig: RuntimeConfig = loadRuntimeConfig({
     { id: 'unifi-source', enabled: true, endpoint: 'https://api.ui.com/v1', timeoutMs: 5_000, stateWhenDisabled: 'NOT_SUPPORTED' },
     { id: 'home-assistant-source', enabled: true, endpoint: 'http://home-assistant.home-assistant.svc:8123', timeoutMs: 5_000, stateWhenDisabled: 'NOT_SUPPORTED' },
     { id: 'okd-source', enabled: true, endpoint: 'https://api.okd.lab.seandre.dev:6443', timeoutMs: 3_000, stateWhenDisabled: 'NOT_SUPPORTED' },
+    { id: 'okd-monitoring-source', enabled: true, endpoint: 'https://thanos-querier-openshift-monitoring.apps.okd.lab.seandre.dev', timeoutMs: 3_000, stateWhenDisabled: 'NOT_SUPPORTED' },
   ],
   probes: [
     ['argocd-probe', 'http://argocd-server.argocd.svc'],
@@ -96,11 +97,11 @@ export const gitOwnedRuntimeConfig: RuntimeConfig = loadRuntimeConfig({
     { id: 'okd-readonly', namespace: 'homepage', secretName: 'homepage-okd-api', keys: ['server', 'token'] },
   ],
   // Validated against Prometheus: one USP-PDU-Pro device and one series for
-  // each of the required pve-01 and pve-02 outlet labels.
+  // each of the required pve-01, pve-02, and three okd-cp outlet labels.
   pduPower: { enabled: true, deviceName: 'USP-PDU-Pro' },
   historyMetrics: [
     ...['pve-01', 'pve-02'].flatMap((host) => ['CPU', 'MEMORY', 'DISK', 'RX', 'TX'].map((metric) => ({ metric: `${host} ${metric}`, windows: ['15m'] as const }))),
-    ...['okd-cp-01', 'okd-cp-02', 'okd-cp-03'].flatMap((host) => ['CPU', 'MEMORY'].map((metric) => ({ metric: `${host} ${metric}`, windows: ['15m'] as const }))),
+    ...['okd-cp-01', 'okd-cp-02', 'okd-cp-03'].flatMap((host) => ['CPU', 'MEMORY', ...Array.from({ length: 12 }, (_, index) => `CORE ${index}`)].map((metric) => ({ metric: `${host} ${metric}`, windows: ['15m'] as const }))),
     ...['CPU', 'MEMORY'].map((metric) => ({ metric: `okd ${metric}`, windows: ['15m'] as const })),
     ...Object.keys({
       'aranet_living_room.temperature': 1, 'aranet_living_room.humidity': 1, 'aranet_living_room.pressure': 1, 'aranet_living_room.co2': 1, 'aranet_living_room.battery': 1,

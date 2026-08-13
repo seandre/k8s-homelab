@@ -8,6 +8,7 @@ import { OkdScreen } from './kubernetes.js';
 import { OverviewScreen } from './mockup.js';
 import { NetworkScreen } from './network.js';
 import { ServicesScreen } from './services.js';
+import { OkdNodePanel } from './cluster-node.js';
 
 describe('OKD cross-view states', () => {
   it('renders healthy OKD data across Overview, Compute, Network, Services, and OKD', () => {
@@ -31,10 +32,20 @@ describe('OKD cross-view states', () => {
     expect(compute.match(/okd-node-card/g)).toHaveLength(3);
     expect(okd.match(/okd-node-card/g)).toHaveLength(3);
     expect(okd.match(/AMD Ryzen 5 PRO 5650GE · 6C\/12T/g)).toHaveLength(3);
-    expect(okd).toContain('PLATFORM');
-    expect(okd).toContain('BARE METAL');
-    expect(okd).toContain('MEMORY SAMPLES');
+    expect(okd).toContain('LOAD');
+    expect(okd).toContain('PWR');
+    expect(okd).toContain('Expand details');
     expect(okd).toContain('Open ↗');
+  });
+
+  it('uses the Proxmox host layout and exposes OKD per-core details', () => {
+    const node = healthyBootstrapFixture.hosts.find((host) => host.name === 'okd-cp-01')!;
+    const html = renderToStaticMarkup(<OkdNodePanel node={node} expanded onExpand={() => undefined} timeSeries={healthyBootstrapFixture.timeSeries} />);
+    expect(html).toContain('CPU / OKD');
+    expect(html).toContain('22 W');
+    expect(html).toContain('LOAD TREND');
+    expect(html).toContain('PER-CORE');
+    expect(html).toContain('C0');
   });
 
   it.each([
@@ -55,7 +66,7 @@ describe('OKD cross-view states', () => {
   it('renders NotReady, stale, and configured no-data states with specific alert destinations', () => {
     const notReady = structuredClone(healthyBootstrapFixture);
     notReady.hosts.find((host) => host.kind === 'OKD_NODE')!.metadata = { ...notReady.hosts.find((host) => host.kind === 'OKD_NODE')!.metadata, severity: 'CRIT', message: 'Node is not Ready.' };
-    expect(renderToStaticMarkup(<ComputeScreen bootstrap={notReady} />)).toContain('NOT READY');
+    expect(renderToStaticMarkup(<ComputeScreen bootstrap={notReady} />)).toContain('CRIT');
     expect(buildGlobalAlertItems(notReady)).toContainEqual(expect.objectContaining({ severity: 'CRIT', href: '/okd#okd-node-health' }));
 
     const stale = structuredClone(healthyBootstrapFixture);

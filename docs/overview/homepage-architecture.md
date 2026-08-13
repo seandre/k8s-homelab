@@ -1,6 +1,6 @@
 # Overview 04: Homelab Homepage Architecture
 
-> Status: implemented on k3s and serving `home.lab.seandre.dev` after the approved HP-029 cutover. Direct read-only OKD telemetry and the independently pinned preview/production split are implemented in source on 2026-08-11; rollout remains blocked on the 30-minute path preflight and genuine 24-hour preview soak. The existing Homepage deployment remains the named rollback target. See the [HP-031 v1 evidence index](homepage-v1-evidence.md).
+> Status: implemented on k3s and serving `home.lab.seandre.dev` after the approved HP-029 cutover. Direct read-only OKD API telemetry, fixed-query node monitoring, and the independently pinned preview/production split are implemented in source; each candidate remains subject to a genuine 24-hour preview soak. The existing Homepage production digest remains the named rollback target. See the [HP-031 v1 evidence index](homepage-v1-evidence.md).
 
 This document defines the product, application, telemetry, security, and deployment architecture for a custom homelab homepage inspired by the default [btop](https://github.com/aristocratos/btop) interface.
 
@@ -32,7 +32,7 @@ The interface must remain modern, simple, readable, and resistant to information
 - Direct read-only k3s and OKD node, workload, capacity, utilization, and platform-operator state.
 - Read-only alert aggregation, service reachability, and latency.
 - Existing UniFi speed-test results without triggering new tests.
-- Measured USP-PDU-PRO total power and exact `pve-01`/`pve-02` outlet power
+- Measured USP-PDU-PRO total power and exact `pve-01`/`pve-02`/three OKD-node outlet power
   through the verified local, read-only UnPoller path.
 - Portland `97209` weather, sunrise/sunset, U.S. AQI, PM2.5, and PM10, plus selectable outdoor AQI, particulate, temperature, humidity, precipitation, and wind history.
 - Infrastructure and web search.
@@ -93,7 +93,11 @@ Both Proxmox hosts use the same overview hierarchy:
 
 Drill-down adds per-core utilization, load average, CPU clock, measured power when available, swap, storage capacity and use, disk I/O, uptime, and running/stopped VM and container counts. Static host and CPU model labels do not occupy overview space.
 
-Once OKD is operational, Overview shows an aggregate OKD panel and Compute exposes matching individual panels for `okd-cp-01`, `okd-cp-02`, and `okd-cp-03`.
+Overview shows an aggregate OKD panel. Compute and `/okd` expose `okd-cp-01`,
+`okd-cp-02`, and `okd-cp-03` through the same host-card component used by
+Proxmox, including measured outlet power, load average, and expandable
+per-logical-core utilization. Unsupported disk, network, temperature, clock,
+swap, guest, and uptime fields remain explicitly `N/S` rather than inferred.
 
 ### Responsive and Keyboard Behavior
 
@@ -184,17 +188,17 @@ credentials, mapping, enabled mutation gateway, or action-state mount.
 | Grafana | Health API and link | Reachability; Grafana retains historical analysis |
 | PBS | Read-only PBS API | Reachability, datastore, backup freshness, and failures |
 | UniFi | Supported read-only API | Controller health, network metrics, and speed-test history |
-| USP-PDU-PRO | Local UniFi API through hardened UnPoller, strict TLS, API-key Secret, and fixed Prometheus queries | Total measured wattage and exact `pve-01`/`pve-02` outlet wattage; other labeled outlets, including OKD nodes, contribute only to total |
+| USP-PDU-PRO | Local UniFi API through hardened UnPoller, strict TLS, API-key Secret, and fixed Prometheus queries | Total measured wattage and exact `pve-01`/`pve-02`/`okd-cp-01`/`okd-cp-02`/`okd-cp-03` outlet wattage |
 | Weather/AQI | WeatherAPI, NWS, AirNow, Open-Meteo, and OpenStreetMap | Current Portland utility data, server-normalized outdoor history, bounded/cached AQI model samples, AirNow station markers, click forecasts, and a browser-loaded attributed basemap |
 | Service state | Backend allowlisted probes | Server-side reachability |
 
 The browser never receives upstream credentials or contacts privileged infrastructure APIs directly. Glances is a migration bridge, not the target telemetry platform. No exporter is installed on a hypervisor or infrastructure host without an explicit least-privilege review.
 
-The PDU integration uses bootstrap schema v2. Its public contract contains only
-the PDU total, the two normalized PVE host watt values, freshness, and source
-state. Controller/device identifiers, the exporter device name, outlet labels,
-API credentials, and raw Prometheus data remain server-side. PDU failures are
-informational/no-data only and do not change PVE, Kubernetes, or global health.
+Bootstrap schema v5 contains the PDU total and normalized per-host watt values.
+Controller/device identifiers, the exporter device name, outlet labels, API
+credentials, query expressions, and raw Prometheus data remain server-side.
+Power, load, and per-core CPU values are display-only and do not independently
+change host, Kubernetes, or global health.
 
 ## Reachability and State Semantics
 
@@ -279,8 +283,10 @@ Browser-local storage owns panel arrangement and size overrides, appearance pref
 
 - The k3s backend uses six fixed `GET` collection paths on `api.okd.lab.seandre.dev:6443`; it is not an arbitrary Kubernetes proxy.
 - A dedicated OKD ServiceAccount can only `get/list` the six resource families represented by those paths.
+- Four fixed server-side PromQL expressions read load averages and per-core CPU from the strict-TLS OKD Thanos route. The browser cannot provide a query, route, label, or node name.
+- The built-in `cluster-monitoring-metrics-api` Role requires `get/create/update` on the virtual named `prometheuses/api` subresource. Those verbs authorize the query proxy only; separate negative tests prove that the identity cannot create, update, or delete actual Prometheus objects.
 - Bootstrap schema v5 exposes normalized nodes, workloads, capacity, utilization, and ClusterOperators. CPU and memory are display-only; NotReady nodes, degraded/unavailable operators, unready workloads, and source freshness drive health.
-- OKD Prometheus, Alertmanager, application hosting, traffic switching, storage, and automatic failover remain outside this release.
+- Arbitrary OKD Prometheus access, Alertmanager, application hosting, traffic switching, storage, and automatic failover remain outside this release.
 
 ## Availability Roadmap
 

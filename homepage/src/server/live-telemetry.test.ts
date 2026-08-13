@@ -99,4 +99,40 @@ describe('live telemetry', () => {
     expect(series.find((candidate) => candidate.metric === 'okd MEMORY')?.points).toHaveLength(2);
     expect(telemetry.bootstrap().platformOperators).toEqual(platformOperators);
   });
+
+  it('merges fixed OKD monitoring and per-outlet power into node cards and history', async () => {
+    const telemetry = new LiveTelemetry(
+      runtimeConfig,
+      () => undefined,
+      async (path) => path.endsWith('/okd/token') ? 'redacted-token' : null,
+      async (url) => {
+        const query = new URL(url).searchParams.get('query') ?? '';
+        const power = query.includes('outlet_name="okd-cp-01"') ? 21.7
+          : query.includes('outlet_name="okd-cp-02"') ? 27.2
+            : query.includes('outlet_name="okd-cp-03"') ? 21.8
+              : query.includes('outlet_name="pve-01"') ? 82
+                : query.includes('outlet_name="pve-02"') ? 0 : 152.7;
+        return { ok: true, json: async () => ({ status: 'success', data: { resultType: 'vector', result: [{ value: [0, String(power)] }] } }) };
+      },
+    );
+    const okdHosts = healthyBootstrapFixture.hosts.filter((host) => host.kind === 'OKD_NODE').map((host) => ({ ...host, powerWatts: null, loadAverage: null, cpuCorePercentages: null }));
+    const okdCluster = healthyBootstrapFixture.clusters.find((candidate) => candidate.platform === 'OKD')!;
+    const okdWorkloads = healthyBootstrapFixture.workloads.filter((workload) => workload.clusterId === 'okd');
+    const platformOperators = healthyBootstrapFixture.platformOperators;
+    (telemetry as unknown as { okd: { read(): Promise<{ hosts: typeof okdHosts; cluster: typeof okdCluster; workloads: typeof okdWorkloads; platformOperators: typeof platformOperators }> } }).okd = {
+      read: async () => ({ hosts: okdHosts, cluster: okdCluster, workloads: okdWorkloads, platformOperators }),
+    };
+    (telemetry as unknown as { okdMonitoring: { read(): Promise<{ value: Map<string, { loadAverage: [number, number, number]; cpuCorePercentages: number[] }>; metadata: object; circuit: string; consecutiveFailures: number; consecutiveSuccesses: number }> } }).okdMonitoring = {
+      read: async () => ({
+        value: new Map(okdHosts.map((host, nodeIndex) => [host.name, { loadAverage: [0.5 + nodeIndex, 0.4 + nodeIndex, 0.3 + nodeIndex], cpuCorePercentages: Array.from({ length: 12 }, (_, core) => core + nodeIndex) }])),
+        metadata: {}, circuit: 'CLOSED', consecutiveFailures: 0, consecutiveSuccesses: 0,
+      }),
+    };
+
+    await telemetry.refresh();
+
+    const host = telemetry.bootstrap().hosts.find((candidate) => candidate.name === 'okd-cp-01')!;
+    expect(host).toMatchObject({ powerWatts: 21.7, loadAverage: [0.5, 0.4, 0.3], cpuCorePercentages: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] });
+    expect(telemetry.bootstrap().timeSeries.find((series) => series.metric === 'okd-cp-01 CORE 11')?.points).toEqual([{ timestamp: expect.any(String), value: 11 }]);
+  });
 });

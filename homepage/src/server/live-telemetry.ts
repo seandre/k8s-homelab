@@ -17,6 +17,7 @@ import { UniFiAdapter } from './unifi.js';
 import { HomeAssistantIndoorAdapter } from './home-assistant.js';
 import { HomeAssistantControlMapSchema } from './home-assistant-actions.js';
 import { OkdAdapter, normalizeOkdServer, type OkdReadClient, type OkdSnapshot } from './okd.js';
+import { OkdMonitoringAdapter, type OkdMonitoringFetch } from './okd-monitoring.js';
 
 export const POLL_INTERVAL_MS = 2_000;
 const FULL_REFRESH_INTERVAL_MS = 6_000;
@@ -96,6 +97,7 @@ export class LiveTelemetry {
   private proxmox: ProxmoxAdapter | undefined;
   private k3s: K3sAdapter | undefined;
   private okd: OkdAdapter | undefined;
+  private okdMonitoring: OkdMonitoringAdapter | undefined;
   private argocd: ArgoCdAdapter | undefined;
   private pbs: PbsAdapter | undefined;
   private unifi: UniFiAdapter | undefined;
@@ -245,6 +247,13 @@ export class LiveTelemetry {
     return this.okd.read();
   }
 
+  private async okdMonitoringSnapshot() {
+    const token = await this.secretReader(`${SECRET_ROOT}/okd/token`);
+    if (!token) return null;
+    this.okdMonitoring ??= new OkdMonitoringAdapter(this.sourceEndpoint('okd-monitoring-source'));
+    return this.okdMonitoring.read((url) => this.httpFetch(url, { headers: { authorization: `Bearer ${token}` } }) as ReturnType<OkdMonitoringFetch>);
+  }
+
   private async argocdApplications() {
     if (!this.argocd) {
       const [server, token] = await Promise.all([this.secretReader(`${SECRET_ROOT}/argocd/server`), this.secretReader(`${SECRET_ROOT}/argocd/token`)]);
@@ -291,8 +300,8 @@ export class LiveTelemetry {
   }
 
   async refresh(recordGraphSample = true) {
-    const [proxmox, glances, k3s, okd, prometheus, pduPower, udm, alerts, argocd, pbs, unifi, weather, probes, indoor] = await Promise.all([
-      this.proxmoxHosts(), this.glancesHosts(), this.k3sSnapshot(), this.okdSnapshot(),
+    const [proxmox, glances, k3s, okd, okdMonitoring, prometheus, pduPower, udm, alerts, argocd, pbs, unifi, weather, probes, indoor] = await Promise.all([
+      this.proxmoxHosts(), this.glancesHosts(), this.k3sSnapshot(), this.okdSnapshot(), this.okdMonitoringSnapshot(),
       this.prometheus.readCluster((url) => this.httpFetch(url)),
       this.prometheus.readPduPower((url) => this.httpFetch(url)),
       this.prometheus.readUdm((url) => this.httpFetch(url)),
@@ -305,9 +314,14 @@ export class LiveTelemetry {
     const glancesById = byId(glances);
     const pduWatts: Record<string, number | null> = { 'pve-01': pduPower.pve01Watts, 'pve-02': pduPower.pve02Watts };
     const proxmoxHosts = ['pve-01', 'pve-02'].map((id) => ({ ...mergedHost(id, id, proxmoxById.get(id), glancesById.get(id), now), powerWatts: pduWatts[id] ?? null }));
+    const okdWatts: Record<string, number | null> = { 'okd-cp-01': pduPower.okdCp01Watts, 'okd-cp-02': pduPower.okdCp02Watts, 'okd-cp-03': pduPower.okdCp03Watts };
+    const okdHosts = okd.hosts.map((host) => {
+      const monitoring = okdMonitoring?.value?.get(host.name);
+      return { ...host, powerWatts: okdWatts[host.name] ?? null, loadAverage: monitoring?.loadAverage ?? null, cpuCorePercentages: monitoring?.cpuCorePercentages ?? null };
+    });
     const base = this.emptyBootstrap();
     base.generatedAt = now;
-    base.hosts = [...proxmoxHosts, ...(k3s?.hosts ?? []), ...okd.hosts];
+    base.hosts = [...proxmoxHosts, ...(k3s?.hosts ?? []), ...okdHosts];
     base.clusters = base.clusters.map((cluster) => {
       if (cluster.platform === 'OKD') return okd.cluster;
       if (!k3s) return { ...cluster, nodeCount: null, readyNodeCount: null, workloadCount: null, cpuCapacityCores: null, cpuUsedCores: null, memoryCapacityBytes: null, memoryUsedBytes: null, metadata: { source: 'k3s-api', observedAt: now, freshness: 'NO_DATA', severity: 'INFO', message: 'No successful k3s API sample is available.' } };
@@ -327,11 +341,11 @@ export class LiveTelemetry {
     const okdCluster = base.clusters.find((cluster) => cluster.platform === 'OKD');
     if (recordGraphSample) {
       const sampleTimestamp = this.nextSampleTimestamp(now);
-      for (const host of [...proxmoxHosts, ...k3sHosts, ...okd.hosts]) this.recordHost(host, sampleTimestamp);
+      for (const host of [...proxmoxHosts, ...k3sHosts, ...okdHosts]) this.recordHost(host, sampleTimestamp);
       if (k3sCluster) this.recordCluster(k3sCluster, sampleTimestamp);
       if (okdCluster) this.recordCluster(okdCluster, sampleTimestamp);
     }
-    base.timeSeries = this.timeSeries([...proxmoxHosts, ...k3sHosts, ...okd.hosts], base.clusters);
+    base.timeSeries = this.timeSeries([...proxmoxHosts, ...k3sHosts, ...okdHosts], base.clusters);
     if (pbs) { base.storage = pbs.storage; base.storageBackups = pbs.backups; }
     base.network = { ...base.network, udm, pduPower: { totalWatts: pduPower.totalWatts, metadata: pduPower.metadata } };
     if (unifi) base.network = { ...base.network, ...unifi, metadata: unifi.unifi.metadata };

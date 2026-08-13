@@ -30,7 +30,7 @@ function coreHistoryTone(value: number) {
   return 'low';
 }
 
-function CoreMonitor({ hostName, cores, timeSeries }: { hostName: string; cores: number[] | null; timeSeries: TimeSeries[] }) {
+export function CoreMonitor({ hostName, cores, timeSeries }: { hostName: string; cores: number[] | null; timeSeries: TimeSeries[] }) {
   if (cores === null) return <div className="proxmox-core-monitor core-monitor-unsupported"><span>PER-CORE</span><strong>NOT SUPPORTED</strong></div>;
   const midpoint = Math.ceil(cores.length / 2);
   const columns = [cores.slice(0, midpoint), cores.slice(midpoint)];
@@ -67,7 +67,7 @@ function ProxmoxDetail({ host, timeSeries }: { host: Host; timeSeries: TimeSerie
 
 function seriesValues(series: TimeSeries[], metric: string, current: number | null) { return series.find((entry) => entry.metric === metric)?.points.map((point) => point.value) ?? (current === null ? [] : [current]); }
 
-export function ProxmoxPanel({ host, expanded, onExpand, timeSeries = [] }: { host: Host; expanded: boolean; onExpand: () => void; timeSeries?: TimeSeries[] }) {
+export function HostTelemetryPanel({ host, expanded, onExpand, timeSeries = [], eyebrow, href, cardClassName }: { host: Host; expanded: boolean; onExpand: () => void; timeSeries?: TimeSeries[]; eyebrow: string; href: string; cardClassName: string }) {
   const cpu = host.cpuPercent;
   const memory = host.memoryPercent;
   const download = host.networkIngressBitsPerSecond === null ? null : host.networkIngressBitsPerSecond / 1_000_000;
@@ -78,7 +78,7 @@ export function ProxmoxPanel({ host, expanded, onExpand, timeSeries = [] }: { ho
   const maxUpload = uploadHistory.length === 0 ? null : Math.max(...uploadHistory);
   const disk = host.diskTotalBytes === null || host.diskUsedBytes === null ? null : Math.round(host.diskUsedBytes / host.diskTotalBytes * 100);
   return (
-    <Panel className="cpu-box pve-card proxmox-card" title={host.name} eyebrow="CPU / PROXMOX" severity={host.metadata.severity} freshness={host.metadata.freshness} href={`https://${host.name}.lab.seandre.dev:8006`} expanded={expanded} onExpand={onExpand}>
+    <Panel className={`cpu-box pve-card ${cardClassName}`} title={host.name} eyebrow={eyebrow} severity={host.metadata.severity} freshness={host.metadata.freshness} href={href} expanded={expanded} onExpand={onExpand}>
       <div className="pve-cpu-region">
         <DotGraph label="CPU" values={seriesValues(timeSeries, `${host.name} CPU`, cpu)} unit="%" tone="cpu" height={8} />
         <div className="pve-cpu-summary"><strong>{host.cpuModel ?? 'CPU MODEL N/S'}</strong><span>TEMP <b>{host.temperatureCelsius ?? '—'}°C</b></span><span>LOAD <b>{host.loadAverage?.[0].toFixed(2) ?? 'N/S'}</b></span><span>PWR <b>{host.powerWatts === null ? 'N/S' : Math.round(host.powerWatts)}{host.powerWatts === null ? '' : ' W'}</b></span><span>UP <b>{uptimeLabel(host.uptimeSeconds)}</b></span></div>
@@ -91,4 +91,8 @@ export function ProxmoxPanel({ host, expanded, onExpand, timeSeries = [] }: { ho
       {expanded ? <ProxmoxDetail host={host} timeSeries={timeSeries} /> : null}
     </Panel>
   );
+}
+
+export function ProxmoxPanel({ host, expanded, onExpand, timeSeries = [] }: { host: Host; expanded: boolean; onExpand: () => void; timeSeries?: TimeSeries[] }) {
+  return <HostTelemetryPanel host={host} expanded={expanded} onExpand={onExpand} timeSeries={timeSeries} eyebrow="CPU / PROXMOX" href={`https://${host.name}.lab.seandre.dev:8006`} cardClassName="proxmox-card" />;
 }
