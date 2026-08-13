@@ -106,7 +106,7 @@ function emptyHostFields() {
     diskUsedBytes: null, diskTotalBytes: null, diskIoPercent: null, cpuModel: null, cpuCorePercentages: null,
     loadAverage: null, cpuClockMhz: null, powerWatts: null, swapUsedBytes: null, swapTotalBytes: null,
     uptimeSeconds: null, runningVmCount: null, stoppedVmCount: null, runningContainerCount: null,
-    stoppedContainerCount: null, temperatureCelsius: null, networkIngressBitsPerSecond: null,
+    stoppedContainerCount: null, runningPodCount: null, podCapacity: null, temperatureCelsius: null, networkIngressBitsPerSecond: null,
     networkEgressBitsPerSecond: null, networkTotalBytes: null,
   };
 }

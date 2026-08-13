@@ -50,6 +50,12 @@ describe('OKD cross-view states', () => {
     expect(html).toContain('LOAD TREND');
     expect(html).toContain('metric-value">0.0<small> GiB / 0.0 GiB');
     expect(html).toContain('stopped: 42');
+    expect(html).toContain('PODS');
+    expect(html).toContain('35 / 250');
+    expect(html).toContain('running / allocatable');
+    expect(html).not.toContain('CPU CLOCK');
+    expect(html).not.toContain('VIRTUAL MACHINES');
+    expect(html).not.toContain('NOT SUPPORTED');
     expect(html).toContain('PER-CORE');
     expect(html).toContain('C0');
   });

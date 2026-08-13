@@ -328,16 +328,17 @@ verbs and negatively checks create/update/delete against actual
 `prometheuses.monitoring.coreos.com`, alongside Secrets, ConfigMaps, pod logs,
 exec, watches, and the existing mutation matrix.
 
-Homepage issues sixteen fixed Thanos queries for node load1/load5/load15,
+Homepage issues eighteen fixed Thanos queries for node load1/load5/load15,
 per-logical-core CPU idle-rate conversion, `/sysroot` XFS size/availability,
 `nvme0n1` I/O busy time, `eno1` receive/transmit rates and byte totals, swap,
-the hottest reported hwmon temperature, uptime, and kubelet running plus
-created/exited container counts. It polls no faster than 15 seconds with a
-three-second bound, retains the last good result, opens after two failures, and
-recovers after two successes. Only allowlisted OKD node names and normalized
-scalar/array values enter schema v5. Query text, raw labels, errors, headers,
-and token material never enter the browser. CPU clock and VM counts stay
-unsupported because the approved metric inventory contains neither; the
+the hottest reported hwmon temperature, uptime, kubelet running plus
+created/exited container counts, and running/allocatable pod counts. It polls
+no faster than 15 seconds with a three-second bound, retains the last good
+result, opens after two failures, and recovers after two successes. Only
+allowlisted OKD node names and normalized scalar/array values enter schema v5.
+Query text, raw labels, errors, headers,
+and token material never enter the browser. CPU clock and VM counts are omitted
+from OKD cards because the approved metric inventory contains neither; the
 available `node_hwmon_freq_freq_mhz` series is GPU `sclk` and must not be
 mislabeled as CPU frequency.
 

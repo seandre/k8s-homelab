@@ -91,6 +91,11 @@ test('matches OKD node cards to the Proxmox layout with power, load, and per-cor
   await expect(node.locator('.metric').filter({ hasText: /^SWAP/ })).toContainText('0.0 GiB / 0.0 GiB');
   await expect(node.locator('.metric').filter({ hasText: /^CONTAINERS/ })).toContainText('64');
   await expect(node.locator('.metric').filter({ hasText: /^CONTAINERS/ })).toContainText('stopped: 42');
+  await expect(node.locator('.metric').filter({ hasText: /^PODS/ })).toContainText('35 / 250');
+  await expect(node.locator('.metric').filter({ hasText: /^PODS/ })).toContainText('running / allocatable');
+  await expect(node.getByText('CPU CLOCK')).toHaveCount(0);
+  await expect(node.getByText('VIRTUAL MACHINES')).toHaveCount(0);
+  await expect(node.getByText('NOT SUPPORTED')).toHaveCount(0);
   await expect(node.getByRole('region', { name: 'Per-core CPU utilization' })).toBeVisible();
   await expect(node.getByText('C0', { exact: true })).toBeVisible();
 });

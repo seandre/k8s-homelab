@@ -49,16 +49,17 @@ export function CoreMonitor({ hostName, cores, timeSeries }: { hostName: string;
   );
 }
 
-function ProxmoxDetail({ host, timeSeries }: { host: Host; timeSeries: TimeSeries[] }) {
+function HostDetail({ host, timeSeries }: { host: Host; timeSeries: TimeSeries[] }) {
+  const isOkd = host.kind === 'OKD_NODE';
   return (
     <div className="proxmox-detail">
       <div className="proxmox-detail-heading"><span>HOST DRILL-DOWN</span></div>
       <div className="metric-grid proxmox-detail-grid">
-        <Metric label="CPU CLOCK" value={host.cpuClockMhz === null ? 'N/S' : (host.cpuClockMhz / 1_000).toFixed(1)} unit={host.cpuClockMhz === null ? '' : 'GHz'} detail={host.cpuClockMhz === null ? 'NOT SUPPORTED' : 'current clock'} />
+        {!isOkd ? <Metric label="CPU CLOCK" value={host.cpuClockMhz === null ? 'N/S' : (host.cpuClockMhz / 1_000).toFixed(1)} unit={host.cpuClockMhz === null ? '' : 'GHz'} detail={host.cpuClockMhz === null ? 'NOT SUPPORTED' : 'current clock'} /> : null}
         <Metric label="LOAD TREND" value={host.loadAverage ? host.loadAverage.slice(1).map((value) => value.toFixed(2)).join(' / ') : 'N/S'} detail={host.loadAverage === null ? 'NOT SUPPORTED' : '5m / 15m'} />
         <Metric label="SWAP" value={host.swapUsedBytes === null ? 'N/S' : bytesToGiB(host.swapUsedBytes)} unit={host.swapUsedBytes === null ? '' : ` GiB / ${bytesToGiB(host.swapTotalBytes)} GiB`} detail={host.swapUsedBytes === null ? 'NOT SUPPORTED' : 'used / installed'} />
         <Metric label="CONTAINERS" value={host.runningContainerCount ?? 'N/S'} detail={`stopped: ${host.stoppedContainerCount ?? 'N/S'}`} />
-        <Metric label="VIRTUAL MACHINES" value={host.runningVmCount ?? 'N/S'} detail={`stopped: ${host.stoppedVmCount ?? 'N/S'}`} />
+        {isOkd ? <Metric label="PODS" value={host.runningPodCount === null ? '—' : `${host.runningPodCount} / ${host.podCapacity ?? '—'}`} detail="running / allocatable" /> : <Metric label="VIRTUAL MACHINES" value={host.runningVmCount ?? 'N/S'} detail={`stopped: ${host.stoppedVmCount ?? 'N/S'}`} />}
       </div>
       <CoreMonitor hostName={host.name} cores={host.cpuCorePercentages} timeSeries={timeSeries} />
     </div>
@@ -88,7 +89,7 @@ export function HostTelemetryPanel({ host, expanded, onExpand, timeSeries = [], 
         <section className="pve-resource disk-resource"><h3>DISKS</h3><DotGraph label="VM DATA" values={seriesValues(timeSeries, `${host.name} DISK`, disk)} unit="%" tone="disk" height={4} /><p><b>{bytesToTiB(host.diskUsedBytes)} TiB</b> used / {bytesToTiB(host.diskTotalBytes)} TiB</p><p>I/O WAIT <b>{host.diskIoPercent ?? '—'}%</b></p></section>
         <section className="pve-resource network-resource"><h3>NETWORK</h3><MirroredTrafficGraph upload={uploadHistory} download={downloadHistory} unit="Mb/s" height={4} /><p>MAX RX <b>{throughputLabel(maxDownload)}</b> · MAX TX <b>{throughputLabel(maxUpload)}</b></p><p>TOTAL TRANSFER <b>{byteCountLabel(host.networkTotalBytes)}</b></p></section>
       </div>
-      {expanded ? <ProxmoxDetail host={host} timeSeries={timeSeries} /> : null}
+      {expanded ? <HostDetail host={host} timeSeries={timeSeries} /> : null}
     </Panel>
   );
 }

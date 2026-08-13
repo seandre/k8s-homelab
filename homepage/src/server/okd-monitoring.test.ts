@@ -18,11 +18,14 @@ function response(query: string) {
     [OKD_MONITORING_QUERIES.uptime]: [161_353, 164_717, 163_143],
     [OKD_MONITORING_QUERIES.runningContainers]: [64, 132, 106],
     [OKD_MONITORING_QUERIES.stoppedContainers]: [42, 88, 44],
+    [OKD_MONITORING_QUERIES.runningPods]: [35, 83, 55],
+    [OKD_MONITORING_QUERIES.podCapacity]: [250, 250, 250],
   };
   if (query === OKD_MONITORING_QUERIES.cores) {
     return ['okd-cp-01', 'okd-cp-02', 'okd-cp-03'].flatMap((instance, nodeIndex) => Array.from({ length: 12 }, (_, cpu) => ({ metric: { nodename: `${instance}.okd.lab.seandre.dev`, cpu: String(cpu) }, value: [0, String(5 + nodeIndex + cpu)] })));
   }
-  return (values[query] ?? []).map((value, index) => ({ metric: query === OKD_MONITORING_QUERIES.runningContainers || query === OKD_MONITORING_QUERIES.stoppedContainers ? { node: `okd-cp-0${index + 1}.okd.lab.seandre.dev` } : { nodename: `okd-cp-0${index + 1}.okd.lab.seandre.dev` }, value: [0, String(value)] }));
+  const usesNodeLabel = [OKD_MONITORING_QUERIES.runningContainers, OKD_MONITORING_QUERIES.stoppedContainers, OKD_MONITORING_QUERIES.runningPods, OKD_MONITORING_QUERIES.podCapacity].includes(query as never);
+  return (values[query] ?? []).map((value, index) => ({ metric: usesNodeLabel ? { node: `okd-cp-0${index + 1}.okd.lab.seandre.dev` } : { nodename: `okd-cp-0${index + 1}.okd.lab.seandre.dev` }, value: [0, String(value)] }));
 }
 
 describe('OKD monitoring adapter', () => {
@@ -34,7 +37,7 @@ describe('OKD monitoring adapter', () => {
       return { ok: true, json: async () => ({ status: 'success', data: { resultType: 'vector', result: response(query) } }) };
     });
     expect(queries).toEqual(Object.values(OKD_MONITORING_QUERIES));
-    expect(queries).toHaveLength(16);
+    expect(queries).toHaveLength(18);
     expect(OKD_MONITORING_QUERIES.load1).toContain(String.raw`(\\.okd\\.lab\\.seandre\\.dev)?`);
     expect(OKD_MONITORING_QUERIES.networkIngress).toContain('irate(node_network_receive_bytes_total{device="eno1"}[2m])');
     expect(OKD_MONITORING_QUERIES.networkEgress).toContain('irate(node_network_transmit_bytes_total{device="eno1"}[2m])');
@@ -55,6 +58,8 @@ describe('OKD monitoring adapter', () => {
       uptimeSeconds: 161_353,
       runningContainerCount: 64,
       stoppedContainerCount: 42,
+      runningPodCount: 35,
+      podCapacity: 250,
     });
     expect(snapshot.metadata).toMatchObject({ source: 'okd-thanos', freshness: 'CURRENT', severity: 'OK' });
   });

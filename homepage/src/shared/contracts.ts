@@ -72,6 +72,8 @@ export const HostSchema = z.object({
   stoppedVmCount: z.number().int().nonnegative().nullable(),
   runningContainerCount: z.number().int().nonnegative().nullable(),
   stoppedContainerCount: z.number().int().nonnegative().nullable(),
+  runningPodCount: z.number().int().nonnegative().nullable(),
+  podCapacity: z.number().int().nonnegative().nullable(),
   temperatureCelsius: z.number().finite().nullable(),
   networkIngressBitsPerSecond: z.number().nonnegative().nullable(),
   networkEgressBitsPerSecond: z.number().nonnegative().nullable(),

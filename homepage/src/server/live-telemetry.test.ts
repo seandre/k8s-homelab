@@ -122,7 +122,7 @@ describe('live telemetry', () => {
     (telemetry as unknown as { okd: { read(): Promise<{ hosts: typeof okdHosts; cluster: typeof okdCluster; workloads: typeof okdWorkloads; platformOperators: typeof platformOperators }> } }).okd = {
       read: async () => ({ hosts: okdHosts, cluster: okdCluster, workloads: okdWorkloads, platformOperators }),
     };
-    (telemetry as unknown as { okdMonitoring: { read(): Promise<{ value: Map<string, { loadAverage: [number, number, number]; cpuCorePercentages: number[]; diskUsedBytes: number; diskTotalBytes: number; diskIoPercent: number; networkIngressBitsPerSecond: number; networkEgressBitsPerSecond: number; networkTotalBytes: number; swapUsedBytes: number; swapTotalBytes: number; temperatureCelsius: number; uptimeSeconds: number; runningContainerCount: number; stoppedContainerCount: number }>; metadata: object; circuit: string; consecutiveFailures: number; consecutiveSuccesses: number }> } }).okdMonitoring = {
+    (telemetry as unknown as { okdMonitoring: { read(): Promise<{ value: Map<string, { loadAverage: [number, number, number]; cpuCorePercentages: number[]; diskUsedBytes: number; diskTotalBytes: number; diskIoPercent: number; networkIngressBitsPerSecond: number; networkEgressBitsPerSecond: number; networkTotalBytes: number; swapUsedBytes: number; swapTotalBytes: number; temperatureCelsius: number; uptimeSeconds: number; runningContainerCount: number; stoppedContainerCount: number; runningPodCount: number; podCapacity: number }>; metadata: object; circuit: string; consecutiveFailures: number; consecutiveSuccesses: number }> } }).okdMonitoring = {
       read: async () => ({
         value: new Map(okdHosts.map((host, nodeIndex) => [host.name, {
           loadAverage: [0.5 + nodeIndex, 0.4 + nodeIndex, 0.3 + nodeIndex],
@@ -139,6 +139,8 @@ describe('live telemetry', () => {
           uptimeSeconds: 161_353 + nodeIndex,
           runningContainerCount: 64 + nodeIndex,
           stoppedContainerCount: 42 + nodeIndex,
+          runningPodCount: 35 + nodeIndex,
+          podCapacity: 250,
         }])),
         metadata: {}, circuit: 'CLOSED', consecutiveFailures: 0, consecutiveSuccesses: 0,
       }),
@@ -163,6 +165,8 @@ describe('live telemetry', () => {
       uptimeSeconds: 161_353,
       runningContainerCount: 64,
       stoppedContainerCount: 42,
+      runningPodCount: 35,
+      podCapacity: 250,
     });
     expect(telemetry.bootstrap().timeSeries.find((series) => series.metric === 'okd-cp-01 CORE 11')?.points).toEqual([{ timestamp: expect.any(String), value: 11 }]);
   });

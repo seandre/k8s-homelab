@@ -25,7 +25,8 @@ type OkdNodeMonitoring = Pick<Host,
   'loadAverage' | 'cpuCorePercentages' | 'diskUsedBytes' | 'diskTotalBytes' |
   'diskIoPercent' | 'swapUsedBytes' | 'swapTotalBytes' | 'uptimeSeconds' |
   'runningContainerCount' | 'stoppedContainerCount' | 'temperatureCelsius' |
-  'networkIngressBitsPerSecond' | 'networkEgressBitsPerSecond' | 'networkTotalBytes'
+  'runningPodCount' | 'podCapacity' | 'networkIngressBitsPerSecond' |
+  'networkEgressBitsPerSecond' | 'networkTotalBytes'
 >;
 
 const allowedNodes = ['okd-cp-01', 'okd-cp-02', 'okd-cp-03'] as const;
@@ -54,6 +55,8 @@ export const OKD_MONITORING_QUERIES = {
   uptime: `max by (nodename) ((time() - node_boot_time_seconds) * on(instance) group_left(nodename) ${nodeInfo})`,
   runningContainers: `max by (node) (kubelet_running_containers{container_state="running",node=~"${nodePattern}"})`,
   stoppedContainers: `sum by (node) (kubelet_running_containers{container_state=~"created|exited",node=~"${nodePattern}"})`,
+  runningPods: `max by (node) (kubelet_running_pods{node=~"${nodePattern}"})`,
+  podCapacity: `max by (node) (kube_node_status_allocatable{resource="pods",node=~"${nodePattern}"})`,
 } as const;
 
 type QueryName = keyof typeof OKD_MONITORING_QUERIES;
@@ -113,6 +116,8 @@ function normalizedSnapshot(responses: Record<QueryName, QueryResponse>) {
       uptimeSeconds: values.uptime.has(name) ? Math.round(Math.max(0, values.uptime.get(name)!)) : null,
       runningContainerCount: values.runningContainers.has(name) ? Math.round(Math.max(0, values.runningContainers.get(name)!)) : null,
       stoppedContainerCount: values.stoppedContainers.has(name) ? Math.round(Math.max(0, values.stoppedContainers.get(name)!)) : null,
+      runningPodCount: values.runningPods.has(name) ? Math.round(Math.max(0, values.runningPods.get(name)!)) : null,
+      podCapacity: values.podCapacity.has(name) ? Math.round(Math.max(0, values.podCapacity.get(name)!)) : null,
     }];
   }));
 }
