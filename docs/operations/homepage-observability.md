@@ -484,6 +484,28 @@ Healthy, and preview was Ready with zero restarts. Production retained digest
 This candidate's uninterrupted soak must run through at least
 `2026-08-14T05:03:26Z`.
 
+Commit `d145dce` then made the OKD cards reuse the literal Proxmox host-card
+component and added distinct PDU power, load average, and expandable 12-thread
+CPU detail for all three nodes. The live acceptance check rejected its first
+preview image because Thanos returned HTTP `400` for incorrectly escaped regex
+dots; power worked, but load and core fields remained null. Commit `7d56453`
+corrected the PromQL string encoding and added a decoded-query regression test.
+The rejected digest is not a soak candidate.
+
+GitOps commit `1e24d84` pinned the superseding scanned preview image to
+`sha256:598690183a8e0bc0ebb4d0c2357a5a1bc8fac9d616003499118467bab1b5b10d`.
+The new container started at `2026-08-13T14:58:08Z` with zero restarts. The
+baseline at `2026-08-13T14:59:19Z` passed strict-TLS health, Compute, and `/okd`
+HTTP `200` checks; Argo CD was Synced and Healthy; schema 5 and global severity
+were `OK`; all three OKD nodes had distinct measured watts, three load values,
+12 logical-core values, and all 36 core-history series; all 34
+ClusterOperators were healthy; no OKD workload was unhealthy; and the public
+response contained no credential-shaped or raw Kubernetes-object keys.
+Production remained pinned to
+`sha256:91f90bdea9e1ebae80e9c16515acb12df68e64ca9f89f813819879b73367afec`.
+This candidate's uninterrupted soak must run through at least
+`2026-08-14T14:58:08Z`.
+
 ### Promotion and rollback
 
 After approval, copy the exact preview `image:` value (tag plus digest) into
