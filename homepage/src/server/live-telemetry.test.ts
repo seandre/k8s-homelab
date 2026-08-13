@@ -88,7 +88,7 @@ describe('live telemetry', () => {
     };
 
     await telemetry.refresh();
-    await telemetry.refresh();
+    await (telemetry as unknown as { refreshGraphTelemetry(): Promise<void> }).refreshGraphTelemetry();
 
     const series = telemetry.bootstrap().timeSeries;
     expect(series.find((candidate) => candidate.metric === 'k3s-worker-01 CPU')?.points).toHaveLength(2);

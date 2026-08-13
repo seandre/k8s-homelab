@@ -363,14 +363,17 @@ export class LiveTelemetry {
     });
     const sampleTimestamp = this.nextSampleTimestamp(now);
     const k3sHosts = this.latest.hosts.filter((host) => host.kind === 'K3S_NODE');
+    const okdHosts = this.latest.hosts.filter((host) => host.kind === 'OKD_NODE');
     const k3sCluster = this.latest.clusters.find((cluster) => cluster.platform === 'K3S');
-    for (const host of [...proxmoxHosts, ...k3sHosts]) this.recordHost(host, sampleTimestamp);
+    const okdCluster = this.latest.clusters.find((cluster) => cluster.platform === 'OKD');
+    for (const host of [...proxmoxHosts, ...k3sHosts, ...okdHosts]) this.recordHost(host, sampleTimestamp);
     if (k3sCluster) this.recordCluster(k3sCluster, sampleTimestamp);
+    if (okdCluster) this.recordCluster(okdCluster, sampleTimestamp);
 
     const base = structuredClone(this.latest);
     base.generatedAt = now;
     base.hosts = [...proxmoxHosts, ...base.hosts.filter((host) => host.kind !== 'PROXMOX')];
-    base.timeSeries = this.timeSeries([...proxmoxHosts, ...k3sHosts, ...base.hosts.filter((host) => host.kind === 'OKD_NODE')], base.clusters);
+    base.timeSeries = this.timeSeries([...proxmoxHosts, ...k3sHosts, ...okdHosts], base.clusters);
     base.globalSeverity = aggregateGlobalSeverity([
       ...base.hosts.map((host) => ({ metadata: host.metadata })),
       ...base.clusters.map((cluster) => ({ metadata: cluster.metadata })),
