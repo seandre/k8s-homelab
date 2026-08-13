@@ -564,6 +564,29 @@ checks passed. Production remained pinned to
 This candidate's uninterrupted soak must run through at least
 `2026-08-14T17:06:52Z`.
 
+Commit `38a0e46` removed the unsupported CPU-clock and virtual-machine rows
+from OKD node cards. A live audit found two useful replacement series on every
+allowlisted node, so the fixed catalog now also reports kubelet running pods
+against Kubernetes allocatable pod capacity. Host process count was available
+but deliberately left out because it is less actionable and would add noise.
+The Proxmox card fields remain unchanged, and the OKD drill-down now contains
+only load trend, swap, containers, pods, and the supported per-core view.
+
+The image workflow passed lint, types, 192 unit tests, integration, Kubernetes
+rendering, 31 Playwright/accessibility checks, the production build, and
+exact-image scanning. GitOps commit `1d5be51` pinned preview to
+`sha256:44f9b75e97d8af78b30091ec1a18f0302cbe20190e156164b8b14be16ad0a8ea`.
+The new container started at `2026-08-13T19:50:24Z` with zero restarts. Live
+schema 5 values were `35 / 250`, `83 / 250`, and `55 / 250` running versus
+allocatable pods; all three OKD nodes were Current/OK, strict-TLS health,
+Compute, and OKD routes returned HTTP `200`, the public response contained no
+credential-shaped keys, and Argo CD was Synced/Healthy. Global severity was
+`INFO` solely because the weather source was informational; no OKD host,
+cluster, operator, workload, or service was non-OK. Production remained pinned
+to `sha256:91f90bdea9e1ebae80e9c16515acb12df68e64ca9f89f813819879b73367afec`.
+This candidate's uninterrupted soak must run through at least
+`2026-08-14T19:50:24Z`.
+
 ### Promotion and rollback
 
 After approval, copy the exact preview `image:` value (tag plus digest) into
