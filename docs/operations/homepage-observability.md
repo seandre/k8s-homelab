@@ -512,6 +512,32 @@ Production remained pinned to
 This candidate's uninterrupted soak must run through at least
 `2026-08-14T14:58:08Z`.
 
+Commit `4093cb9` expanded the fixed OKD Thanos query catalog from four to 16
+expressions so the shared Proxmox-style cards can also show root-disk usage and
+I/O, physical-interface RX/TX rates and totals, swap, hottest sensor
+temperature, uptime, and running/stopped container counts. The catalog remains
+server-owned and node-allowlisted; it did not add browser-supplied PromQL, a
+TLS exception, or an RBAC grant. CPU clock remains unsupported because the
+cluster has no trustworthy CPU-frequency series (the available hardware clock
+is a Radeon GPU clock), and VM counts remain unsupported because this cluster
+does not expose KubeVirt inventory.
+
+The image workflow passed lint, types, 191 unit tests, integration, Kubernetes
+rendering, 31 Playwright/accessibility checks, the production build, and the
+exact-image scan. GitOps commit `e35ec43` pinned preview to
+`sha256:bb16b808f15152c713c3f6413f2c316a42de4e5926cdbbeb185a9d797ff8a0f1`.
+The new container started at `2026-08-13T15:20:13Z` with zero restarts. The
+live baseline reported schema 5, global severity `OK`, three current and Ready
+OKD nodes, 34 healthy ClusterOperators, 115 workloads with none unhealthy,
+and complete values for every newly supported field on every node. Each node
+also had 12 current core-history series plus current CPU, memory, disk, RX, and
+TX histories; the public 15-minute disk-history route returned 58 points.
+Strict-TLS health, Compute, OKD, bootstrap, Argo CD Synced/Healthy, and response
+redaction checks passed. Production remained pinned to
+`sha256:91f90bdea9e1ebae80e9c16515acb12df68e64ca9f89f813819879b73367afec`.
+This candidate's uninterrupted soak must run through at least
+`2026-08-14T15:20:13Z`.
+
 ### Promotion and rollback
 
 After approval, copy the exact preview `image:` value (tag plus digest) into
