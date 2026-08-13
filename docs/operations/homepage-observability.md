@@ -1,9 +1,9 @@
 # Homepage Observability Expansion
 
 Status: OKD direct telemetry is implemented in source on 2026-08-11. The
-continuous preflight passed on 2026-08-12. The fixed preview candidate began
-its mandatory 24-hour soak at `2026-08-13T02:56:22Z`; production promotion
-remains blocked through at least `2026-08-14T02:56:22Z`. The
+continuous preflight passed on 2026-08-12. The current preview candidate began
+its mandatory 24-hour soak at `2026-08-13T04:49:03Z`; production promotion
+remains blocked through at least `2026-08-14T04:49:03Z`. The
 earlier observability expansion was implemented in the preview GitOps path on
 2026-07-20. The UniFi PDU
 preflight passed and its mapping is enabled at Git revision `c3d8968`; the
@@ -423,6 +423,25 @@ with strict TLS; preview and production were Ready with zero restarts; Argo CD
 was Synced and Healthy; and summarized response/log scans found no permission
 failure or credential-shaped field/value. The uninterrupted soak must run
 through at least `2026-08-14T02:56:22Z`; any invalidating change restarts it.
+
+Commit `f57f85c` then changed the OKD node presentation so Compute and `/okd`
+use the same card hierarchy as `pve-01` and `pve-02`. Because this produced a
+new candidate, it invalidated the preceding window. Quality, unit, integration,
+Playwright, accessibility, production-build, manifest, and image-scan gates
+passed, and GitOps commit `8887ab5` pinned preview to
+`sha256:7fcadc445fbe9b7c04400bfa5b5f39a8d3a56ca26cf26204c216dc6aa7c40a0b`.
+Production remained pinned to
+`sha256:91f90bdea9e1ebae80e9c16515acb12df68e64ca9f89f813819879b73367afec`.
+
+The new baseline passed at `2026-08-13T04:49:03Z`: Argo CD was Synced and
+Healthy; preview was Ready with zero restarts; strict-TLS health, Compute, OKD,
+and bootstrap routes returned HTTP `200`; schema 5 reported three current and
+healthy nodes, 34 healthy ClusterOperators, 83 workloads with none unhealthy,
+global severity `OK`, and eight current history series with 56 points each.
+The public response contained zero credential-shaped keys. The only preview
+error event was the expected `indoor.actions.disabled` event caused by the
+preview Deployment's deliberate lack of control credentials. This candidate's
+uninterrupted soak must run through at least `2026-08-14T04:49:03Z`.
 
 ### Promotion and rollback
 
