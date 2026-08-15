@@ -1,16 +1,16 @@
 # Homepage Observability Expansion
 
-Status: OKD direct telemetry is implemented in source on 2026-08-11. The
-continuous preflight passed on 2026-08-12. The current preview candidate began
-its mandatory 24-hour soak at `2026-08-13T05:03:26Z`; production promotion
-remains blocked through at least `2026-08-14T05:03:26Z`. The
+Status: OKD direct telemetry was implemented in source on 2026-08-11 and
+promoted to production on 2026-08-15. The continuous preflight passed on
+2026-08-12, and the final preview candidate completed its mandatory 24-hour
+soak at `2026-08-14T19:50:24Z`. Production pins the exact accepted preview
+digest. The
 earlier observability expansion was implemented in the preview GitOps path on
 2026-07-20. The UniFi PDU
 preflight passed and its mapping is enabled at Git revision `c3d8968`; the
 owner-approved shortened Gate D technical soak passed at
-`2026-07-20T21:37:34Z`. Production Homepage traffic has not changed. Host
-exporter installation remains an operator-run prerequisite for the separate
-host-exporter path.
+`2026-07-20T21:37:34Z`. Host exporter installation remains an operator-run
+prerequisite for the separate host-exporter path.
 
 ## Implemented cluster components
 
@@ -586,6 +586,26 @@ cluster, operator, workload, or service was non-OK. Production remained pinned
 to `sha256:91f90bdea9e1ebae80e9c16515acb12df68e64ca9f89f813819879b73367afec`.
 This candidate's uninterrupted soak must run through at least
 `2026-08-14T19:50:24Z`.
+
+#### Production promotion — 2026-08-15
+
+The final candidate completed more than 30 continuous hours with zero preview
+restarts. GitOps commit `636fc2a` copied its exact tag and digest into the
+production Deployment without changing a Secret, Service selector, RBAC rule,
+PVC, or runtime configuration. Argo CD reconciled the child application at
+`2026-08-15T02:18:33Z`; the replacement production pod started at
+`2026-08-15T02:18:20Z`, became Ready on the accepted digest, and had zero
+restarts or warning events.
+
+Post-promotion strict-TLS requests to the production page, liveness, readiness,
+and bootstrap routes returned HTTP `200`. Schema 5 was current and globally
+`OK`, all 34 ClusterOperators were healthy, none of 115 reported workloads was
+unhealthy, and the public response contained no credential-shaped or raw
+Kubernetes-object keys. The production log scan found no permission or
+credential-shaped match, and the OKD RBAC allow/deny validator passed. A fresh
+interactive browser inspection was unavailable from the promotion session;
+the identical immutable digest had already passed the preview browser and
+accessibility suite and its full production HTTP/API surface was rechecked.
 
 ### Promotion and rollback
 
