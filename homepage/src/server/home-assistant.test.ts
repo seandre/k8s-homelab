@@ -100,18 +100,43 @@ describe('Home Assistant indoor adapter', () => {
     const adapter = new HomeAssistantIndoorAdapter('http://home-assistant.test:8123', 'token', async () => ({
       ok: true,
       json: async () => [
-        state('sensor.indoor_nest_temperature', '72.32', '2026-07-24T10:00:00.000Z', undefined, { freshness: 'CURRENT' }),
-        state('sensor.indoor_coway_living_room_pm25', '1', '2026-07-24T10:00:00.000Z', undefined, { freshness: 'CURRENT' }),
+        state('sensor.indoor_nest_temperature', '72.32', '2026-07-24T10:00:00.000Z', '2026-07-24T11:59:45.000Z', { freshness: 'CURRENT' }),
+        state('sensor.indoor_coway_living_room_pm25', '1', '2026-07-24T10:00:00.000Z', '2026-07-24T11:59:45.000Z', { freshness: 'CURRENT' }),
       ],
     }), now);
     const indoor = await adapter.read();
     expect(indoor.thermostats[0].currentTemperature).toMatchObject({
       value: 72.32,
-      metadata: { observedAt: '2026-07-24T12:00:00.000Z', freshness: 'CURRENT', sourceState: 'AVAILABLE' },
+      metadata: { observedAt: '2026-07-24T11:59:45.000Z', ageSeconds: 15, freshness: 'CURRENT', sourceState: 'AVAILABLE' },
     });
     expect(indoor.purifiers[0].readings.pm25).toMatchObject({
       value: 1,
-      metadata: { observedAt: '2026-07-24T12:00:00.000Z', freshness: 'CURRENT', sourceState: 'AVAILABLE' },
+      metadata: { observedAt: '2026-07-24T11:59:45.000Z', ageSeconds: 15, freshness: 'CURRENT', sourceState: 'AVAILABLE' },
+    });
+  });
+
+  it('does not let a normalized CURRENT attribute mask stale source timestamps', async () => {
+    const adapter = new HomeAssistantIndoorAdapter('http://home-assistant.test:8123', 'token', async () => ({
+      ok: true,
+      json: async () => [
+        state('sensor.indoor_nest_temperature', '72.32', '2026-07-24T10:00:00.000Z', undefined, { freshness: 'CURRENT' }),
+        state('sensor.indoor_nest_humidity', '49', '2026-07-24T10:00:00.000Z', undefined, { freshness: 'CURRENT' }),
+        state('climate.private_nest', 'heat_cool', undefined, undefined, {
+          target_temp_low: 68, target_temp_high: 74, temperature_unit: '°F',
+        }),
+      ],
+    }), now, controls);
+    const nest = (await adapter.read()).thermostats[0];
+    expect(nest).toMatchObject({
+      sourceState: 'DEGRADED', hvacMode: null, heatSetpointF: null, coolSetpointF: null,
+      currentTemperature: {
+        value: null,
+        metadata: {
+          observedAt: '2026-07-24T10:00:00.000Z', ageSeconds: 7_200,
+          freshness: 'STALE', sourceState: 'DEGRADED', message: 'The last observation is stale.',
+        },
+      },
+      humidity: { value: null, metadata: { freshness: 'STALE', sourceState: 'DEGRADED' } },
     });
   });
 

@@ -89,18 +89,18 @@ export class HomeAssistantIndoorAdapter {
       const observedAt = state?.last_reported ?? state?.last_updated;
       const ageSeconds = observedAt ? Math.max(0, (this.now().getTime() - Date.parse(observedAt)) / 1_000) : undefined;
       const normalizedFreshness = state?.attributes.freshness;
-      const freshnessCurrent = normalizedFreshness === 'CURRENT'
-        || (normalizedFreshness === undefined && ageSeconds !== undefined && ageSeconds <= staleAfterSeconds);
+      const freshnessCurrent = ageSeconds !== undefined
+        && ageSeconds <= staleAfterSeconds
+        && (normalizedFreshness === undefined || normalizedFreshness === 'CURRENT');
       const current = state !== undefined && Number.isFinite(numeric) && state.state !== 'unavailable' && state.state !== 'unknown' && freshnessCurrent;
-      const metadataObservedAt = normalizedFreshness === 'CURRENT' ? this.now().toISOString() : observedAt;
       return {
         alias, value: current ? numeric : null, unit,
         metadata: {
-          source: source(alias), observedAt: metadataObservedAt ?? this.now().toISOString(),
+          source: source(alias), observedAt: observedAt ?? this.now().toISOString(),
           freshness: current ? 'CURRENT' as const : state ? 'STALE' as const : 'UNAVAILABLE' as const,
           sourceState: current ? 'AVAILABLE' as const : state ? 'DEGRADED' as const : 'UNAVAILABLE' as const,
           severity: current ? 'OK' as const : 'INFO' as const,
-          ...(normalizedFreshness !== 'CURRENT' && ageSeconds !== undefined ? { ageSeconds } : {}),
+          ...(ageSeconds !== undefined ? { ageSeconds } : {}),
           ...(!current ? { message: state ? 'The last observation is stale.' : 'Source is temporarily unavailable.' } : {}),
         },
       };

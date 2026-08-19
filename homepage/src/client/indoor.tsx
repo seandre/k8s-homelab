@@ -454,6 +454,12 @@ function NestSetpointRange({ thermostat, disabled, onCommit }: { thermostat: The
   const [windowFocused, setWindowFocused] = useState(true);
   const lastCommitted = useRef<string | null>(null);
   useEffect(() => {
+    if (disabled) return;
+    setHeat(thermostat.heatSetpointF ?? 68);
+    setCool(thermostat.coolSetpointF ?? 74);
+    lastCommitted.current = null;
+  }, [disabled, thermostat.coolSetpointF, thermostat.heatSetpointF]);
+  useEffect(() => {
     const onFocus = () => setWindowFocused(true);
     const onBlur = () => setWindowFocused(false);
     const onVisibilityChange = () => setWindowFocused(document.visibilityState === 'visible' && document.hasFocus());
@@ -480,10 +486,10 @@ function NestSetpointRange({ thermostat, disabled, onCommit }: { thermostat: The
   return <div className="nest-setpoint-range"><span className="control-option-label">Setpoint range</span><div className={`nest-setpoint-track${windowFocused ? '' : ' nest-setpoint-track-inactive'}`} style={{ background: `linear-gradient(to right, var(--threshold-red) 0 ${heatPosition}%, var(--divider) ${heatPosition}% ${coolPosition}%, var(--threshold-blue) ${coolPosition}% 100%)` }}><input className="nest-setpoint-heat" aria-label={`Nest heat setpoint: ${heat} degrees Fahrenheit`} type="range" min={min} max={max} step={step} value={heat} onChange={(event) => updateHeat(Number(event.target.value))} onPointerUp={(event) => commit(Math.min(Number(event.currentTarget.value), cool - step), cool)} onKeyUp={(event) => { if (sliderCommitKey(event.key)) commit(Math.min(Number(event.currentTarget.value), cool - step), cool); }} disabled={disabled} /><input className="nest-setpoint-cool" aria-label={`Nest cool setpoint: ${cool} degrees Fahrenheit`} type="range" min={min} max={max} step={step} value={cool} onChange={(event) => updateCool(Number(event.target.value))} onPointerUp={(event) => commit(heat, Math.max(Number(event.currentTarget.value), heat + step))} onKeyUp={(event) => { if (sliderCommitKey(event.key)) commit(heat, Math.max(Number(event.currentTarget.value), heat + step)); }} disabled={disabled} /><SliderThumb className="nest-setpoint-thumb nest-setpoint-thumb-heat" position={heatPosition} label={`${heat}°`} /><SliderThumb className="nest-setpoint-thumb nest-setpoint-thumb-cool" position={coolPosition} label={`${cool}°`} /></div></div>;
 }
 
-function ThermostatControls({ thermostat, review, onCommit }: { thermostat: ThermostatState; review: (item: Review) => void; onCommit: DirectCommand }) {
-  const disabled = thermostat.sourceState !== 'AVAILABLE';
+function ThermostatControls({ thermostat, review, onCommit, pending }: { thermostat: ThermostatState; review: (item: Review) => void; onCommit: DirectCommand; pending: boolean }) {
+  const disabled = thermostat.sourceState !== 'AVAILABLE' || pending;
   return (
-    <div className="indoor-controls thermostat-controls">
+    <div className="indoor-controls thermostat-controls" aria-busy={pending}>
       {thermostat.capabilities.setpointShapes.includes('RANGE') ? <NestSetpointRange thermostat={thermostat} disabled={disabled} onCommit={onCommit} /> : null}
       <div className="thermostat-option-row">
         {thermostat.capabilities.hvacModes.supported ? <PopoverOptionButton label="Mode" options={thermostat.capabilities.hvacModes.options} value={thermostat.hvacMode} disabled={disabled} positive={thermostat.hvacMode !== null && thermostat.hvacMode !== 'OFF'} onSelect={(mode) =>
@@ -540,18 +546,26 @@ function AirGradientBrightnessControl({
 }) {
   const [requested, setRequested] = useState(value ?? capability.min);
   const lastCommitted = useRef<number | null>(null);
+  useEffect(() => {
+    if (disabled) return;
+    setRequested(value ?? capability.min);
+    lastCommitted.current = null;
+  }, [capability.min, disabled, value]);
   const commit = (next: number) => {
     if (next === lastCommitted.current) return;
     lastCommitted.current = next;
-    void onCommit({ type, target: 'airgradient_living_room', value: next }).catch(() => { lastCommitted.current = null; });
+    void onCommit({ type, target: 'airgradient_living_room', value: next }).catch(() => {
+      lastCommitted.current = null;
+      setRequested(value ?? capability.min);
+    });
   };
   if (!capability.supported) return null;
   const position = (requested - capability.min) / (capability.max - capability.min) * 100;
   return <div className="airgradient-brightness-control"><label><span className="airgradient-brightness-label">{label}</span><div className="airgradient-slider-shell"><input aria-label={label} type="range" min={capability.min} max={capability.max} step={capability.step} value={requested} onChange={(event) => setRequested(Number(event.target.value))} onPointerUp={(event) => commit(Number(event.currentTarget.value))} onKeyUp={(event) => { if (sliderCommitKey(event.key)) commit(Number(event.currentTarget.value)); }} disabled={disabled} /><SliderThumb className="airgradient-slider-thumb" position={position} label={`${requested}%`} /></div></label></div>;
 }
 
-function AirGradientControls({ device, review, onCommit }: { device: IndoorState['sensors'][1]; review: (item: Review) => void; onCommit: DirectCommand }) {
-  const disabled = device.sourceState !== 'AVAILABLE';
+function AirGradientControls({ device, review, onCommit, pending }: { device: IndoorState['sensors'][1]; review: (item: Review) => void; onCommit: DirectCommand; pending: boolean }) {
+  const disabled = device.sourceState !== 'AVAILABLE' || pending;
   const make = (command: IndoorCommand, current: string, requested: string) =>
     review(requestReview(command, 'AirGradient ONE', current, requested, 'AIRGRADIENT_LOCAL', device.stateVersion));
   const optionControl = (
@@ -572,7 +586,7 @@ function AirGradientControls({ device, review, onCommit }: { device: IndoorState
     { key: 'pm-standard', control: optionControl('PM standard', device.settings.pmStandard, device.capabilities.pmStandards.options, device.capabilities.pmStandards.supported, 'AIRGRADIENT_SET_PM_STANDARD') },
     { key: 'led-mode', control: optionControl('LED Display', device.settings.ledMode, device.capabilities.ledModes.options, device.capabilities.ledModes.supported, 'AIRGRADIENT_SET_LED_MODE') },
   ].filter((item): item is { key: string; control: React.ReactElement } => item.control !== null);
-  return brightnessControls.length || displayControls.length ? <div className="indoor-controls airgradient-controls" aria-label="AirGradient ONE controls"><div className="airgradient-brightness-row">{brightnessControls}</div><div className="airgradient-display-row">{displayControls.map(({ key, control }) => <React.Fragment key={key}>{control}</React.Fragment>)}</div></div> : null;
+  return brightnessControls.length || displayControls.length ? <div className="indoor-controls airgradient-controls" aria-label="AirGradient ONE controls" aria-busy={pending}><div className="airgradient-brightness-row">{brightnessControls}</div><div className="airgradient-display-row">{displayControls.map(({ key, control }) => <React.Fragment key={key}>{control}</React.Fragment>)}</div></div> : null;
 }
 
 function ReviewDialog({ review, onClose, onSubmit, submitting, error }: { review: Review; onClose: () => void; onSubmit: () => void; submitting: boolean; error: string | null }) {
@@ -607,6 +621,8 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [directActionError, setDirectActionError] = useState<string | null>(null);
+  const [directAction, setDirectAction] = useState<{ actionId: string; target: IndoorCommand['target']; acceptedAt: string } | null>(null);
+  const directActionStarting = useRef(false);
   const [ventilationActionId, setVentilationActionId] = useState<string | null>(null);
   const [ventilationOptimisticEndsAt, setVentilationOptimisticEndsAt] = useState<string | null>(null);
   const [cancellingVentilation, setCancellingVentilation] = useState(false);
@@ -652,6 +668,13 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
               setCancellingVentilation(false);
             }
           }
+          if (directAction) {
+            const tracked = parsed.data.indoor.actions.find((action) => action.actionId === directAction.actionId);
+            if ((tracked && tracked.status !== 'PENDING') || (!tracked && Date.now() - Date.parse(directAction.acceptedAt) > 40_000)) {
+              directActionStarting.current = false;
+              setDirectAction(null);
+            }
+          }
         }
       } catch { /* retain the last confirmed control state */ }
       if (!cancelled) timer = window.setTimeout(() => void refresh(), 2_000);
@@ -661,7 +684,7 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
       cancelled = true;
       if (timer !== undefined) window.clearTimeout(timer);
     };
-  }, [ventilationActionId]);
+  }, [directAction, ventilationActionId]);
   useEffect(() => {
     if (!ventilationActive) return;
     setCountdownNow(Date.now());
@@ -772,12 +795,21 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
       setVentilationActionId(parsed.data.actionId);
       setCancellingVentilation(true);
     }
+    return parsed.data;
   };
   const submitDirect: DirectCommand = async (command, stateVersion) => {
     setDirectActionError(null);
+    if (directActionStarting.current || directAction !== null) {
+      const cause = new Error('Wait for the current device change to finish.');
+      setDirectActionError(cause.message);
+      throw cause;
+    }
+    directActionStarting.current = true;
     try {
-      await acceptCommand(command, stateVersion);
+      const accepted = await acceptCommand(command, stateVersion);
+      setDirectAction({ actionId: accepted.actionId, target: command.target, acceptedAt: accepted.acceptedAt });
     } catch (cause) {
+      directActionStarting.current = false;
       const message = cause instanceof Error ? cause.message : 'The command failed.';
       setDirectActionError(message);
       throw cause;
@@ -846,10 +878,10 @@ export function IndoorScreen({ bootstrap }: { bootstrap: Bootstrap }) {
         <div className="section-heading"><h2 id="indoor-device-settings-title">Device Settings</h2></div>
         <section className="indoor-settings-grid" aria-label="Sensor and thermostat settings">
           <Panel title="AirGradient ONE" severity={sourceSeverity(airgradient.sourceState)} freshness={panelFreshness(airgradient.readings.co2.metadata.freshness)} statusDetail={`DISPLAY ${airgradient.settings.displayBrightness ?? '—'}% · LED ${airgradient.settings.ledBrightness ?? '—'}%`}>
-            <AirGradientControls device={airgradient} review={setReview} onCommit={submitDirect} />
+            <AirGradientControls device={airgradient} review={setReview} onCommit={submitDirect} pending={directAction !== null} />
           </Panel>
           <Panel title="Nest Thermostat" severity={sourceSeverity(thermostat.sourceState)} freshness={panelFreshness(thermostat.currentTemperature.metadata.freshness)} statusDetail={`${thermostat.heatSetpointF ?? '—'}–${thermostat.coolSetpointF ?? '—'}°F · ${thermostat.hvacMode ?? 'NO DATA'}`}>
-            <ThermostatControls thermostat={thermostat} review={setReview} onCommit={submitDirect} />
+            <ThermostatControls thermostat={thermostat} review={setReview} onCommit={submitDirect} pending={directAction !== null} />
           </Panel>
         </section>
         <section className="purifier-grid" aria-label="Air purifier settings">
