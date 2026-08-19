@@ -88,8 +88,16 @@ grep -Fq 'at: "06:30:00"' "$schedule"
 grep -Fq 'preset_mode: "Auto"' "$schedule"
 grep -Fq 'option: "On"' "$schedule"
 grep -Fq "integration_entities('coway')" "$schedule"
-if rg -n 'entity_id:[[:space:]]+(fan|select)\.[a-z0-9_]+$' "$schedule"; then
-  echo 'Coway schedule contains a raw entity ID' >&2
+grep -Fq 'id: airgradient_day_brightness_restore' "$schedule"
+grep -Fq 'at: "07:00:00"' "$schedule"
+grep -Fq "integration_entities('airgradient')" "$schedule"
+grep -Fq 'service: number.set_value' "$schedule"
+grep -Fq 'continue_on_error: true' "$schedule"
+grep -Fq 'value: 5' "$schedule"
+grep -Fq 'value: 80' "$schedule"
+test "$(rg -c 'airgradient_brightness_numbers \| count == 2' "$schedule")" -eq 2
+if rg -n 'entity_id:[[:space:]]+(fan|select|number)\.[a-z0-9_]+$' "$schedule"; then
+  echo 'Night schedule contains a raw entity ID' >&2
   exit 1
 fi
 
