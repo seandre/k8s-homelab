@@ -1,6 +1,6 @@
-# Dynamic integration discovery keeps private Coway entity IDs out of Git.
-# The integration exposes two fan entities and two Light selects with the
-# documented "AQI Off" option for the Airmega 250S units.
+# Dynamic integration discovery keeps private Coway and AirGradient entity IDs
+# out of Git. The integrations expose two Coway fans, two Coway Light selects,
+# and two AirGradient brightness numbers.
 automation:
   - id: coway_night_mode_start
     alias: Coways - night mode start
@@ -26,7 +26,25 @@ automation:
           {% endif %}
         {% endfor %}
         {{ ns.entities }}
+      airgradient_brightness_numbers: >-
+        {% set ns = namespace(entities=[]) %}
+        {% for entity in integration_entities('airgradient') | select('match', '^number\.') %}
+          {% if 'brightness' in (state_attr(entity, 'friendly_name') | default('', true) | lower) %}
+            {% set ns.entities = ns.entities + [entity] %}
+          {% endif %}
+        {% endfor %}
+        {{ ns.entities }}
     action:
+      - if:
+          - condition: template
+            value_template: "{{ airgradient_brightness_numbers | count == 2 }}"
+        then:
+          - service: number.set_value
+            continue_on_error: true
+            target:
+              entity_id: "{{ airgradient_brightness_numbers }}"
+            data:
+              value: 5
       - condition: template
         value_template: "{{ coway_fans | count == 2 and coway_aqi_lights | count == 2 }}"
       - service: fan.turn_on
@@ -42,7 +60,6 @@ automation:
           entity_id: "{{ coway_aqi_lights }}"
         data:
           option: "AQI Off"
-
   - id: coway_night_mode_end
     alias: Coways - night mode end
     mode: single
@@ -73,3 +90,34 @@ automation:
           entity_id: "{{ coway_aqi_lights }}"
         data:
           option: "On"
+
+  - id: airgradient_day_brightness_restore
+    alias: AirGradient - day brightness restore
+    mode: single
+    trigger:
+      - platform: time
+        at: "07:00:00"
+      - platform: homeassistant
+        event: start
+    condition:
+      - condition: template
+        value_template: >-
+          {{ now().strftime('%H:%M:%S') >= '07:00:00' and
+             now().strftime('%H:%M:%S') < '22:00:00' }}
+    variables:
+      airgradient_brightness_numbers: >-
+        {% set ns = namespace(entities=[]) %}
+        {% for entity in integration_entities('airgradient') | select('match', '^number\.') %}
+          {% if 'brightness' in (state_attr(entity, 'friendly_name') | default('', true) | lower) %}
+            {% set ns.entities = ns.entities + [entity] %}
+          {% endif %}
+        {% endfor %}
+        {{ ns.entities }}
+    action:
+      - condition: template
+        value_template: "{{ airgradient_brightness_numbers | count == 2 }}"
+      - service: number.set_value
+        target:
+          entity_id: "{{ airgradient_brightness_numbers }}"
+        data:
+          value: 80
