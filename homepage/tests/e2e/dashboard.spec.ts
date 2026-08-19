@@ -204,6 +204,13 @@ test('renders the responsive indoor dashboard and requires review before control
   let historyRequestCount = 0;
   const indoorCommands: unknown[] = [];
   const customQueries: URL[] = [];
+  const bootstrap = structuredClone(healthyBootstrapFixture);
+  await page.route('**/api/v1/events', (route) => route.abort());
+  await page.route('**/api/v1/bootstrap', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ data: bootstrap, requestId: 'indoor-controls-e2e' }),
+  }));
   await page.route(/\/api\/v1\/history\?/, async (route) => {
     historyRequestCount += 1;
     const url = new URL(route.request().url());
@@ -233,10 +240,30 @@ test('renders the responsive indoor dashboard and requires review before control
     const body = route.request().postDataJSON();
     expect(body.confirmed).toBe(true);
     indoorCommands.push(body.command);
+    const actionId = crypto.randomUUID();
+    const acceptedAt = new Date().toISOString();
+    const airgradient = bootstrap.indoor.sensors[1];
+    if (body.command.type === 'AIRGRADIENT_SET_DISPLAY_BRIGHTNESS') {
+      airgradient.settings.displayBrightness = body.command.value;
+      airgradient.stateVersion = `display-${body.command.value}`;
+    }
+    if (body.command.type === 'AIRGRADIENT_SET_LED_BRIGHTNESS') {
+      airgradient.settings.ledBrightness = body.command.value;
+      airgradient.stateVersion = `led-${body.command.value}`;
+    }
+    if (body.command.type === 'NEST_SET_SETPOINT') {
+      const thermostat = bootstrap.indoor.thermostats[0];
+      thermostat.heatSetpointF = body.command.setpoint.heatTemperatureF;
+      thermostat.coolSetpointF = body.command.setpoint.coolTemperatureF;
+      thermostat.stateVersion = `nest-${thermostat.heatSetpointF}-${thermostat.coolSetpointF}`;
+    }
+    if (body.command.target === 'airgradient_living_room' || body.command.type === 'NEST_SET_SETPOINT') {
+      bootstrap.indoor.actions.push({ actionId, target: body.command.target, status: 'SUCCEEDED', acceptedAt, resolvedAt: acceptedAt });
+    }
     await route.fulfill({
       status: 202,
       contentType: 'application/json',
-      body: JSON.stringify({ data: { actionId: crypto.randomUUID(), target: body.command.target, status: 'PENDING', acceptedAt: new Date().toISOString() } }),
+      body: JSON.stringify({ data: { actionId, target: body.command.target, status: 'PENDING', acceptedAt } }),
     });
   });
   await page.goto('/indoor');
@@ -356,6 +383,19 @@ test('renders the responsive indoor dashboard and requires review before control
   await displayBrightness.focus();
   await page.keyboard.press('ArrowRight');
   await expect.poll(() => indoorCommands.some((command) => JSON.stringify(command) === JSON.stringify({ type: 'AIRGRADIENT_SET_DISPLAY_BRIGHTNESS', target: 'airgradient_living_room', value: 81 }))).toBe(true);
+  await expect(displayBrightness).toBeEnabled();
+  await expect(displayBrightness).toHaveValue('81');
+  await displayBrightness.focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect.poll(() => indoorCommands.some((command) => JSON.stringify(command) === JSON.stringify({ type: 'AIRGRADIENT_SET_DISPLAY_BRIGHTNESS', target: 'airgradient_living_room', value: 80 }))).toBe(true);
+  await expect(displayBrightness).toBeEnabled();
+  await expect(displayBrightness).toHaveValue('80');
+  const ledBrightness = airGradientControls.getByRole('slider', { name: 'LED brightness' });
+  await ledBrightness.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(() => indoorCommands.some((command) => JSON.stringify(command) === JSON.stringify({ type: 'AIRGRADIENT_SET_LED_BRIGHTNESS', target: 'airgradient_living_room', value: 61 }))).toBe(true);
+  await expect(ledBrightness).toBeEnabled();
+  await expect(ledBrightness).toHaveValue('61');
   await expect(page.getByRole('dialog', { name: 'Confirm change' })).toHaveCount(0);
   const nestSettingsPanel = page.getByRole('region', { name: 'Nest Thermostat' });
   const nestHeatSetpoint = nestSettingsPanel.getByRole('slider', { name: /Nest heat setpoint/ });
