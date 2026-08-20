@@ -115,13 +115,39 @@ describe('Home Assistant indoor adapter', () => {
     });
   });
 
-  it('does not let a normalized CURRENT attribute mask stale source timestamps', async () => {
+  it('does not confuse an unchanged normalized value with an unavailable source', async () => {
+    const adapter = new HomeAssistantIndoorAdapter('http://home-assistant.test:8123', 'token', async () => ({
+      ok: true,
+      json: async () => [
+        state('sensor.indoor_aranet_battery', '92', '2026-07-24T10:00:00.000Z', undefined, { freshness: 'CURRENT' }),
+        state('sensor.indoor_nest_temperature', '72.32', '2026-07-24T10:00:00.000Z', undefined, { freshness: 'CURRENT' }),
+        state('sensor.indoor_nest_humidity', '49', '2026-07-24T10:00:00.000Z', undefined, { freshness: 'CURRENT' }),
+        state('climate.private_nest', 'heat_cool', '2026-07-24T10:00:00.000Z', undefined, {
+          target_temp_low: 68, target_temp_high: 74, temperature_unit: '°F', fan_mode: 'off',
+        }),
+      ],
+    }), now, controls);
+    const indoor = await adapter.read();
+    expect(indoor.sensors[0].readings.battery).toMatchObject({
+      value: 92,
+      metadata: { ageSeconds: 7_200, freshness: 'CURRENT', sourceState: 'AVAILABLE' },
+    });
+    expect(indoor.thermostats[0]).toMatchObject({
+      sourceState: 'AVAILABLE', hvacMode: 'HEAT_COOL',
+      currentTemperature: {
+        value: 72.32,
+        metadata: { ageSeconds: 7_200, freshness: 'CURRENT', sourceState: 'AVAILABLE' },
+      },
+    });
+  });
+
+  it('fails a normalized CURRENT reading closed when its mapped control source is unavailable', async () => {
     const adapter = new HomeAssistantIndoorAdapter('http://home-assistant.test:8123', 'token', async () => ({
       ok: true,
       json: async () => [
         state('sensor.indoor_nest_temperature', '72.32', '2026-07-24T10:00:00.000Z', undefined, { freshness: 'CURRENT' }),
         state('sensor.indoor_nest_humidity', '49', '2026-07-24T10:00:00.000Z', undefined, { freshness: 'CURRENT' }),
-        state('climate.private_nest', 'heat_cool', '2026-07-24T10:00:00.000Z', undefined, {
+        state('climate.private_nest', 'unavailable', '2026-07-24T10:00:00.000Z', undefined, {
           target_temp_low: 68, target_temp_high: 74, temperature_unit: '°F',
         }),
       ],

@@ -12,7 +12,8 @@ done
 grep -Fq 'unit_of_measurement: "°F"' "$rendered"
 grep -Fq 'freshness_window_seconds: "{{ 180 }}"' "$rendered"
 test "$(rg -c "'STALE'" "$root_dir/kubernetes/apps/home-assistant/alerts-configmap.yaml")" -ge 7
-test "$(rg -c 'obj.last_reported \| default\(obj.last_updated, true\).*<= 180' "$root_dir/kubernetes/apps/home-assistant/alerts-configmap.yaml")" -ge 15
+test "$(rg -c 'obj.last_reported \| default\(obj.last_updated, true\).*<= 180' "$root_dir/kubernetes/apps/home-assistant/alerts-configmap.yaml")" -ge 2
+test "$(rg -c "states\('sensor.indoor_airgradient_source'\) == 'CURRENT'" "$root_dir/kubernetes/apps/home-assistant/alerts-configmap.yaml")" -ge 14
 
 if rg -n -i 'airgradient[^\n]*(mac address|serial|token|entity_id)' \
   "$root_dir/kubernetes/apps/home-assistant/alerts-configmap.yaml"; then
