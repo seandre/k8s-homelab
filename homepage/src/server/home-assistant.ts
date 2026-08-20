@@ -82,15 +82,19 @@ export class HomeAssistantIndoorAdapter {
   private normalize(states: HaState[]): IndoorState {
     const result = structuredClone(unavailableIndoorFixture);
     const byId = new Map(states.map((state) => [state.entity_id, state]));
-    const getReading = (alias: keyof typeof readingCatalog) => {
+    const getReading = (alias: keyof typeof readingCatalog, sourceFreshnessState?: HaState) => {
       const [slug, unit, staleAfterSeconds] = readingCatalog[alias];
       const state = byId.get(normalizedEntityId(slug));
       const numeric = state ? Number(state.state) : Number.NaN;
-      const observedAt = state?.last_reported ?? state?.last_updated;
+      const observedAt = sourceFreshnessState?.last_reported ?? sourceFreshnessState?.last_updated
+        ?? state?.last_reported ?? state?.last_updated;
       const ageSeconds = observedAt ? Math.max(0, (this.now().getTime() - Date.parse(observedAt)) / 1_000) : undefined;
       const normalizedFreshness = state?.attributes.freshness;
+      const sourceAvailable = sourceFreshnessState === undefined
+        || !['unavailable', 'unknown'].includes(sourceFreshnessState.state);
       const freshnessCurrent = ageSeconds !== undefined
         && ageSeconds <= staleAfterSeconds
+        && sourceAvailable
         && (normalizedFreshness === undefined || normalizedFreshness === 'CURRENT');
       const current = state !== undefined && Number.isFinite(numeric) && state.state !== 'unavailable' && state.state !== 'unknown' && freshnessCurrent;
       return {
@@ -153,10 +157,10 @@ export class HomeAssistantIndoorAdapter {
       pmStandards: { supported: airgradientAvailable && !!airgradientControls && Object.keys(airgradientControls.pmStandardOptions).length > 0, options: airgradientControls ? Object.keys(airgradientControls.pmStandardOptions) : [], dependency: 'AIRGRADIENT_LOCAL' },
       ledModes: { supported: airgradientAvailable && !!airgradientControls && Object.keys(airgradientControls.ledModeOptions).length > 0, options: airgradientControls ? Object.keys(airgradientControls.ledModeOptions) : [], dependency: 'AIRGRADIENT_LOCAL' },
     };
-    result.thermostats[0].currentTemperature = getReading('nest_living_room.current_temperature');
-    result.thermostats[0].humidity = getReading('nest_living_room.humidity');
-    result.thermostats[0].sourceState = result.thermostats[0].currentTemperature.metadata.sourceState;
     const nestControl = this.controls ? byId.get(this.controls.nest_living_room.primary) : undefined;
+    result.thermostats[0].currentTemperature = getReading('nest_living_room.current_temperature', nestControl);
+    result.thermostats[0].humidity = getReading('nest_living_room.humidity', nestControl);
+    result.thermostats[0].sourceState = result.thermostats[0].currentTemperature.metadata.sourceState;
     if (nestControl && result.thermostats[0].sourceState === 'AVAILABLE') {
       const mode = nestControl.state.toUpperCase();
       result.thermostats[0].hvacMode = ['OFF', 'HEAT', 'COOL', 'HEAT_COOL'].includes(mode) ? mode as 'OFF' | 'HEAT' | 'COOL' | 'HEAT_COOL' : null;

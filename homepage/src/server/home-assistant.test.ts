@@ -121,7 +121,7 @@ describe('Home Assistant indoor adapter', () => {
       json: async () => [
         state('sensor.indoor_nest_temperature', '72.32', '2026-07-24T10:00:00.000Z', undefined, { freshness: 'CURRENT' }),
         state('sensor.indoor_nest_humidity', '49', '2026-07-24T10:00:00.000Z', undefined, { freshness: 'CURRENT' }),
-        state('climate.private_nest', 'heat_cool', undefined, undefined, {
+        state('climate.private_nest', 'heat_cool', '2026-07-24T10:00:00.000Z', undefined, {
           target_temp_low: 68, target_temp_high: 74, temperature_unit: '°F',
         }),
       ],
@@ -137,6 +137,31 @@ describe('Home Assistant indoor adapter', () => {
         },
       },
       humidity: { value: null, metadata: { freshness: 'STALE', sourceState: 'DEGRADED' } },
+    });
+  });
+
+  it('uses the current Nest control heartbeat when normalized readings are stable', async () => {
+    const adapter = new HomeAssistantIndoorAdapter('http://home-assistant.test:8123', 'token', async () => ({
+      ok: true,
+      json: async () => [
+        state('sensor.indoor_nest_temperature', '72.32', '2026-07-24T10:00:00.000Z', undefined, { freshness: 'CURRENT' }),
+        state('sensor.indoor_nest_humidity', '49', '2026-07-24T10:00:00.000Z', undefined, { freshness: 'CURRENT' }),
+        state('climate.private_nest', 'heat_cool', '2026-07-24T11:59:45.000Z', '2026-07-24T11:59:50.000Z', {
+          target_temp_low: 68, target_temp_high: 74, temperature_unit: '°F', fan_mode: 'off',
+        }),
+      ],
+    }), now, controls);
+    const nest = (await adapter.read()).thermostats[0];
+    expect(nest).toMatchObject({
+      sourceState: 'AVAILABLE', hvacMode: 'HEAT_COOL', heatSetpointF: 68, coolSetpointF: 74,
+      currentTemperature: {
+        value: 72.32,
+        metadata: {
+          observedAt: '2026-07-24T11:59:50.000Z', ageSeconds: 10,
+          freshness: 'CURRENT', sourceState: 'AVAILABLE',
+        },
+      },
+      humidity: { value: 49, metadata: { freshness: 'CURRENT', sourceState: 'AVAILABLE' } },
     });
   });
 
