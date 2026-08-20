@@ -40,7 +40,7 @@ spec:
       containers:
         - name: homepage
           # Promotion changes only this digest after the 24-hour preview soak.
-          image: ghcr.io/seandre/k8s-homelab-homepage:sha-f945c18@sha256:4960fb4667b7a053b1643e0e2fa2e118f89bd8e82b6a7082e415f5a42869a1e0
+          image: ghcr.io/seandre/k8s-homelab-homepage:sha-c380463@sha256:6ca62a5e2b57e4427d2867dae605b4a590851837c4296bb3c335c0921f9e7472
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
