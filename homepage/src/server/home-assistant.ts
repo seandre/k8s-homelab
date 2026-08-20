@@ -92,10 +92,9 @@ export class HomeAssistantIndoorAdapter {
       const normalizedFreshness = state?.attributes.freshness;
       const sourceAvailable = sourceFreshnessState === undefined
         || !['unavailable', 'unknown'].includes(sourceFreshnessState.state);
-      const freshnessCurrent = ageSeconds !== undefined
-        && ageSeconds <= staleAfterSeconds
-        && sourceAvailable
-        && (normalizedFreshness === undefined || normalizedFreshness === 'CURRENT');
+      const freshnessCurrent = sourceAvailable && (normalizedFreshness === undefined
+        ? ageSeconds !== undefined && ageSeconds <= staleAfterSeconds
+        : normalizedFreshness === 'CURRENT');
       const current = state !== undefined && Number.isFinite(numeric) && state.state !== 'unavailable' && state.state !== 'unknown' && freshnessCurrent;
       return {
         alias, value: current ? numeric : null, unit,

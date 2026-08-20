@@ -204,14 +204,16 @@ template:
         unique_id: indoor_coway_living_room_aqi
         state: >-
           {% set obj = (expand(states('input_text.indoor_map_coway_living_room_aqi')) | first | default(none)) %}
-          {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
+          {% set heartbeat = (expand(states('input_text.indoor_map_coway_living_room_pm25')) | first | default(none)) %}
+          {% set reported = heartbeat.last_reported | default(heartbeat.last_updated, true) if heartbeat else none %}
           {% set grades = {'Good': 1, 'Moderate': 2, 'Unhealthy': 3, 'Very Unhealthy': 4} %}
-          {{ grades[obj.state] if obj and obj.state in grades and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
+          {{ grades[obj.state] if obj and obj.state in grades and heartbeat and heartbeat.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
         attributes:
           freshness: >-
             {% set obj = (expand(states('input_text.indoor_map_coway_living_room_aqi')) | first | default(none)) %}
-            {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
-            {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
+            {% set heartbeat = (expand(states('input_text.indoor_map_coway_living_room_pm25')) | first | default(none)) %}
+            {% set reported = heartbeat.last_reported | default(heartbeat.last_updated, true) if heartbeat else none %}
+            {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and heartbeat and heartbeat.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
       - name: Indoor Coway Living Room PM25
         unique_id: indoor_coway_living_room_pm25
         unit_of_measurement: "µg/m³"
@@ -240,14 +242,16 @@ template:
         unique_id: indoor_coway_bedroom_aqi
         state: >-
           {% set obj = (expand(states('input_text.indoor_map_coway_bedroom_aqi')) | first | default(none)) %}
-          {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
+          {% set heartbeat = (expand(states('input_text.indoor_map_coway_bedroom_pm25')) | first | default(none)) %}
+          {% set reported = heartbeat.last_reported | default(heartbeat.last_updated, true) if heartbeat else none %}
           {% set grades = {'Good': 1, 'Moderate': 2, 'Unhealthy': 3, 'Very Unhealthy': 4} %}
-          {{ grades[obj.state] if obj and obj.state in grades and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
+          {{ grades[obj.state] if obj and obj.state in grades and heartbeat and heartbeat.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
         attributes:
           freshness: >-
             {% set obj = (expand(states('input_text.indoor_map_coway_bedroom_aqi')) | first | default(none)) %}
-            {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
-            {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
+            {% set heartbeat = (expand(states('input_text.indoor_map_coway_bedroom_pm25')) | first | default(none)) %}
+            {% set reported = heartbeat.last_reported | default(heartbeat.last_updated, true) if heartbeat else none %}
+            {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and heartbeat and heartbeat.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
       - name: Indoor Coway Bedroom PM25
         unique_id: indoor_coway_bedroom_pm25
         unit_of_measurement: "µg/m³"
@@ -277,79 +281,87 @@ template:
         state: >-
           {% set a = (expand(states('input_text.indoor_map_coway_living_room_filter_a')) | first | default(none)) %}
           {% set b = (expand(states('input_text.indoor_map_coway_living_room_filter_b')) | first | default(none)) %}
-          {% set ar = a.last_reported | default(a.last_updated, true) if a else none %}
-          {% set br = b.last_reported | default(b.last_updated, true) if b else none %}
-          {{ [a.state | float, b.state | float] | min if a and b and a.state not in ['unknown','unavailable'] and b.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(ar)) <= 300 and (as_timestamp(now()) - as_timestamp(br)) <= 300 else none }}
+          {% set heartbeat = (expand(states('input_text.indoor_map_coway_living_room_pm25')) | first | default(none)) %}
+          {% set reported = heartbeat.last_reported | default(heartbeat.last_updated, true) if heartbeat else none %}
+          {{ [a.state | float, b.state | float] | min if a and b and a.state not in ['unknown','unavailable'] and b.state not in ['unknown','unavailable'] and heartbeat and heartbeat.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
         attributes:
           freshness: >-
             {% set a = (expand(states('input_text.indoor_map_coway_living_room_filter_a')) | first | default(none)) %}
             {% set b = (expand(states('input_text.indoor_map_coway_living_room_filter_b')) | first | default(none)) %}
-            {% set ar = a.last_reported | default(a.last_updated, true) if a else none %}
-            {% set br = b.last_reported | default(b.last_updated, true) if b else none %}
-            {{ 'CURRENT' if a and b and a.state not in ['unknown','unavailable'] and b.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(ar)) <= 300 and (as_timestamp(now()) - as_timestamp(br)) <= 300 else 'UNAVAILABLE' }}
+            {% set heartbeat = (expand(states('input_text.indoor_map_coway_living_room_pm25')) | first | default(none)) %}
+            {% set reported = heartbeat.last_reported | default(heartbeat.last_updated, true) if heartbeat else none %}
+            {{ 'CURRENT' if a and b and a.state not in ['unknown','unavailable'] and b.state not in ['unknown','unavailable'] and heartbeat and heartbeat.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
       - name: Indoor Coway Living Room pre-filter life
         unique_id: indoor_coway_living_room_pre_filter_life
         unit_of_measurement: "%"
         state: >-
           {% set obj = (expand(states('input_text.indoor_map_coway_living_room_filter_a')) | first | default(none)) %}
-          {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
-          {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
+          {% set heartbeat = (expand(states('input_text.indoor_map_coway_living_room_pm25')) | first | default(none)) %}
+          {% set reported = heartbeat.last_reported | default(heartbeat.last_updated, true) if heartbeat else none %}
+          {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and heartbeat and heartbeat.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
         attributes:
           freshness: >-
             {% set obj = (expand(states('input_text.indoor_map_coway_living_room_filter_a')) | first | default(none)) %}
-            {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
-            {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
+            {% set heartbeat = (expand(states('input_text.indoor_map_coway_living_room_pm25')) | first | default(none)) %}
+            {% set reported = heartbeat.last_reported | default(heartbeat.last_updated, true) if heartbeat else none %}
+            {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and heartbeat and heartbeat.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
       - name: Indoor Coway Living Room HEPA filter life
         unique_id: indoor_coway_living_room_hepa_filter_life
         unit_of_measurement: "%"
         state: >-
           {% set obj = (expand(states('input_text.indoor_map_coway_living_room_filter_b')) | first | default(none)) %}
-          {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
-          {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
+          {% set heartbeat = (expand(states('input_text.indoor_map_coway_living_room_pm25')) | first | default(none)) %}
+          {% set reported = heartbeat.last_reported | default(heartbeat.last_updated, true) if heartbeat else none %}
+          {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and heartbeat and heartbeat.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
         attributes:
           freshness: >-
             {% set obj = (expand(states('input_text.indoor_map_coway_living_room_filter_b')) | first | default(none)) %}
-            {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
-            {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
+            {% set heartbeat = (expand(states('input_text.indoor_map_coway_living_room_pm25')) | first | default(none)) %}
+            {% set reported = heartbeat.last_reported | default(heartbeat.last_updated, true) if heartbeat else none %}
+            {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and heartbeat and heartbeat.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
       - name: Indoor Coway Bedroom filter life
         unique_id: indoor_coway_bedroom_filter_life
         state: >-
           {% set a = (expand(states('input_text.indoor_map_coway_bedroom_filter_a')) | first | default(none)) %}
           {% set b = (expand(states('input_text.indoor_map_coway_bedroom_filter_b')) | first | default(none)) %}
-          {% set ar = a.last_reported | default(a.last_updated, true) if a else none %}
-          {% set br = b.last_reported | default(b.last_updated, true) if b else none %}
-          {{ [a.state | float, b.state | float] | min if a and b and a.state not in ['unknown','unavailable'] and b.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(ar)) <= 300 and (as_timestamp(now()) - as_timestamp(br)) <= 300 else none }}
+          {% set heartbeat = (expand(states('input_text.indoor_map_coway_bedroom_pm25')) | first | default(none)) %}
+          {% set reported = heartbeat.last_reported | default(heartbeat.last_updated, true) if heartbeat else none %}
+          {{ [a.state | float, b.state | float] | min if a and b and a.state not in ['unknown','unavailable'] and b.state not in ['unknown','unavailable'] and heartbeat and heartbeat.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
         attributes:
           freshness: >-
             {% set a = (expand(states('input_text.indoor_map_coway_bedroom_filter_a')) | first | default(none)) %}
             {% set b = (expand(states('input_text.indoor_map_coway_bedroom_filter_b')) | first | default(none)) %}
-            {% set ar = a.last_reported | default(a.last_updated, true) if a else none %}
-            {% set br = b.last_reported | default(b.last_updated, true) if b else none %}
-            {{ 'CURRENT' if a and b and a.state not in ['unknown','unavailable'] and b.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(ar)) <= 300 and (as_timestamp(now()) - as_timestamp(br)) <= 300 else 'UNAVAILABLE' }}
+            {% set heartbeat = (expand(states('input_text.indoor_map_coway_bedroom_pm25')) | first | default(none)) %}
+            {% set reported = heartbeat.last_reported | default(heartbeat.last_updated, true) if heartbeat else none %}
+            {{ 'CURRENT' if a and b and a.state not in ['unknown','unavailable'] and b.state not in ['unknown','unavailable'] and heartbeat and heartbeat.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
       - name: Indoor Coway Bedroom pre-filter life
         unique_id: indoor_coway_bedroom_pre_filter_life
         unit_of_measurement: "%"
         state: >-
           {% set obj = (expand(states('input_text.indoor_map_coway_bedroom_filter_a')) | first | default(none)) %}
-          {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
-          {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
+          {% set heartbeat = (expand(states('input_text.indoor_map_coway_bedroom_pm25')) | first | default(none)) %}
+          {% set reported = heartbeat.last_reported | default(heartbeat.last_updated, true) if heartbeat else none %}
+          {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and heartbeat and heartbeat.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
         attributes:
           freshness: >-
             {% set obj = (expand(states('input_text.indoor_map_coway_bedroom_filter_a')) | first | default(none)) %}
-            {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
-            {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
+            {% set heartbeat = (expand(states('input_text.indoor_map_coway_bedroom_pm25')) | first | default(none)) %}
+            {% set reported = heartbeat.last_reported | default(heartbeat.last_updated, true) if heartbeat else none %}
+            {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and heartbeat and heartbeat.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
       - name: Indoor Coway Bedroom HEPA filter life
         unique_id: indoor_coway_bedroom_hepa_filter_life
         unit_of_measurement: "%"
         state: >-
           {% set obj = (expand(states('input_text.indoor_map_coway_bedroom_filter_b')) | first | default(none)) %}
-          {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
-          {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
+          {% set heartbeat = (expand(states('input_text.indoor_map_coway_bedroom_pm25')) | first | default(none)) %}
+          {% set reported = heartbeat.last_reported | default(heartbeat.last_updated, true) if heartbeat else none %}
+          {{ obj.state if obj and obj.state not in ['unknown','unavailable'] and heartbeat and heartbeat.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else none }}
         attributes:
           freshness: >-
             {% set obj = (expand(states('input_text.indoor_map_coway_bedroom_filter_b')) | first | default(none)) %}
-            {% set reported = obj.last_reported | default(obj.last_updated, true) if obj else none %}
-            {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
+            {% set heartbeat = (expand(states('input_text.indoor_map_coway_bedroom_pm25')) | first | default(none)) %}
+            {% set reported = heartbeat.last_reported | default(heartbeat.last_updated, true) if heartbeat else none %}
+            {{ 'CURRENT' if obj and obj.state not in ['unknown','unavailable'] and heartbeat and heartbeat.state not in ['unknown','unavailable'] and (as_timestamp(now()) - as_timestamp(reported)) <= 300 else 'UNAVAILABLE' }}
       - name: Indoor Living Room CO2 alert
         unique_id: indoor_living_room_co2_alert
         unit_of_measurement: ppm
