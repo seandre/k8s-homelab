@@ -60,6 +60,42 @@ automation:
           entity_id: "{{ coway_aqi_lights }}"
         data:
           option: "AQI Off"
+  # Reconcile external Coway schedules without sending commands to healthy fans.
+  # A periodic check also retries failed commands and devices that reconnect.
+  - id: coway_night_level_2_guard
+    alias: Coways - keep level 2 overnight
+    mode: single
+    max_exceeded: silent
+    trigger:
+      - platform: time_pattern
+        minutes: "/1"
+    condition:
+      - condition: template
+        value_template: >-
+          {{ now().strftime('%H:%M:%S') >= '22:00:00' or
+             now().strftime('%H:%M:%S') < '06:30:00' }}
+    action:
+      - repeat:
+          for_each: >-
+            {{ integration_entities('coway') | select('match', '^fan\.') | list }}
+          sequence:
+            - if:
+                - condition: template
+                  value_template: >-
+                    {{ (now().strftime('%H:%M:%S') >= '22:00:00' or
+                        now().strftime('%H:%M:%S') < '06:30:00') and
+                       states(repeat.item) not in ['unknown', 'unavailable'] and
+                       (not is_state(repeat.item, 'on') or
+                        state_attr(repeat.item, 'percentage') != 66 or
+                        state_attr(repeat.item, 'preset_mode') not in [none, '']) }}
+              then:
+                # Coway set_percentage also powers on an off purifier.
+                - service: fan.set_percentage
+                  continue_on_error: true
+                  target:
+                    entity_id: "{{ repeat.item }}"
+                  data:
+                    percentage: 66
   - id: coway_night_mode_end
     alias: Coways - night mode end
     mode: single
