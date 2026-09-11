@@ -59,8 +59,8 @@ automation:
         target:
           entity_id: "{{ coway_aqi_lights }}"
         data:
-          option: "AQI Off"
-  # Reconcile external Coway schedules without sending commands to healthy fans.
+          option: "Off"
+  # Reconcile overnight drift without sending commands to healthy devices.
   # A periodic check also retries failed commands and devices that reconnect.
   - id: coway_night_level_2_guard
     alias: Coways - keep level 2 overnight
@@ -96,6 +96,30 @@ automation:
                     entity_id: "{{ repeat.item }}"
                   data:
                     percentage: 66
+      # Power-on can restore the lights, so reconcile lights after fan recovery.
+      - repeat:
+          for_each: >-
+            {% set ns = namespace(entities=[]) %}
+            {% for entity in integration_entities('coway') | select('match', '^select\.') %}
+              {% if 'AQI Off' in (state_attr(entity, 'options') | default([], true)) %}
+                {% set ns.entities = ns.entities + [entity] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.entities }}
+          sequence:
+            - if:
+                - condition: template
+                  value_template: >-
+                    {{ (now().strftime('%H:%M:%S') >= '22:00:00' or
+                        now().strftime('%H:%M:%S') < '06:30:00') and
+                       states(repeat.item) not in ['unknown', 'unavailable', 'Off'] }}
+              then:
+                - service: select.select_option
+                  continue_on_error: true
+                  target:
+                    entity_id: "{{ repeat.item }}"
+                  data:
+                    option: "Off"
   - id: coway_night_mode_end
     alias: Coways - night mode end
     mode: single

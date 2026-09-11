@@ -18,7 +18,7 @@ spec:
   template:
     metadata:
       annotations:
-        homelab.seandre.dev/config-revision: "indoor-night-schedule-v5"
+        homelab.seandre.dev/config-revision: "indoor-night-schedule-v6"
       labels:
         app.kubernetes.io/name: home-assistant
         app.kubernetes.io/component: control-hub

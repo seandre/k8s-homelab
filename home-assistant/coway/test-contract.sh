@@ -82,7 +82,7 @@ fi
 grep -Fq 'id: coway_night_mode_start' "$schedule"
 grep -Fq 'at: "22:00:00"' "$schedule"
 grep -Fq 'percentage: 66' "$schedule"
-grep -Fq 'option: "AQI Off"' "$schedule"
+grep -Fq 'option: "Off"' "$schedule"
 grep -Fq 'id: coway_night_mode_end' "$schedule"
 grep -Fq 'at: "06:30:00"' "$schedule"
 grep -Fq 'preset_mode: "Auto"' "$schedule"
