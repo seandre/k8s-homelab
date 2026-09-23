@@ -9,7 +9,7 @@ trap 'rm -f "$app_output" "$cluster_output"' EXIT
 kubectl kustomize "$repository_root/kubernetes/apps/home-assistant" >"$app_output"
 kubectl kustomize "$repository_root/kubernetes/clusters/homelab/apps" >"$cluster_output"
 
-expected_image='ghcr.io/seandre/k8s-homelab-home-assistant:sha-d67b3a521484f31fee74e3b9e099c079ce01c997@sha256:7ca982de471f12b7ba8c688bb3370ecbaabede18c123d8307bae83b122687bc2'
+expected_image='ghcr.io/seandre/k8s-homelab-home-assistant:sha-4e443f01fa0737b4d0eb7b98907ef45c583cb625@sha256:afa882fbcb9495534106c9f0b38c016a7978f60a38a3ff7ed6f490c2bda31bae'
 
 grep -Fq "image: $expected_image" "$app_output"
 grep -Fq 'storageClassName: local-path' "$app_output"

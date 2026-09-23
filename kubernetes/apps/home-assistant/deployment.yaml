@@ -18,7 +18,7 @@ spec:
   template:
     metadata:
       annotations:
-        homelab.seandre.dev/config-revision: "indoor-night-schedule-v6"
+        homelab.seandre.dev/config-revision: "indoor-night-schedule-v7"
       labels:
         app.kubernetes.io/name: home-assistant
         app.kubernetes.io/component: control-hub
@@ -29,7 +29,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: home-assistant
-          image: ghcr.io/seandre/k8s-homelab-home-assistant:sha-d67b3a521484f31fee74e3b9e099c079ce01c997@sha256:7ca982de471f12b7ba8c688bb3370ecbaabede18c123d8307bae83b122687bc2
+          image: ghcr.io/seandre/k8s-homelab-home-assistant:sha-4e443f01fa0737b4d0eb7b98907ef45c583cb625@sha256:afa882fbcb9495534106c9f0b38c016a7978f60a38a3ff7ed6f490c2bda31bae
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
