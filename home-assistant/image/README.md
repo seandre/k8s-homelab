@@ -2,11 +2,13 @@
 
 This directory defines the production Home Assistant image only. The base is
 the official Home Assistant `2026.7.2` image pinned by tag and digest in
-`image.lock` and the `Dockerfile`. The unchanged Coway IoCare `0.6.1` component
+`image.lock` and the `Dockerfile`. The Coway IoCare `0.6.3` component
 is accepted only from the commit archive and SHA-256 lock owned by IE-002. HACS
-is not installed or used.
+is not installed or used. The verified component retains the local token-refresh
+patch, and CowayAIO 0.2.6 includes the upstream HTML parsing fix needed after
+Coway changed its cloud responses in September 2026.
 
-The manifest dependency `cowayaio==0.2.4` is installed without dependency
+The manifest dependency `cowayaio==0.2.6` is installed without dependency
 resolution from its sole PyPI source distribution using the SHA-256 in
 `requirements.lock`. Its runtime dependencies are already supplied by the
 digest-pinned Home Assistant base; the image verification suite proves imports.

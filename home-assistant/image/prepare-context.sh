@@ -25,5 +25,7 @@ cp "$SCRIPT_DIR/verify-image.sh" "$OUTPUT_DIRECTORY/verify-image.sh"
 cp "$SCRIPT_DIR/configuration.yaml" "$OUTPUT_DIRECTORY/configuration.yaml"
 cp "$SCRIPT_DIR/requirements.lock" "$OUTPUT_DIRECTORY/requirements.lock"
 cp -R "$COMPAT_DIRECTORY/tests" "$OUTPUT_DIRECTORY/tests"
+cp "$SCRIPT_DIR/../coway/test_schedule.py" "$OUTPUT_DIRECTORY/tests/test_schedule.py"
+cp "$SCRIPT_DIR/../coway/night-schedule.yaml" "$OUTPUT_DIRECTORY/tests/night-schedule.yaml"
 
 echo "prepared checksum-verified IE-003 build context: $OUTPUT_DIRECTORY"

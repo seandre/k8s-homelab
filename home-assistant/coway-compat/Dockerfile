@@ -2,7 +2,7 @@
 ARG HOME_ASSISTANT_VERSION=2026.7.2
 FROM ghcr.io/home-assistant/home-assistant:${HOME_ASSISTANT_VERSION}
 
-ARG COWAYAIO_VERSION=0.2.4
+ARG COWAYAIO_VERSION=0.2.6
 
 COPY custom_components/coway /config/custom_components/coway
 COPY tests /opt/coway-compat/tests

@@ -1,10 +1,34 @@
 # Coway Airmega 250S compatibility contract
 
-Status: **IE-002 source contract verified** for upstream Coway IoCare `0.6.1`
-at commit `e0f29953f650b09c8d994aafba5c27634e0bb705`, with archive SHA-256
-`0a36be24d7294319880d1aa0cc6b6fcd9a66b8f2d08192bfd04b92c42204aaf5`.
+Status: **IE-002 source contract verified** for upstream Coway IoCare `0.6.3`
+at commit `5a75b75db64b6ec82d0d985e704dbb43419a2932`, with archive SHA-256
+`d379c2faa4bcdac783f62127bcad35ec5186e261e5caa3d89365e72986721d5d`.
 The compatibility target is Home Assistant Core `2026.7.2`; the integration
-manifest pins `cowayaio==0.2.4`.
+manifest pins `cowayaio==0.2.6`.
+
+The September 2026 update adopts the upstream HTML parsing fix. The older
+client could fail to parse Coway's response while HA retained cached power and
+mode values, so those values were insufficient evidence of successful control.
+
+## Night and daytime schedule
+
+`home-assistant/coway/night-schedule.yaml` keeps both units at manual level 2
+with lights off from 22:00 until 06:30, in `America/Los_Angeles` time. At 06:30,
+on HA startup during the day, and every five minutes until 22:00, the daytime
+routine restores power, Smart mode (`Auto` in HA), and lights `On`, including
+the AQI indicator. It sends commands only when a setting needs correction.
+This daytime policy also corrects manual power/mode/light changes within five
+minutes. `Auto (Eco)` remains valid Smart operation and is never commanded.
+
+Each purifier recovers independently. Unavailable units are skipped, failed
+commands do not prevent the other unit from recovering, and later checks retry.
+The light is enabled only after its own purifier reports power on. Each action
+checks the time again to avoid applying daytime settings after 22:00.
+
+The production image verification runs `test_schedule.py` with HA's actual
+script engine and synthetic devices. It covers off-to-on restoration, manual
+and Night modes, Eco idling, unavailable devices, failed power commands, and
+both schedule boundaries without operating physical devices.
 
 The test fixture contains only synthetic values and redacted identifiers. No
 Coway account, device ID, serial, MAC address, or password is stored in Git.

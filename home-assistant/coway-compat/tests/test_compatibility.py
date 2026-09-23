@@ -41,22 +41,26 @@ class FakeConfigEntries:
 
 
 class CowayCompatibilityTests(unittest.IsolatedAsyncioTestCase):
-    def test_polling_always_reenables_token_refresh(self) -> None:
-        coordinator_source = Path(
-            "/config/custom_components/coway/coordinator.py"
-        ).read_text(encoding="utf-8")
+    async def test_polling_failure_reenables_token_refresh(self) -> None:
+        from cowayaio import CowayClient
 
-        self.assertEqual(2, coordinator_source.count("self.client.check_token = True"))
-        self.assertIn("finally:\n            # Keep refresh enabled", coordinator_source)
+        # Fail after token checks have been suspended, without creating a
+        # session or making any network requests.
+        client = object.__new__(CowayClient)
+        client.username = "synthetic"
+        client.places = ["synthetic"]
+        client.check_token = True
+        client.async_get_purifiers = AsyncMock(return_value=[{}])
+        client.async_server_maintenance_notice = AsyncMock(side_effect=TimeoutError)
+        with self.assertRaises(TimeoutError):
+            await client.async_get_purifiers_data()
+        self.assertTrue(client.check_token)
 
     def test_imports_against_pinned_home_assistant(self) -> None:
-        manifest = json.loads(
-            (Path("/config/custom_components/coway/manifest.json")).read_text(
-                encoding="utf-8"
-            )
-        )
-        self.assertEqual("0.6.1", manifest["version"])
-        self.assertEqual(["cowayaio==0.2.4"], manifest["requirements"])
+        component_path = Path(importlib.import_module(COMPONENT_PACKAGE).__file__).parent
+        manifest = json.loads((component_path / "manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual("0.6.3", manifest["version"])
+        self.assertEqual(["cowayaio==0.2.6"], manifest["requirements"])
 
         for module in (
             "__init__",

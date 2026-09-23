@@ -123,9 +123,19 @@ automation:
   - id: coway_night_mode_end
     alias: Coways - night mode end
     mode: single
+    max_exceeded: silent
     trigger:
       - platform: time
         at: "06:30:00"
+      - platform: homeassistant
+        event: start
+      - platform: time_pattern
+        minutes: "/5"
+    condition:
+      - condition: template
+        value_template: >-
+          {{ now().strftime('%H:%M:%S') >= '06:30:00' and
+             now().strftime('%H:%M:%S') < '22:00:00' }}
     variables:
       coway_fans: >-
         {{ integration_entities('coway') | select('match', '^fan\.') | list }}
@@ -138,18 +148,60 @@ automation:
         {% endfor %}
         {{ ns.entities }}
     action:
-      - condition: template
-        value_template: "{{ coway_fans | count == 2 and coway_aqi_lights | count == 2 }}"
-      - service: fan.set_preset_mode
-        target:
-          entity_id: "{{ coway_fans }}"
-        data:
-          preset_mode: "Auto"
-      - service: select.select_option
-        target:
-          entity_id: "{{ coway_aqi_lights }}"
-        data:
-          option: "On"
+      # Restore each purifier independently so an offline unit or failed cloud
+      # command cannot prevent the other purifier from recovering. Healthy
+      # devices receive no commands during the five-minute recovery check.
+      - repeat:
+          for_each: "{{ coway_fans }}"
+          sequence:
+            - if:
+                - condition: template
+                  value_template: >-
+                    {{ now().strftime('%H:%M:%S') >= '06:30:00' and
+                       now().strftime('%H:%M:%S') < '22:00:00' and
+                       is_state(repeat.item, 'off') }}
+              then:
+                - service: fan.turn_on
+                  continue_on_error: true
+                  target:
+                    entity_id: "{{ repeat.item }}"
+            - if:
+                - condition: template
+                  value_template: >-
+                    {{ now().strftime('%H:%M:%S') >= '06:30:00' and
+                       now().strftime('%H:%M:%S') < '22:00:00' and
+                       is_state(repeat.item, 'on') and
+                       state_attr(repeat.item, 'preset_mode') not in ['Auto', 'Auto (Eco)'] }}
+              then:
+                # Home Assistant calls Coway Smart mode Auto. Auto (Eco) is
+                # Smart mode idling normally; never try to select or defeat it.
+                - service: fan.set_preset_mode
+                  continue_on_error: true
+                  target:
+                    entity_id: "{{ repeat.item }}"
+                  data:
+                    preset_mode: "Auto"
+      # Light control requires its own purifier to be powered on. Reconcile it
+      # after power/mode, and do not block on the other purifier's availability.
+      - repeat:
+          for_each: "{{ coway_aqi_lights }}"
+          sequence:
+            - if:
+                - condition: template
+                  value_template: >-
+                    {{ now().strftime('%H:%M:%S') >= '06:30:00' and
+                       now().strftime('%H:%M:%S') < '22:00:00' and
+                       states(repeat.item) not in ['unknown', 'unavailable', 'On'] and
+                       expand(device_entities(device_id(repeat.item)))
+                         | selectattr('entity_id', 'in', coway_fans)
+                         | selectattr('state', 'eq', 'on') | list | count > 0 }}
+              then:
+                - service: select.select_option
+                  continue_on_error: true
+                  target:
+                    entity_id: "{{ repeat.item }}"
+                  data:
+                    option: "On"
 
   - id: airgradient_day_brightness_restore
     alias: AirGradient - day brightness restore

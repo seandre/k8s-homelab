@@ -19,8 +19,8 @@ cleanup() {
 trap cleanup EXIT HUP INT TERM
 
 grep -Fx "FROM $HOME_ASSISTANT_BASE" "$SCRIPT_DIR/Dockerfile" >/dev/null
-grep -F 'cowayaio==0.2.4' "$SCRIPT_DIR/requirements.lock" >/dev/null
-grep -F 'sha256:05d49002fc9005159ff865f2429a13339d61975636c4c66077d90e2ee29891c8' \
+grep -F 'cowayaio==0.2.6' "$SCRIPT_DIR/requirements.lock" >/dev/null
+grep -F 'sha256:e96c4262cc6654b0064f6d159e4b6e6ec161a3b852178cfad2ade48bce469acf' \
   "$SCRIPT_DIR/requirements.lock" >/dev/null
 if grep -i -E 'hacs|latest' "$SCRIPT_DIR/Dockerfile" >/dev/null; then
   echo "production image context contains a forbidden HACS or floating latest reference" >&2

@@ -3,13 +3,13 @@
 FROM ghcr.io/home-assistant/home-assistant:2026.7.2@sha256:1476924357b46e80735c13e94232ba5c853cac052e9df4bb28d50fa56348097b
 
 LABEL org.opencontainers.image.title="homelab-home-assistant" \
-      org.opencontainers.image.description="Home Assistant 2026.7.2 with verified Coway IoCare 0.6.1" \
+      org.opencontainers.image.description="Home Assistant 2026.7.2 with verified Coway IoCare 0.6.3" \
       dev.seandre.ie="IE-003" \
       dev.seandre.home-assistant.version="2026.7.2" \
       dev.seandre.home-assistant.base.digest="sha256:1476924357b46e80735c13e94232ba5c853cac052e9df4bb28d50fa56348097b" \
-      dev.seandre.coway.version="0.6.1" \
-      dev.seandre.coway.commit="e0f29953f650b09c8d994aafba5c27634e0bb705" \
-      dev.seandre.coway.archive.sha256="0a36be24d7294319880d1aa0cc6b6fcd9a66b8f2d08192bfd04b92c42204aaf5"
+      dev.seandre.coway.version="0.6.3" \
+      dev.seandre.coway.commit="5a75b75db64b6ec82d0d985e704dbb43419a2932" \
+      dev.seandre.coway.archive.sha256="d379c2faa4bcdac783f62127bcad35ec5186e261e5caa3d89365e72986721d5d"
 
 # The generated build context contains only the checksum-verified upstream
 # component. The immutable copy remains available when /config is a PVC; the
