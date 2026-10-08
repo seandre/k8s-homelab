@@ -82,6 +82,51 @@ Record only redacted counts, normalized option slugs, result, latency, and
 timestamps. A final capability fixture must contain aliases—not raw IDs—and must
 represent partial/unsupported hardware truthfully.
 
+## Overnight schedule
+
+`home-assistant/coway/night-schedule.yaml` owns the daily schedule in Home
+Assistant's `America/Los_Angeles` timezone:
+
+- At 22:00, set each purifier to manual level 2 (66%), cancel any countdown
+  timer, and select `AQI Off`.
+- Keep those settings until 07:00. There is no periodic overnight command loop.
+  A Home Assistant restart only corrects settings that differ; a purifier
+  already at level 2 with AQI off receives no commands.
+- At 07:00, restore Auto and lights On once. Auto (Eco) is already a valid
+  daytime state and is left alone.
+
+Each purifier is handled independently. An unavailable purifier or a failed
+command does not block the other unit. Fan speed selection powers on an off
+purifier itself, so the schedule does not send a redundant power-on command.
+AirGradient brightness remains 5 overnight and 80 from 07:00.
+
+Disable conflicting IoCare schedules before removing an existing overnight
+recovery loop. Home Assistant history on 2026-10-07 showed both units powering
+off around 03:30, followed by the recovery automation powering them back on
+around 03:31 and changing their lights. The same sequence recurred on the
+previous five nights. The old morning automation also selected Auto and lights
+On at 06:30. Changing only Home Assistant's morning time cannot prevent a
+separate Coway-side shutdown.
+
+During the 2026-10-07 repair, authenticated reads of both Coway schedule
+endpoints (the primary API and the app proxy) returned successful, empty
+schedule lists for both units. Both countdown timers also reported `OFF`.
+There were no saved Coway schedules to disable at that point; the source of
+the earlier 03:30 shutdown was not confirmed by these current-state reads.
+The Home Assistant fix removes the repeating recovery commands and the
+06:30 morning transition. Recheck device history after the next night if a
+shutdown recurs, including any external app schedules.
+
+Regenerate the ConfigMap with `home-assistant/alerts/render-configmap.sh` after
+editing the schedule. Run `home-assistant/coway/test-contract.sh`, then run
+`home-assistant/coway/test_schedule.py` in the production Home Assistant Python
+environment. The tests exercise HA's actual script engine with synthetic
+devices, covering the midnight window, 06:30–07:00, restart idempotence,
+unavailable units, and countdown cancellation. Validate the configuration
+before deployment, then reload automations after the ConfigMap volume
+updates. Remove the retired `coway_night_level_2_guard` automation if it is still
+present in the active configuration.
+
 ## Verification and rollback
 
 ```sh

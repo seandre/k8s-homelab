@@ -14,7 +14,7 @@ automation:
       - condition: template
         value_template: >-
           {{ now().strftime('%H:%M:%S') >= '22:00:00' or
-             now().strftime('%H:%M:%S') < '06:30:00' }}
+             now().strftime('%H:%M:%S') < '07:00:00' }}
     variables:
       coway_fans: >-
         {{ integration_entities('coway') | select('match', '^fan\.') | list }}
@@ -22,6 +22,14 @@ automation:
         {% set ns = namespace(entities=[]) %}
         {% for entity in integration_entities('coway') | select('match', '^select\.') %}
           {% if 'AQI Off' in (state_attr(entity, 'options') | default([], true)) %}
+            {% set ns.entities = ns.entities + [entity] %}
+          {% endif %}
+        {% endfor %}
+        {{ ns.entities }}
+      coway_timers: >-
+        {% set ns = namespace(entities=[]) %}
+        {% for entity in integration_entities('coway') | select('match', '^select\.') %}
+          {% if '8 Hours' in (state_attr(entity, 'options') | default([], true)) %}
             {% set ns.entities = ns.entities + [entity] %}
           {% endif %}
         {% endfor %}
@@ -45,96 +53,56 @@ automation:
               entity_id: "{{ airgradient_brightness_numbers }}"
             data:
               value: 5
-      - condition: template
-        value_template: "{{ coway_fans | count == 2 and coway_aqi_lights | count == 2 }}"
-      - service: fan.turn_on
-        target:
-          entity_id: "{{ coway_fans }}"
-      - service: fan.set_percentage
-        target:
-          entity_id: "{{ coway_fans }}"
-        data:
-          percentage: 66
-      - service: select.select_option
-        target:
-          entity_id: "{{ coway_aqi_lights }}"
-        data:
-          option: "Off"
-  # Reconcile overnight drift without sending commands to healthy devices.
-  # A periodic check also retries failed commands and devices that reconnect.
-  - id: coway_night_level_2_guard
-    alias: Coways - keep level 2 overnight
-    mode: single
-    max_exceeded: silent
-    trigger:
-      - platform: time_pattern
-        minutes: "/1"
-    condition:
-      - condition: template
-        value_template: >-
-          {{ now().strftime('%H:%M:%S') >= '22:00:00' or
-             now().strftime('%H:%M:%S') < '06:30:00' }}
-    action:
       - repeat:
-          for_each: >-
-            {{ integration_entities('coway') | select('match', '^fan\.') | list }}
+          for_each: "{{ coway_fans }}"
           sequence:
             - if:
                 - condition: template
                   value_template: >-
                     {{ (now().strftime('%H:%M:%S') >= '22:00:00' or
-                        now().strftime('%H:%M:%S') < '06:30:00') and
+                        now().strftime('%H:%M:%S') < '07:00:00') and
                        states(repeat.item) not in ['unknown', 'unavailable'] and
                        (not is_state(repeat.item, 'on') or
                         state_attr(repeat.item, 'percentage') != 66 or
                         state_attr(repeat.item, 'preset_mode') not in [none, '']) }}
               then:
-                # Coway set_percentage also powers on an off purifier.
                 - service: fan.set_percentage
                   continue_on_error: true
                   target:
                     entity_id: "{{ repeat.item }}"
                   data:
                     percentage: 66
-      # Power-on can restore the lights, so reconcile lights after fan recovery.
       - repeat:
-          for_each: >-
-            {% set ns = namespace(entities=[]) %}
-            {% for entity in integration_entities('coway') | select('match', '^select\.') %}
-              {% if 'AQI Off' in (state_attr(entity, 'options') | default([], true)) %}
-                {% set ns.entities = ns.entities + [entity] %}
-              {% endif %}
-            {% endfor %}
-            {{ ns.entities }}
+          for_each: "{{ coway_timers + coway_aqi_lights }}"
           sequence:
+            - variables:
+                desired_option: "{{ 'OFF' if repeat.item in coway_timers else 'AQI Off' }}"
             - if:
                 - condition: template
                   value_template: >-
                     {{ (now().strftime('%H:%M:%S') >= '22:00:00' or
-                        now().strftime('%H:%M:%S') < '06:30:00') and
-                       states(repeat.item) not in ['unknown', 'unavailable', 'Off'] }}
+                        now().strftime('%H:%M:%S') < '07:00:00') and
+                       states(repeat.item) not in ['unknown', 'unavailable', desired_option] and
+                       expand(device_entities(device_id(repeat.item)))
+                         | selectattr('entity_id', 'in', coway_fans)
+                         | selectattr('state', 'eq', 'on') | list | count > 0 }}
               then:
                 - service: select.select_option
                   continue_on_error: true
                   target:
                     entity_id: "{{ repeat.item }}"
                   data:
-                    option: "Off"
+                    option: "{{ desired_option }}"
   - id: coway_night_mode_end
     alias: Coways - night mode end
     mode: single
-    max_exceeded: silent
     trigger:
       - platform: time
-        at: "06:30:00"
-      - platform: homeassistant
-        event: start
-      - platform: time_pattern
-        minutes: "/5"
+        at: "07:00:00"
     condition:
       - condition: template
         value_template: >-
-          {{ now().strftime('%H:%M:%S') >= '06:30:00' and
+          {{ now().strftime('%H:%M:%S') >= '07:00:00' and
              now().strftime('%H:%M:%S') < '22:00:00' }}
     variables:
       coway_fans: >-
@@ -148,48 +116,31 @@ automation:
         {% endfor %}
         {{ ns.entities }}
     action:
-      # Restore each purifier independently so an offline unit or failed cloud
-      # command cannot prevent the other purifier from recovering. Healthy
-      # devices receive no commands during the five-minute recovery check.
       - repeat:
           for_each: "{{ coway_fans }}"
           sequence:
             - if:
                 - condition: template
                   value_template: >-
-                    {{ now().strftime('%H:%M:%S') >= '06:30:00' and
+                    {{ now().strftime('%H:%M:%S') >= '07:00:00' and
                        now().strftime('%H:%M:%S') < '22:00:00' and
-                       is_state(repeat.item, 'off') }}
+                       states(repeat.item) not in ['unknown', 'unavailable'] and
+                       (not is_state(repeat.item, 'on') or
+                        state_attr(repeat.item, 'preset_mode') not in ['Auto', 'Auto (Eco)']) }}
               then:
-                - service: fan.turn_on
-                  continue_on_error: true
-                  target:
-                    entity_id: "{{ repeat.item }}"
-            - if:
-                - condition: template
-                  value_template: >-
-                    {{ now().strftime('%H:%M:%S') >= '06:30:00' and
-                       now().strftime('%H:%M:%S') < '22:00:00' and
-                       is_state(repeat.item, 'on') and
-                       state_attr(repeat.item, 'preset_mode') not in ['Auto', 'Auto (Eco)'] }}
-              then:
-                # Home Assistant calls Coway Smart mode Auto. Auto (Eco) is
-                # Smart mode idling normally; never try to select or defeat it.
                 - service: fan.set_preset_mode
                   continue_on_error: true
                   target:
                     entity_id: "{{ repeat.item }}"
                   data:
                     preset_mode: "Auto"
-      # Light control requires its own purifier to be powered on. Reconcile it
-      # after power/mode, and do not block on the other purifier's availability.
       - repeat:
           for_each: "{{ coway_aqi_lights }}"
           sequence:
             - if:
                 - condition: template
                   value_template: >-
-                    {{ now().strftime('%H:%M:%S') >= '06:30:00' and
+                    {{ now().strftime('%H:%M:%S') >= '07:00:00' and
                        now().strftime('%H:%M:%S') < '22:00:00' and
                        states(repeat.item) not in ['unknown', 'unavailable', 'On'] and
                        expand(device_entities(device_id(repeat.item)))

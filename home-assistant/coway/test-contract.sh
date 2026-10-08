@@ -82,9 +82,9 @@ fi
 grep -Fq 'id: coway_night_mode_start' "$schedule"
 grep -Fq 'at: "22:00:00"' "$schedule"
 grep -Fq 'percentage: 66' "$schedule"
-grep -Fq 'option: "Off"' "$schedule"
+grep -Fq "else 'AQI Off'" "$schedule"
 grep -Fq 'id: coway_night_mode_end' "$schedule"
-grep -Fq 'at: "06:30:00"' "$schedule"
+grep -Fq 'at: "07:00:00"' "$schedule"
 grep -Fq 'preset_mode: "Auto"' "$schedule"
 grep -Fq 'option: "On"' "$schedule"
 grep -Fq "integration_entities('coway')" "$schedule"
@@ -98,6 +98,11 @@ grep -Fq 'value: 80' "$schedule"
 test "$(rg -c 'airgradient_brightness_numbers \| count == 2' "$schedule")" -eq 2
 if rg -n 'entity_id:[[:space:]]+(fan|select|number)\.[a-z0-9_]+$' "$schedule"; then
   echo 'Night schedule contains a raw entity ID' >&2
+  exit 1
+fi
+
+if rg -n '06:30:00|time_pattern|fan\.turn_on|coway_night_level_2_guard' "$schedule"; then
+  echo 'Night schedule contains an early wake time or repeated device commands' >&2
   exit 1
 fi
 

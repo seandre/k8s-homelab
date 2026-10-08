@@ -21,7 +21,7 @@ class DayRestoreTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.hass = HomeAssistant(self.directory.name)
-        self.clock = datetime(2026, 9, 23, 6, 30, tzinfo=ZoneInfo('America/Los_Angeles'))
+        self.clock = datetime(2026, 10, 7, 7, 0, tzinfo=ZoneInfo('America/Los_Angeles'))
         self.calls = []
         self.fail = set()
         self.cross_boundary = False
@@ -54,26 +54,31 @@ class DayRestoreTests(unittest.IsolatedAsyncioTestCase):
                 if call.service == 'turn_on':
                     value = 'on'
                 elif call.service == 'set_preset_mode':
+                    value = 'on'
                     attrs['preset_mode'] = call.data['preset_mode']
+                elif call.service == 'set_percentage':
+                    value = 'on'
+                    attrs.update(percentage=call.data['percentage'], preset_mode=None)
                 else:
                     value = call.data['option']
                 self.hass.states.async_set(entity, value, attrs)
                 if self.cross_boundary:
                     self.clock = self.clock.replace(hour=22, minute=0)
 
-        for domain, name in [('fan', 'turn_on'), ('fan', 'set_preset_mode'),
+        for domain, name in [('fan', 'set_percentage'), ('fan', 'set_preset_mode'),
                              ('select', 'select_option')]:
             self.hass.services.async_register(domain, name, service)
         package = yaml.safe_load(Path(__file__).with_name('night-schedule.yaml').read_text())
-        self.automation = next(a for a in package['automation'] if a['id'] == 'coway_night_mode_end')
+        self.automations = {automation['id']: automation for automation in package['automation']}
+        self.automation = self.automations['coway_night_mode_end']
 
     async def asyncTearDown(self):
         await self.hass.async_stop(force=True)
         self.directory.cleanup()
 
-    def set_fan(self, suffix, state, preset):
+    def set_fan(self, suffix, state, preset, percentage=0):
         self.hass.states.async_set(f'fan.synthetic_{suffix}', state,
-                                   {'preset_mode': preset, 'percentage': 0})
+                                   {'preset_mode': preset, 'percentage': percentage})
 
     def set_light(self, suffix, state):
         self.hass.states.async_set(f'select.synthetic_{suffix}_light', state,
@@ -92,12 +97,10 @@ class DayRestoreTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn(fan.attributes['preset_mode'], ['Auto', 'Auto (Eco)'])
         self.assertEqual('On', self.hass.states.get(f'select.synthetic_{suffix}_light').state)
 
-    async def test_power_then_smart_then_light_and_no_repeat_commands(self):
+    async def test_smart_then_light_and_no_repeat_commands(self):
         await self.run_restore()
         for suffix in ['a', 'b']:
             self.assert_restored(suffix)
-            self.assertLess(self.calls.index(('turn_on', f'fan.synthetic_{suffix}')),
-                            self.calls.index(('set_preset_mode', f'fan.synthetic_{suffix}')))
             self.assertLess(self.calls.index(('set_preset_mode', f'fan.synthetic_{suffix}')),
                             self.calls.index(('select_option', f'select.synthetic_{suffix}_light')))
         self.calls.clear()
@@ -125,8 +128,8 @@ class DayRestoreTests(unittest.IsolatedAsyncioTestCase):
         self.assert_restored('b')
         self.assertFalse(any('synthetic_a' in entity for _, entity in self.calls))
 
-    async def test_failed_power_retries_later_without_blocking_other_unit(self):
-        self.fail.add(('turn_on', 'fan.synthetic_a'))
+    async def test_failed_mode_does_not_block_other_unit(self):
+        self.fail.add(('set_preset_mode', 'fan.synthetic_a'))
         await self.run_restore()
         self.assert_restored('b')
         self.assertEqual('Off', self.hass.states.get('select.synthetic_a_light').state)
@@ -136,7 +139,7 @@ class DayRestoreTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_day_window_boundaries(self):
         for hour, minute, expected in [(0, 0, False), (6, 29, False),
-                                       (6, 30, True), (21, 59, True), (22, 0, False)]:
+                                       (6, 30, False), (6, 59, False), (7, 0, True), (21, 59, True), (22, 0, False)]:
             with self.subTest(hour=hour, minute=minute):
                 self.clock = self.clock.replace(hour=hour, minute=minute)
                 self.set_fan('a', 'off', None)
@@ -148,7 +151,62 @@ class DayRestoreTests(unittest.IsolatedAsyncioTestCase):
         self.clock = self.clock.replace(hour=21, minute=59)
         self.cross_boundary = True
         await self.run_restore()
-        self.assertEqual([('turn_on', 'fan.synthetic_a')], self.calls)
+        self.assertEqual([('set_preset_mode', 'fan.synthetic_a')], self.calls)
+
+
+    async def test_night_sets_level_two_and_aqi_off_without_redundant_power(self):
+        self.automation = self.automations['coway_night_mode_start']
+        self.clock = self.clock.replace(hour=22)
+        await self.run_restore()
+        for suffix in ['a', 'b']:
+            fan = self.hass.states.get(f'fan.synthetic_{suffix}')
+            self.assertEqual('on', fan.state)
+            self.assertEqual(66, fan.attributes['percentage'])
+            self.assertIsNone(fan.attributes['preset_mode'])
+            self.assertEqual('AQI Off', self.hass.states.get(f'select.synthetic_{suffix}_light').state)
+        self.calls.clear()
+        self.clock = self.clock.replace(hour=3, minute=30)
+        await self.run_restore()
+        self.assertEqual([], self.calls)
+
+    async def test_night_window_includes_six_thirty_to_seven(self):
+        self.automation = self.automations['coway_night_mode_start']
+        for hour, minute, expected in [(22, 0, True), (0, 0, True),
+                                      (3, 30, True), (6, 30, True),
+                                      (6, 59, True), (7, 0, False), (21, 59, False)]:
+            with self.subTest(hour=hour, minute=minute):
+                self.clock = self.clock.replace(hour=hour, minute=minute)
+                self.set_fan('a', 'on', 'Auto', 66)
+                self.calls.clear()
+                await self.run_restore()
+                self.assertEqual(expected, bool(self.calls))
+
+    async def test_night_cancels_countdown_timer(self):
+        self.automation = self.automations['coway_night_mode_start']
+        self.clock = self.clock.replace(hour=22)
+        entity = 'select.synthetic_a_timer'
+        self.entities.append(entity)
+        self.devices[entity] = 'a'
+        self.hass.states.async_set(entity, '8 Hours', {'options': ['OFF', '8 Hours']})
+        await self.run_restore()
+        self.assertEqual('OFF', self.hass.states.get(entity).state)
+
+    async def test_night_failure_does_not_block_other_unit(self):
+        self.automation = self.automations['coway_night_mode_start']
+        self.clock = self.clock.replace(hour=22)
+        self.fail.add(('set_percentage', 'fan.synthetic_a'))
+        await self.run_restore()
+        self.assertEqual(66, self.hass.states.get('fan.synthetic_b').attributes['percentage'])
+        self.assertEqual('AQI Off', self.hass.states.get('select.synthetic_b_light').state)
+        self.assertEqual('Off', self.hass.states.get('select.synthetic_a_light').state)
+
+    async def test_schedule_has_no_periodic_command_loops(self):
+        self.assertNotIn('coway_night_level_2_guard', self.automations)
+        self.assertEqual([{'platform': 'time', 'at': '07:00:00'}],
+                         self.automations['coway_night_mode_end']['trigger'])
+        for automation in self.automations.values():
+            self.assertTrue(all(trigger['platform'] in ['time', 'homeassistant']
+                                for trigger in automation['trigger']))
 
 
 if __name__ == '__main__':
