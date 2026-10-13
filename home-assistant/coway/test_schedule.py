@@ -208,6 +208,13 @@ class DayRestoreTests(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(all(trigger['platform'] in ['time', 'homeassistant']
                                 for trigger in automation['trigger']))
 
+    async def test_schedule_clock_is_portland_local_time(self):
+        self.assertEqual(ZoneInfo('America/Los_Angeles'), self.clock.tzinfo)
+        self.assertEqual('05:00', self.clock.replace(hour=22, minute=0).astimezone(
+            ZoneInfo('UTC')).strftime('%H:%M'))
+        self.assertEqual('14:00', self.clock.replace(hour=7, minute=0).astimezone(
+            ZoneInfo('UTC')).strftime('%H:%M'))
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -9,6 +9,7 @@ baseline="$repository_root/docs/overview/indoor-dashboard-baseline.md"
 runbook="$repository_root/docs/operations/coway-live-onboarding.md"
 evidence="$repository_root/docs/operations/indoor-dashboard-ie-008-evidence.md"
 schedule="$repository_root/home-assistant/coway/night-schedule.yaml"
+home_assistant_config="$repository_root/kubernetes/apps/home-assistant/configmap.yaml"
 
 jq -e '
   .schema_version == 1 and
@@ -80,6 +81,7 @@ if rg -n -i \
 fi
 
 grep -Fq 'id: coway_night_mode_start' "$schedule"
+grep -Fq 'time_zone: America/Los_Angeles' "$home_assistant_config"
 grep -Fq 'at: "22:00:00"' "$schedule"
 grep -Fq 'percentage: 66' "$schedule"
 grep -Fq "else 'AQI Off'" "$schedule"
