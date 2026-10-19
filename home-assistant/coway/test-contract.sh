@@ -103,8 +103,8 @@ if rg -n 'entity_id:[[:space:]]+(fan|select|number)\.[a-z0-9_]+$' "$schedule"; t
   exit 1
 fi
 
-if rg -n '06:30:00|time_pattern|fan\.turn_on|coway_night_level_2_guard' "$schedule"; then
-  echo 'Night schedule contains an early wake time or repeated device commands' >&2
+if rg -n '06:30:00|fan\.turn_on|coway_night_level_2_guard' "$schedule"; then
+  echo 'Night schedule contains an early wake time or retired recovery automation' >&2
   exit 1
 fi
 

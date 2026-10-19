@@ -89,19 +89,21 @@ Assistant's `America/Los_Angeles` timezone:
 
 - At 22:00, set each purifier to manual level 2 (66%), cancel any countdown
   timer, and select `AQI Off`.
-- Keep those settings until 07:00. There is no periodic overnight command loop.
-  A Home Assistant restart only corrects settings that differ; a purifier
+- Keep those settings until 07:00. Recovery checks every five minutes and
+  thirty seconds after an actionable mismatch correct only differing settings.
+  A Home Assistant restart also restores the current policy; a purifier
   already at level 2 with AQI off receives no commands.
-- At 07:00, restore Auto and lights On once. Auto (Eco) is already a valid
-  daytime state and is left alone.
+- At 07:00, restore Auto and lights On. Connectivity recovery and later
+  overrides are corrected using the same daytime policy. Auto (Eco) and
+  automatic fan speed changes are valid daytime states and are left alone.
 
 Each purifier is handled independently. An unavailable purifier or a failed
 command does not block the other unit. Fan speed selection powers on an off
 purifier itself, so the schedule does not send a redundant power-on command.
 AirGradient brightness remains 5 overnight and 80 from 07:00.
 
-Disable conflicting IoCare schedules before removing an existing overnight
-recovery loop. Home Assistant history on 2026-10-07 showed both units powering
+Investigate and disable conflicting IoCare schedules when accessible; do not
+assume that Home Assistant recovery has removed them. Home Assistant history on 2026-10-07 showed both units powering
 off around 03:30, followed by the recovery automation powering them back on
 around 03:31 and changing their lights. The same sequence recurred on the
 previous five nights. The old morning automation also selected Auto and lights
@@ -113,8 +115,9 @@ endpoints (the primary API and the app proxy) returned successful, empty
 schedule lists for both units. Both countdown timers also reported `OFF`.
 There were no saved Coway schedules to disable at that point; the source of
 the earlier 03:30 shutdown was not confirmed by these current-state reads.
-The Home Assistant fix removes the repeating recovery commands and the
-06:30 morning transition. Recheck device history after the next night if a
+The October 7 Home Assistant fix removed the repeating recovery commands and
+the 06:30 morning transition. October 18 added conditional recovery after
+further overrides were confirmed. Recheck device history after the next night if a
 shutdown recurs, including any external app schedules.
 
 Regenerate the ConfigMap with `home-assistant/alerts/render-configmap.sh` after
@@ -126,6 +129,33 @@ unavailable units, and countdown cancellation. Validate the configuration
 before deployment, then reload automations after the ConfigMap volume
 updates. Remove the retired `coway_night_level_2_guard` automation if it is still
 present in the active configuration.
+
+## Recovery and schedule verification
+
+The mismatch sensor checks for exactly two discovered purifiers and two light
+controls, the expected power/preset/light states, and canceled overnight
+countdowns. Missing discovery and unavailable devices are failures, never
+successful no-ops. A mismatch lasting ten minutes creates a persistent Home
+Assistant notification and uses the existing private Companion App alert route.
+The persistent notification clears when both units match again.
+
+Recovery runs thirty seconds after an actionable mismatch and checks every five
+minutes as a fallback after outages or failed commands. The original routines
+recheck the current Pacific-time window before each equipment command. Recovery
+skips unavailable units, preserves Auto (Eco) and automatic speed changes, and
+sends no redundant fan/light/brightness commands when states already match.
+This policy intentionally corrects manual power/mode/light overrides as well as
+external schedules. It cannot control devices while Coway cloud access is down.
+
+The installed integration has no schedule-management API. The unexplained
+19:01 manual-level-2/lights-Off changes and 03:30 shutdowns remain an external
+schedule hypothesis; no conflicting vendor schedule has been disabled. Those
+times correspond to 22:00 and 06:30 Eastern, but the source is unconfirmed.
+
+The command compatibility wrapper translates vendor ServerMaintenance errors
+into CowayError so upstream entity platforms convert them to HomeAssistantError.
+This lets HA continue_on_error isolate failures per device. Maintenance is still
+a failed command; polling maintenance handling is unchanged.
 
 ## Verification and rollback
 

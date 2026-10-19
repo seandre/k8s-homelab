@@ -55,7 +55,9 @@ credentials, deployed image digest, and rollback exercise.
 The generated component uses `coway-client.py` to tolerate the specific
 unchecked regex-match failure in cowayaio 0.2.6's optional maintenance notice
 parser. Valid maintenance windows, authentication errors, network failures,
-and server maintenance responses retain their upstream behavior. The image
+and polling maintenance responses retain their upstream behavior. Command
+maintenance exceptions are translated to CowayError so the integration can
+report recoverable HA errors and isolate failures per device. The image
 verification suite runs `test-maintenance-notice.py` against the pinned client.
 
 Until a new immutable image is published, `coway-compat-configmap.yaml` supplies

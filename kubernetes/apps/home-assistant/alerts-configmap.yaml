@@ -1441,7 +1441,10 @@ data:
         action:
           - if:
               - condition: template
-                value_template: "{{ airgradient_brightness_numbers | count == 2 }}"
+                value_template: >-
+                  {{ airgradient_brightness_numbers | count == 2 and
+                     expand(airgradient_brightness_numbers) | map(attribute='state') | map('float', -1)
+                     | reject('eq', 5) | list | count > 0 }}
             then:
               - service: number.set_value
                 continue_on_error: true
@@ -1495,6 +1498,8 @@ data:
         trigger:
           - platform: time
             at: "07:00:00"
+          - platform: homeassistant
+            event: start
         condition:
           - condition: template
             value_template: >-
@@ -1574,9 +1579,116 @@ data:
             {{ ns.entities }}
         action:
           - condition: template
-            value_template: "{{ airgradient_brightness_numbers | count == 2 }}"
+            value_template: >-
+              {{ airgradient_brightness_numbers | count == 2 and
+                 expand(airgradient_brightness_numbers) | map(attribute='state') | map('float', -1)
+                 | reject('eq', 80) | list | count > 0 }}
           - service: number.set_value
             target:
               entity_id: "{{ airgradient_brightness_numbers }}"
             data:
               value: 80
+
+      # Reapply the current policy after recovery or an external override. These
+      # checks send no equipment commands when settings already match.
+      - id: coway_schedule_reconcile
+        alias: Coways - recover scheduled settings
+        mode: single
+        trigger:
+          - platform: time_pattern
+            minutes: "/5"
+          - platform: template
+            value_template: >-
+              {{ is_state('binary_sensor.coway_schedule_mismatch', 'on') and
+                 state_attr('binary_sensor.coway_schedule_mismatch', 'online_purifiers') | int(0) > 0 }}
+            for: "00:00:30"
+          - platform: homeassistant
+            event: start
+        condition:
+          - condition: state
+            entity_id: binary_sensor.coway_schedule_mismatch
+            state: "on"
+          - condition: template
+            value_template: >-
+              {{ state_attr('binary_sensor.coway_schedule_mismatch', 'online_purifiers') | int(0) > 0 }}
+        action:
+          - service: automation.trigger
+            data:
+              skip_condition: false
+            target:
+              entity_id: >-
+                {{ 'automation.coways_night_mode_start' if now().hour >= 22 or now().hour < 7
+                   else 'automation.coways_night_mode_end' }}
+
+      - id: coway_schedule_failure_alert
+        alias: Coways - scheduled settings failure alert
+        mode: single
+        trigger:
+          - platform: state
+            entity_id: binary_sensor.coway_schedule_mismatch
+            to: "on"
+            for: "00:10:00"
+        action:
+          - service: persistent_notification.create
+            data:
+              notification_id: coway_schedule_failure
+              title: Coway schedule needs attention
+              message: >-
+                Coway settings have not matched the Pacific-time schedule for ten minutes.
+                Expected {{ state_attr('binary_sensor.coway_schedule_mismatch', 'expected_mode') }}.
+                Online purifiers: {{ state_attr('binary_sensor.coway_schedule_mismatch', 'online_purifiers') }} of 2.
+                Available units are corrected only when needed; unavailable units receive no commands.
+          - event: indoor_alert_notification
+            event_data:
+              incident: coway_schedule_failure
+              level: warning
+              path: /indoor
+
+      - id: coway_schedule_failure_clear
+        alias: Coways - scheduled settings recovered
+        mode: single
+        trigger:
+          - platform: state
+            entity_id: binary_sensor.coway_schedule_mismatch
+            from: "on"
+            to: "off"
+        action:
+          - service: persistent_notification.dismiss
+            data:
+              notification_id: coway_schedule_failure
+
+    template:
+      - binary_sensor:
+          - name: Coway schedule mismatch
+            unique_id: coway_schedule_mismatch
+            device_class: problem
+            state: >-
+              {% set fans = integration_entities('coway') | select('match', '^fan\.') | list %}
+              {% set night = now().hour >= 22 or now().hour < 7 %}
+              {% set ns = namespace(bad=fans | count != 2, lights=0) %}
+              {% for fan in fans %}
+                {% if not is_state(fan, 'on') or
+                      (night and (state_attr(fan, 'percentage') != 66 or state_attr(fan, 'preset_mode') not in [none, ''])) or
+                      (not night and state_attr(fan, 'preset_mode') not in ['Auto', 'Auto (Eco)']) %}
+                  {% set ns.bad = true %}
+                {% endif %}
+              {% endfor %}
+              {% for entity in integration_entities('coway') | select('match', '^select\.') %}
+                {% set options = state_attr(entity, 'options') | default([], true) %}
+                {% if 'AQI Off' in options %}
+                  {% set ns.lights = ns.lights + 1 %}
+                  {% if not is_state(entity, 'AQI Off' if night else 'On') %}
+                    {% set ns.bad = true %}
+                  {% endif %}
+                {% elif night and '8 Hours' in options and not is_state(entity, 'OFF') %}
+                  {% set ns.bad = true %}
+                {% endif %}
+              {% endfor %}
+              {{ ns.bad or ns.lights != 2 }}
+            attributes:
+              expected_mode: >-
+                {{ 'manual level 2, AQI Off, countdown OFF' if now().hour >= 22 or now().hour < 7
+                   else 'Auto, AQI light On' }}
+              online_purifiers: >-
+                {{ expand(integration_entities('coway') | select('match', '^fan\.') | list)
+                   | rejectattr('state', 'in', ['unknown', 'unavailable']) | list | count }}

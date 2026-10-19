@@ -27,10 +27,11 @@ class DayRestoreTests(unittest.IsolatedAsyncioTestCase):
         self.cross_boundary = False
         self.entities = ['fan.synthetic_a', 'fan.synthetic_b',
                          'select.synthetic_a_light', 'select.synthetic_b_light']
+        self.airgradient_entities = []
         self.devices = {'fan.synthetic_a': 'a', 'select.synthetic_a_light': 'a',
                         'fan.synthetic_b': 'b', 'select.synthetic_b_light': 'b'}
         Template('', self.hass)._env.globals.update(
-            integration_entities=lambda domain: self.entities if domain == 'coway' else [],
+            integration_entities=lambda domain: self.entities if domain == 'coway' else self.airgradient_entities if domain == 'airgradient' else [],
             device_id=lambda entity: self.devices.get(entity),
             device_entities=lambda device: [e for e in self.entities if self.devices[e] == device],
             now=lambda: self.clock,
@@ -59,6 +60,8 @@ class DayRestoreTests(unittest.IsolatedAsyncioTestCase):
                 elif call.service == 'set_percentage':
                     value = 'on'
                     attrs.update(percentage=call.data['percentage'], preset_mode=None)
+                elif call.service == 'set_value':
+                    value = str(call.data['value'])
                 else:
                     value = call.data['option']
                 self.hass.states.async_set(entity, value, attrs)
@@ -66,9 +69,10 @@ class DayRestoreTests(unittest.IsolatedAsyncioTestCase):
                     self.clock = self.clock.replace(hour=22, minute=0)
 
         for domain, name in [('fan', 'set_percentage'), ('fan', 'set_preset_mode'),
-                             ('select', 'select_option')]:
+                             ('select', 'select_option'), ('number', 'set_value')]:
             self.hass.services.async_register(domain, name, service)
         package = yaml.safe_load(Path(__file__).with_name('night-schedule.yaml').read_text())
+        self.package = package
         self.automations = {automation['id']: automation for automation in package['automation']}
         self.automation = self.automations['coway_night_mode_end']
 
@@ -200,13 +204,124 @@ class DayRestoreTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual('AQI Off', self.hass.states.get('select.synthetic_b_light').state)
         self.assertEqual('Off', self.hass.states.get('select.synthetic_a_light').state)
 
-    async def test_schedule_has_no_periodic_command_loops(self):
+    def mismatch(self):
+        sensor = self.package['template'][0]['binary_sensor'][0]
+        return Template(sensor['state'], self.hass).async_render(parse_result=True)
+
+    async def run_reconcile(self):
+        self.hass.states.async_set('binary_sensor.coway_schedule_mismatch',
+                                   'on' if self.mismatch() else 'off',
+                                   {'online_purifiers': sum(self.hass.states.get(e).state not in
+                                    ['unknown', 'unavailable'] for e in self.entities if e.startswith('fan.'))})
+        async def dispatch(call):
+            self.assertFalse(call.data['skip_condition'])
+            entity = call.data['entity_id']
+            if isinstance(entity, list):
+                entity = entity[0]
+            self.automation = self.automations['coway_night_mode_start' if entity.endswith('_start') else 'coway_night_mode_end']
+            await self.run_restore()
+        self.hass.services.async_register('automation', 'trigger', dispatch)
+        recovery = self.automations['coway_schedule_reconcile']
+        sequence = [*recovery['condition'], *recovery['action']]
+        script = Script(self.hass, cv.SCRIPT_SCHEMA(sequence), 'test recovery',
+                        'automation', log_exceptions=False)
+        await script.async_run(context=Context())
+
+    async def test_recovery_corrects_early_night_override(self):
+        self.clock = self.clock.replace(hour=19)
+        for suffix in ['a', 'b']:
+            self.set_fan(suffix, 'on', None, 66)
+            self.set_light(suffix, 'Off')
+        self.assertTrue(self.mismatch())
+        await self.run_reconcile()
+        for suffix in ['a', 'b']:
+            self.assert_restored(suffix)
+        self.assertFalse(self.mismatch())
+        self.calls.clear()
+        await self.run_reconcile()
+        self.assertEqual([], self.calls)
+
+    async def test_recovery_corrects_three_thirty_shutdown(self):
+        self.clock = self.clock.replace(hour=3, minute=30)
+        await self.run_reconcile()
+        for suffix in ['a', 'b']:
+            fan = self.hass.states.get(f'fan.synthetic_{suffix}')
+            self.assertEqual('on', fan.state)
+            self.assertEqual(66, fan.attributes['percentage'])
+            self.assertIsNone(fan.attributes['preset_mode'])
+        self.assertFalse(self.mismatch())
+
+    async def test_recovery_skips_outage_then_recovers(self):
+        for suffix in ['a', 'b']:
+            self.set_fan(suffix, 'unavailable', None)
+        self.assertTrue(self.mismatch())
+        await self.run_reconcile()
+        self.assertEqual([], self.calls)
+        self.set_fan('b', 'on', None, 66)
+        await self.run_reconcile()
+        self.assert_restored('b')
+        self.assertFalse(any('synthetic_a' in entity for _, entity in self.calls))
+        self.set_fan('a', 'on', None, 66)
+        await self.run_reconcile()
+        self.assert_restored('a')
+        self.assertFalse(self.mismatch())
+
+    async def test_auto_speed_changes_are_not_mismatches(self):
+        for percentage in [0, 33, 66, 100]:
+            for suffix in ['a', 'b']:
+                self.set_fan(suffix, 'on', 'Auto', percentage)
+                self.set_light(suffix, 'On')
+            self.assertFalse(self.mismatch())
+        self.set_fan('a', 'on', 'Auto (Eco)', 0)
+        self.assertFalse(self.mismatch())
+        await self.run_reconcile()
+        self.assertEqual([], self.calls)
+
+    async def test_missing_discovery_is_an_alertable_mismatch(self):
+        self.entities.clear()
+        self.assertTrue(self.mismatch())
+        await self.run_reconcile()
+        self.assertEqual([], self.calls)
+
+    async def test_recovery_does_not_rewrite_correct_brightness(self):
+        self.clock = self.clock.replace(hour=3, minute=30)
+        for suffix in ['a', 'b']:
+            entity = f'number.synthetic_{suffix}_brightness'
+            self.airgradient_entities.append(entity)
+            self.hass.states.async_set(entity, '5.0', {'friendly_name': 'Synthetic brightness'})
+        await self.run_reconcile()
+        self.assertFalse(any(service == 'set_value' for service, _ in self.calls))
+
+    async def test_alert_delivery_and_clear(self):
+        notifications = []
+        events = []
+        async def notification(call):
+            notifications.append((call.service, dict(call.data)))
+        self.hass.services.async_register('persistent_notification', 'create', notification)
+        self.hass.services.async_register('persistent_notification', 'dismiss', notification)
+        self.hass.bus.async_listen('indoor_alert_notification', lambda event: events.append(dict(event.data)))
+        self.hass.states.async_set('binary_sensor.coway_schedule_mismatch', 'on',
+                                   {'online_purifiers': 0, 'expected_mode': 'Auto, AQI light On'})
+        for key in ['coway_schedule_failure_alert', 'coway_schedule_failure_clear']:
+            script = Script(self.hass, cv.SCRIPT_SCHEMA(self.automations[key]['action']),
+                            'test notification', 'automation', log_exceptions=False)
+            await script.async_run(context=Context())
+        await self.hass.async_block_till_done()
+        self.assertEqual(['create', 'dismiss'], [service for service, _ in notifications])
+        self.assertEqual('coway_schedule_failure', notifications[0][1]['notification_id'])
+        self.assertEqual([{'incident': 'coway_schedule_failure', 'level': 'warning', 'path': '/indoor'}], events)
+
+    async def test_recovery_and_alert_configuration(self):
         self.assertNotIn('coway_night_level_2_guard', self.automations)
-        self.assertEqual([{'platform': 'time', 'at': '07:00:00'}],
-                         self.automations['coway_night_mode_end']['trigger'])
-        for automation in self.automations.values():
-            self.assertTrue(all(trigger['platform'] in ['time', 'homeassistant']
-                                for trigger in automation['trigger']))
+        self.assertIn({'platform': 'homeassistant', 'event': 'start'},
+                      self.automations['coway_night_mode_end']['trigger'])
+        self.assertIn({'platform': 'time_pattern', 'minutes': '/5'},
+                      self.automations['coway_schedule_reconcile']['trigger'])
+        alert = self.automations['coway_schedule_failure_alert']
+        self.assertEqual('00:10:00', alert['trigger'][0]['for'])
+        self.assertEqual('indoor_alert_notification', alert['action'][1]['event'])
+        self.assertEqual('persistent_notification.dismiss',
+                         self.automations['coway_schedule_failure_clear']['action'][0]['service'])
 
     async def test_schedule_clock_is_portland_local_time(self):
         self.assertEqual(ZoneInfo('America/Los_Angeles'), self.clock.tzinfo)

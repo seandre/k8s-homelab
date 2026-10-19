@@ -13,17 +13,21 @@ mode values, so those values were insufficient evidence of successful control.
 ## Night and daytime schedule
 
 `home-assistant/coway/night-schedule.yaml` keeps both units at manual level 2
-with lights off from 22:00 until 06:30, in `America/Los_Angeles` time. At 06:30,
-on HA startup during the day, and every five minutes until 22:00, the daytime
-routine restores power, Smart mode (`Auto` in HA), and lights `On`, including
-the AQI indicator. It sends commands only when a setting needs correction.
-This daytime policy also corrects manual power/mode/light changes within five
-minutes. `Auto (Eco)` remains valid Smart operation and is never commanded.
+with `AQI Off` from 22:00 until 07:00 in `America/Los_Angeles` time. At 07:00,
+restore power, Smart mode (`Auto` in HA), and lights `On`, including the AQI
+indicator. Startup and recovery checks restore whichever policy applies now.
+A mismatch that remains actionable for thirty seconds triggers correction;
+five-minute checks recover from missed transitions and external overrides.
+Commands are sent only when needed. `Auto (Eco)` and automatic daytime fan
+speed changes are valid Smart operation and are never overridden.
 
-Each purifier recovers independently. Unavailable units are skipped, failed
-commands do not prevent the other unit from recovering, and later checks retry.
-The light is enabled only after its own purifier reports power on. Each action
-checks the time again to avoid applying daytime settings after 22:00.
+Each purifier recovers independently. Unavailable units are skipped; maintenance
+command failures are translated into recoverable HA errors so the other unit
+can proceed. Each action checks the time again to avoid crossing schedule
+boundaries. A ten-minute mismatch or outage raises a persistent HA notification
+and uses the existing private mobile alert route. Missing discovery is a
+mismatch, rather than a successful empty-target run. Recovery dismisses the
+persistent notification after both units match the policy.
 
 The production image verification runs `test_schedule.py` with HA's actual
 script engine and synthetic devices. It covers off-to-on restoration, manual

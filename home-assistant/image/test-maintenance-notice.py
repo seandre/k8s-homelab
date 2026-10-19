@@ -5,7 +5,7 @@ import unittest
 from unittest.mock import AsyncMock, patch
 
 from cowayaio import CowayClient as UpstreamCowayClient
-from cowayaio.exceptions import ServerMaintenance
+from cowayaio.exceptions import CowayError, ServerMaintenance
 
 spec = importlib.util.spec_from_file_location("coway_client_compat", pathlib.Path(__file__).with_name("coway-client.py"))
 compat = importlib.util.module_from_spec(spec)
@@ -38,6 +38,19 @@ class MaintenanceTests(unittest.IsolatedAsyncioTestCase):
         await client.async_server_maintenance_notice()
         self.assertIsNotNone(client.server_maintenance["start_date_time"])
         self.assertIsNotNone(client.server_maintenance["end_date_time"])
+
+    async def test_command_maintenance_is_recoverable(self):
+        method = AsyncMock(side_effect=ServerMaintenance("synthetic"))
+        with self.assertRaises(CowayError):
+            await compat.recoverable_maintenance(method)("synthetic target")
+        method.assert_awaited_once_with("synthetic target")
+
+    async def test_command_success_and_unrelated_errors_are_preserved(self):
+        method = AsyncMock(return_value="success")
+        self.assertEqual("success", await compat.recoverable_maintenance(method)())
+        method = AsyncMock(side_effect=ValueError("synthetic"))
+        with self.assertRaises(ValueError):
+            await compat.recoverable_maintenance(method)()
 
     async def test_other_errors_propagate(self):
         for error in (ServerMaintenance("synthetic"), AttributeError("unrelated")):
