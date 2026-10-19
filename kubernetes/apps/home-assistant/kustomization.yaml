@@ -5,6 +5,8 @@ resources:
   - configmap.yaml
   - alerts-configmap.yaml
   - coway-compat-configmap.yaml
+  - coway-diagnostics-configmap.yaml
+  - coway-diagnostics.yaml
   - backup-cronjob.yaml
   - pvc.yaml
   - deployment.yaml

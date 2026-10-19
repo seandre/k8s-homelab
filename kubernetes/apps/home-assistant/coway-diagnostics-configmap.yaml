@@ -1,0 +1,197 @@
+apiVersion: v1
+data:
+  capture.py: |
+    """Finite, redacted Coway boundary observations. Never sends equipment commands."""
+    import argparse
+    import asyncio
+    from datetime import datetime
+    import json
+    import logging
+    import os
+    from pathlib import Path
+    import re
+    import sqlite3
+    import time
+    from zoneinfo import ZoneInfo
+
+    from aiohttp import ClientSession, ClientTimeout
+    from bs4 import BeautifulSoup
+    from cowayaio import CowayClient
+    from cowayaio.constants import Endpoint, Header, Parameter
+
+    ZONES = ['America/Kentucky/Louisville', 'America/Los_Angeles']
+    PACIFIC = ZoneInfo('America/Los_Angeles')
+
+
+    def emit(kind, **fields):
+        print(json.dumps({'kind': kind, 'observed_pacific': datetime.now(PACIFIC).isoformat(), **fields}), flush=True)
+
+
+    class ReadOnlySession:
+        """Allow authentication POSTs during login, then prohibit all writes."""
+        def __init__(self, session):
+            self.session = session
+            self.authentication = True
+
+        def __getattr__(self, name):
+            return getattr(self.session, name)
+
+        def post(self, *args, **kwargs):
+            if not self.authentication:
+                raise RuntimeError('POST forbidden after authentication')
+            return self.session.post(*args, **kwargs)
+
+        def put(self, *args, **kwargs):
+            raise RuntimeError('PUT forbidden')
+
+        delete = put
+        patch = put
+
+
+    def extract(html):
+        script = BeautifulSoup(html, 'html.parser').select('script:-soup-contains("sensorInfo")')[0].text
+        cleaned = script.replace('\\"', '"').replace('\\\\', '\\')
+        match = re.search(r'(\{"familyId":"01".*?"sensorInfo":.*)', cleaned, re.DOTALL)
+        data = json.JSONDecoder().raw_decode(match.group(1))[0]
+        attrs = data.get('deviceStatusData', {}).get('data', {}).get('statusInfo', {}).get('attributes', {})
+        # An explicit numeric whitelist prevents raw HTML or private identifiers
+        # reaching job logs, even if vendor responses change their structure.
+        def number(code):
+            value = attrs.get(code)
+            return int(value) if isinstance(value, (int, bool)) or isinstance(value, str) and value.isdigit() else None
+        result = {name: number(code) for code, name in [('0001', 'power_code'), ('0002', 'mode_code'),
+                  ('0003', 'speed_code'), ('0007', 'light_code'), ('0008', 'timer_remaining')]}
+        result['embedded_timezone'] = next((item.get('data', {}).get('timezoneId') for item in data.get('coreData', [])
+                                            if item.get('data', {}).get('timezoneId') in ZONES), None)
+        return result
+
+
+    def alias(name):
+        name = (name or '').lower()
+        return 'bedroom' if 'bedroom' in name else 'living_room' if 'living' in name else None
+
+
+    class Recorder:
+        def __init__(self, source):
+            self.source = source
+            self.since = time.time() - 60
+            self.seen = set()
+
+        def sample(self, sample):
+            # Read the live WAL consistently without copying or modifying HA's DB.
+            with sqlite3.connect(f'file:{self.source}/home-assistant_v2.db?mode=ro', uri=True) as connection:
+                entities = {}
+                registry = json.loads((self.source / '.storage/core.entity_registry').read_text())['data']['entities']
+                entries = json.loads((self.source / '.storage/core.config_entries').read_text())['data']['entries']
+                entry_ids = {entry['entry_id'] for entry in entries if entry['domain'] == 'coway'}
+                for entity in registry:
+                    eid = entity['entity_id']
+                    if entity.get('config_entry_id') not in entry_ids or not eid.startswith(('fan.', 'select.')):
+                        continue
+                    row = connection.execute('SELECT s.state,s.last_updated_ts,a.shared_attrs FROM states s '
+                        'JOIN states_meta m ON m.metadata_id=s.metadata_id LEFT JOIN state_attributes a '
+                        'ON a.attributes_id=s.attributes_id WHERE m.entity_id=? ORDER BY s.last_updated_ts DESC LIMIT 1', (eid,)).fetchone()
+                    if not row:
+                        continue
+                    state, updated, attrs = row
+                    attrs = json.loads(attrs or '{}')
+                    unit = alias(attrs.get('friendly_name'))
+                    if unit is None:
+                        continue
+                    entities[eid] = unit
+                    if eid.startswith('fan.') or 'Light' in attrs.get('friendly_name', '') or 'timer' in attrs.get('friendly_name', '').lower():
+                        allowed = ['on', 'off', 'unknown', 'unavailable', 'On', 'Off', 'AQI Off', 'OFF', '1 Hour', '2 Hours', '4 Hours', '8 Hours']
+                        emit('ha_state', sample=sample, unit=unit, control='fan' if eid.startswith('fan.') else 'light' if 'Light' in attrs.get('friendly_name', '') else 'timer',
+                             state=state if state in allowed else 'other', last_updated_utc=datetime.fromtimestamp(updated, ZoneInfo('UTC')).isoformat(),
+                             percentage=attrs.get('percentage'), preset=attrs.get('preset_mode') if attrs.get('preset_mode') in [None, 'Auto', 'Auto (Eco)', 'Night', 'Rapid'] else 'other')
+                now = time.time()
+                rows = connection.execute('SELECT t.event_type,e.time_fired_ts,d.shared_data,e.event_id FROM events e '
+                    'JOIN event_types t ON t.event_type_id=e.event_type_id LEFT JOIN event_data d ON d.data_id=e.data_id '
+                    'WHERE e.time_fired_ts>=? AND e.time_fired_ts<=? AND t.event_type IN (\'call_service\',\'automation_triggered\') '
+                    'ORDER BY e.time_fired_ts', (self.since, now)).fetchall()
+                # Keep a 30-second overlap for recorder commit latency; deduplicate.
+                for event_type, timestamp, raw, event_id in rows:
+                    if event_id in self.seen:
+                        continue
+                    self.seen.add(event_id)
+                    data = json.loads(raw or '{}')
+                    if event_type == 'automation_triggered':
+                        name = data.get('name', '')
+                        if name.startswith('Coways -'):
+                            emit('ha_automation', name=name, event_pacific=datetime.fromtimestamp(timestamp, PACIFIC).isoformat())
+                    elif data.get('domain') in ['fan', 'select']:
+                        service_data = data.get('service_data', {})
+                        targets = service_data.get('entity_id', [])
+                        if isinstance(targets, str):
+                            targets = [targets]
+                        units = sorted({entities[e] for e in targets if e in entities})
+                        if units:
+                            emit('ha_command', domain=data['domain'], service=data.get('service'), units=units,
+                                 event_pacific=datetime.fromtimestamp(timestamp, PACIFIC).isoformat())
+                self.since = now - 30
+
+
+    async def capture(samples, interval, source):
+        logging.disable(logging.CRITICAL)
+        entry = next(entry for entry in json.loads((source / '.storage/core.config_entries').read_text())['data']['entries'] if entry['domain'] == 'coway')
+        recorder = Recorder(source)
+        async with ClientSession(timeout=ClientTimeout(total=20)) as session:
+            readonly = ReadOnlySession(session)
+            client = CowayClient(entry['data']['username'], entry['data']['password'], session=readonly)
+            client.skip_password_change = True
+            await client.login()
+            readonly.authentication = False
+            devices = await client.async_get_purifiers()
+            if len(devices) != 2 or any(alias(device.get('dvcNick')) is None for device in devices):
+                raise RuntimeError('Expected two known purifier aliases')
+            emit('capture_start', samples=samples, interval_seconds=interval, equipment_commands_enabled=False)
+            for sample in range(samples):
+                started = time.monotonic()
+                recorder.sample(sample)
+                for device in devices:
+                    unit = alias(device['dvcNick'])
+                    for timezone in ZONES if sample % 2 == 0 else list(reversed(ZONES)):
+                        headers = {'theme': Header.THEME, 'callingpage': Header.CALLING_PAGE, 'accept': Header.ACCEPT,
+                            'dvcnick': device['dvcNick'], 'timezoneid': timezone, 'appversion': Parameter.APP_VERSION,
+                            'accesstoken': client.access_token, 'accept-language': Header.COWAY_LANGUAGE, 'region': 'NUS',
+                            'user-agent': Header.HTML_USER_AGENT, 'srcpath': Header.SOURCE_PATH, 'deviceserial': device['deviceSerial']}
+                        url = f'{Endpoint.PURIFIER_HTML_BASE}/{device["placeId"]}/product/{device["modelCode"]}'
+                        async with readonly.get(url, headers=headers, params={'bottomSlide': 'false', 'tab': '0', 'temperatureUnit': 'F', 'weightUnit': 'oz', 'gravityUnit': 'lb'}) as response:
+                            if response.status != 200:
+                                emit('http_failure', sample=sample, unit=unit, timezone=timezone, status=response.status)
+                                # Do not retry authentication, maintenance, or rate limiting.
+                                raise RuntimeError('Observation request failed')
+                            html = await response.text()
+                        emit('cloud_state', sample=sample, unit=unit, request_timezone=timezone, **extract(html))
+                if sample + 1 < samples:
+                    await asyncio.sleep(max(0, interval - (time.monotonic() - started)))
+            recorder.sample(samples)
+            emit('capture_complete', samples=samples, equipment_commands_sent=0)
+
+
+    def main():
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--samples', type=int, default=13)
+        parser.add_argument('--interval', type=int, default=30)
+        parser.add_argument('--source', type=Path, default=Path('/source'))
+        args = parser.parse_args()
+        expected = os.environ.get('CAPTURE_DATE')
+        if expected and datetime.now(PACIFIC).date().isoformat() != expected:
+            emit('capture_skipped', reason='Outside authorized capture date')
+            return
+        if not 1 <= args.samples <= 13 or not 30 <= args.interval <= 60:
+            raise ValueError('Capture exceeds bounded sampling limits')
+        try:
+            asyncio.run(capture(args.samples, args.interval, args.source))
+        except Exception as error:
+            # Exception text can contain URLs, identifiers or credentials.
+            emit('capture_failed', error_type=type(error).__name__)
+            raise SystemExit(1)
+
+
+    if __name__ == '__main__':
+        main()
+kind: ConfigMap
+metadata:
+  name: coway-diagnostics
+  namespace: home-assistant
