@@ -69,6 +69,13 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 3
           volumeMounts:
+            - name: coway-compat
+              mountPath: /opt/coway-compat
+              readOnly: true
+            - name: coway-compat
+              mountPath: /etc/cont-init.d/02-coway-compat.sh
+              subPath: install.sh
+              readOnly: true
             - name: config
               mountPath: /config
             - name: bootstrap
@@ -79,6 +86,10 @@ spec:
               mountPath: /config/packages
               readOnly: true
       volumes:
+        - name: coway-compat
+          configMap:
+            name: home-assistant-coway-compat
+            defaultMode: 0555
         - name: config
           persistentVolumeClaim:
             claimName: home-assistant-config

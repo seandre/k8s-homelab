@@ -31,6 +31,10 @@ fi
 "$SCRIPT_DIR/../coway-compat/verify-source.sh" \
   "$ARCHIVE" "$WORK_DIRECTORY/expected"
 patch -d "$WORK_DIRECTORY/expected" -p1 < "$SCRIPT_DIR/coway-token-refresh.patch"
+sed 's/from cowayaio import CowayClient/from .client import CowayClient/' \
+  "$WORK_DIRECTORY/expected/custom_components/coway/coordinator.py" > "$WORK_DIRECTORY/coordinator.tmp"
+mv "$WORK_DIRECTORY/coordinator.tmp" "$WORK_DIRECTORY/expected/custom_components/coway/coordinator.py"
+cp "$SCRIPT_DIR/coway-client.py" "$WORK_DIRECTORY/expected/custom_components/coway/client.py"
 diff -r \
   "$WORK_DIRECTORY/expected/custom_components/coway" \
   "$WORK_DIRECTORY/context/custom_components/coway"

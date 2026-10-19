@@ -10,4 +10,5 @@ trap cleanup EXIT HUP INT TERM
 cp /opt/homelab-home-assistant/configuration.yaml "$CHECK_DIRECTORY/configuration.yaml"
 python -m homeassistant --script check_config --config "$CHECK_DIRECTORY"
 python -m unittest discover -v -s /opt/homelab-home-assistant/tests
+python /opt/homelab-home-assistant/test-maintenance-notice.py
 

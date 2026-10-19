@@ -21,6 +21,7 @@ COPY verify-image.sh /usr/local/bin/verify-home-assistant-image
 COPY configuration.yaml /opt/homelab-home-assistant/configuration.yaml
 COPY tests /opt/homelab-home-assistant/tests
 COPY requirements.lock /opt/homelab-home-assistant/requirements.lock
+COPY coway-client.py test-maintenance-notice.py /opt/homelab-home-assistant/
 
 # Home Assistant installs manifest requirements on first setup. Baking the
 # manifest's exact dependency makes the production image independently

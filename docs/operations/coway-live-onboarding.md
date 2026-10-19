@@ -129,6 +129,27 @@ present in the active configuration.
 
 ## Verification and rollback
 
+### 2026-10-18 maintenance notice parser incident
+
+At approximately 19:10 PDT, the host and Home Assistant clocks agreed and HA
+still used `America/Los_Angeles`. Both purifiers had been unavailable in HA
+since 2026-10-17 09:00 PDT. Repeated polls failed because cowayaio 0.2.6 called
+`.groups()` on a failed regex match while parsing a Coway maintenance notice.
+The 07:00 automation did trigger, but unavailable devices could not be restored.
+
+A narrowly scoped client subclass now tolerates that notice parsing error;
+other errors and valid maintenance windows retain upstream behavior. Production
+tests cover malformed notices, valid date windows, and error propagation. A
+Git-owned ConfigMap startup overlay installs the fix after the image's component
+copy, so container recreation preserves it; image build inputs also include the
+fix for the next published image. The deployed image itself was not changed.
+
+After the rollout, both purifiers became available. Triggering the existing
+morning automation with its daytime condition enabled restored both to Auto,
+reported level 1 (33%), and lights On at approximately 19:17 PDT. No schedule
+times were changed. GitOps reconciliation includes the compatibility ConfigMap and deployment mounts.
+
+
 ```sh
 home-assistant/coway/test-contract.sh
 home-assistant/coway-compat/run-tests.sh /path/to/pinned-0.6.1-archive.tar.gz

@@ -49,3 +49,27 @@ published.
 
 IE-004 owns the runtime HA configuration, Kubernetes workload, GHCR pull
 credentials, deployed image digest, and rollback exercise.
+
+## Maintenance-notice compatibility
+
+The generated component uses `coway-client.py` to tolerate the specific
+unchecked regex-match failure in cowayaio 0.2.6's optional maintenance notice
+parser. Valid maintenance windows, authentication errors, network failures,
+and server maintenance responses retain their upstream behavior. The image
+verification suite runs `test-maintenance-notice.py` against the pinned client.
+
+Until a new immutable image is published, `coway-compat-configmap.yaml` supplies
+the same helper and `install-coway-compat.sh` through a startup overlay. It runs
+after the image's component installation on every container start. Regenerate
+that ConfigMap after changing either file:
+
+```sh
+kubectl create configmap home-assistant-coway-compat -n home-assistant \
+  --from-file=client.py=home-assistant/image/coway-client.py \
+  --from-file=install.sh=home-assistant/image/install-coway-compat.sh \
+  --dry-run=client -o yaml > kubernetes/apps/home-assistant/coway-compat-configmap.yaml
+```
+
+Remove the overlay mounts, volume, and ConfigMap only after deploying an image
+that contains the helper. Rolling back the compatibility fix requires removing
+the overlay and restarting Home Assistant with the previous image.
